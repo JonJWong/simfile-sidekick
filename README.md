@@ -2,6 +2,12 @@
 
 A discord bot to scan and parse StepMania simfiles. Inspired by Nav's Breakdown Buddy.
 
+## About this guide
+
+This guide was tailored for linux users, however I've gotten everything to work locally on macOS using the same steps (minus the systemd section, of course).
+
+I don't have any advice for Windows users unfortunately, as I haven't coded on a non-UNIX system in awhile. Feel free to update this readme if there are any hiccups running this on Windows. That being said, I would be surprised if there were any additional issues given how small this application is.
+
 ## How to use
 
 This was created and tested using Python 3.6.9, but will probably work with earlier versions of Python 3.
@@ -23,6 +29,13 @@ I also use TinyDB to create the database. It essentially creates a JSON file, bu
 https://github.com/msiemens/tinydb
 
 `pip install tinydb`
+
+The actual discord bot, bot.py, has dependencies on discord and python-dotenv:
+
+`pip install discord`
+
+`pip install python-dotenv`
+
 
 You'll want to run scan.py first, then after generating the database, you can run bot.py.
 
@@ -52,6 +65,12 @@ When finished, you should have a new db.json file in the same folder as scan.py.
 
 This is the actual discord bot. It will search db.json for songs matching the entered criteria and return it to the user. If multiple matches are found, it will return a list for the user to select from.
 
+Before actually running bot.py, you will need a .env file in the same folder as bot.py. Inside the .env file should contain a line:
+
+`DISCORD_TOKEN=YourBotsDiscordToken`
+
+If you unfamiliar with integrating your script with Discord (or more importantly: why it's important to keep your bots token separate), I recommend reading https://realpython.com/how-to-make-a-discord-bot-python/ as this is the guide I followed in creating this bot.
+
 To use:
 
 `python3 bot.py`
@@ -64,6 +83,26 @@ This is an intermediary file that is used by bot.py to communicate with db.json.
 
 - I highly recommend using screen when using scan.py. Your first scan will take more than a few hours. See https://linuxize.com/post/how-to-use-linux-screen/
 - If you never used python pip, see https://pip.pypa.io/en/stable/installing/
+- For linux users, if you wish to set bot.py as a systemd service (to allow the bot to start with the system), here is my .service file I created in `/etc/systemd/system` (I called it discordss.service):
+
+```
+[Unit]
+Description=Simfile Sidekick bot for Discord
+After=network.target
+
+[Service]
+WorkingDirectory=/home/steve/simfile-sidekick
+Type=simple
+Restart=always
+RestartSec=5
+User=steve
+ExecStart=/usr/bin/python3.6 /home/steve/simfile-sidekick/bot.py
+
+[Install]
+WantedBy=multi-user.target
+```
+
+You can then run the commands `systemctl daemon-reload` to load your new service, `systemctl enable discordss` to load the bot on boot, and `systemctl start discordss` to start the bot immediately.
 
 ## Troubleshooting
 
@@ -84,11 +123,13 @@ Then install python3-dev:
 
 `sudo apt-get install python3-dev`
 
+- If you're getting 2 or more responses from the discord bot, you most likely have 2 or more processes of bot.py running.
+
 ## To-do
-- [ ] Replace all instances of "Breakdown Buddy Jr." with "Simfile Sidekick"
+- [ ] Replace all references of "Breakdown Buddy Jr." with "Simfile Sidekick"
 - [ ] Log songs that couldn't be parsed by scan.py to a logfile
 - [ ] Flag in scan.py to enter in a database name
 - [ ] Create a tool to insert/update/delete from the TinyDB database
-- [ ] Search by different or multiple paremeters (e.g. artist, stepartist, ranking, etc.)
+- [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
 - [ ] Parse manually uploaded .sm files from discord
 - [ ] Preferences for users (hide title & artist and other original Breakdown Buddy features)
