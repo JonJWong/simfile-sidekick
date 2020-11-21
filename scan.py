@@ -16,7 +16,7 @@ import time
 SHORT_OPTIONS = "rvd:m"
 LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove"]
 
-DATABASE_NAME = "new.json"
+DATABASE_NAME = "db.json"
 
 L_REG = "[124]+000"
 D_REG = "0[124]+00"
