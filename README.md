@@ -131,5 +131,5 @@ Then install python3-dev:
 - [ ] Flag in scan.py to enter in a database name
 - [ ] Create a tool to insert/update/delete from the TinyDB database
 - [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
-- [ ] Parse manually uploaded .sm files from discord
+- [x] Parse manually uploaded .sm files from discord
 - [ ] Preferences for users (hide title & artist and other original Breakdown Buddy features)
