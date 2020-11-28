@@ -26,6 +26,21 @@ AVATAR_URL = "https://cdn.discordapp.com/avatars/542501947547320330/a_fd4512e7da
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36"
 TMP_DIR = "./tmp/"
 
+HELP_MESSAGE = """ \
+Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
+Breakdown Buddy.
+
+I can currently parse .sm files using a library of popular packs. Use
+`-search` followed by the song name.
+
+If you want me to parse a .sm file, attach the .sm file to your message and
+type `-parse`.
+
+I also have built in stream visualizer functionality. Use `-sv` followed
+by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
+brackets around arrows to denote jumps, e.g. `[LR]`
+"""
+
 bot = commands.Bot(command_prefix="-")
 
 bot.remove_command("help") # Needed to replace existing help command
@@ -387,64 +402,105 @@ async def stream_visualiser(ctx, input: str):
             message += "\n"
         await ctx.send(message)
 
+
 @bot.command(name="parse")
 async def parse(ctx):
+    """
+    Parses a user's attached .sm file, and outputs the information into the chat channel.
+
+    :param ctx: Discord API's context
+                https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#context
+    :return: Nothing
+    """
+
+    if len(ctx.message.attachments) < 1:
+        message = "{}, you need to attach a .sm file.".format(ctx.author.mention)
+        await ctx.send(message)
+        return
+    elif len(ctx.message.attachments) > 1:
+        message = "{}, it looks like you attached multiple files. ".format(ctx.author.mention)
+        message += "I can currently only parse one file at a time."
+        await ctx.send(message)
+        return
+
     attachment = ctx.message.attachments[0]
-    # TODO check if .sm file
 
-    await ctx.send("I received your file. Currently processing...")
+    if not attachment.url.endswith(".sm"):
+        message = "Sorry {}, I can only parse .sm files.".format(ctx.author.mention)
+        await ctx.send(message)
+        return
 
+    # We will later want to create a temporary folder based on user's unique ID to store the .sm file
+    usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
+    usr_tmp_file = usr_tmp_dir + attachment.filename
+    usr_tmp_db = usr_tmp_file + ".json"
+
+    # This bot only supports parsing one file at a time per user. If a user quickly submits multiple .sm files
+    # in succession, it will most likely corrupt their results. We can prevent this by seeing if the temporary
+    # directories have been created yet.
+    # TODO: Revisit this section, as it looks like this function is thread-safe and these checks may not be needed (?)
+    # I had the bot parse XS Project Collection, then tried uploading another .sm file immediately after. The message
+    # below didn't appear until after XS Project Collection was complete.
+    if os.path.exists(usr_tmp_dir):
+        message = "It looks like I'm already parsing a file for you {}.".format(ctx.author.mention)
+        await ctx.send(message)
+        return
+    else:
+        # Create temporary directory if it doesn't exist
+        os.makedirs(usr_tmp_dir)
+
+    message = "{}, ".format(ctx.author.mention)
+    message += "I received your file `" + attachment.filename + "`. "
+    message += "Currently processing... :hourglass:"
+    process_msg = await ctx.send(message)
+
+    # If we don't have a User-Agent in our header, we won't be able to retrieve the file
     opener = urllib.request.build_opener()
-    opener.addheaders=[("User-Agent", USER_AGENT)]
+    opener.addheaders = [("User-Agent", USER_AGENT)]
     urllib.request.install_opener(opener)
 
-    url = attachment.url
+    # Initializes the database that will contain info for only the attached .sm file
+    db = TinyDB(usr_tmp_db)
 
-    usr_dir = TMP_DIR + str(ctx.message.author.id) + "/"
-    usr_file = usr_dir + attachment.filename
-    usr_db = usr_dir + attachment.filename + ".json"
+    # Retrieve the .sm file, and place it in temporary directory
+    urllib.request.urlretrieve(attachment.url, usr_tmp_file)
 
-    if not os.path.exists(usr_dir):
-        os.makedirs(usr_dir)
-    db = TinyDB(usr_db)
+    # Call search.py's parser function and put results in temporary database
+    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db)
 
-    urllib.request.urlretrieve(url, usr_file)
+    # Get results from temporary database
+    results = [result for result in db]
 
-    parse_file(usr_file, usr_dir, "Uploaded", db)
-
-    result = [r for r in db]
-
-    for r in result:
-        embed, file = create_embed(r, ctx)
+    # There may be multiple results, whether or not the .sm file had multiple difficulties
+    for result in results:
+        embed, file = create_embed(result, ctx)
         await ctx.send(file=file, embed=embed)
-        os.remove(r["graph_location"])
+        # Removes density graph image for this difficulty
+        os.remove(result["graph_location"])
 
-    os.remove(usr_file)
+    # Deletes the previous "currently processing" message
+    await process_msg.delete()
+
+    # Cleanup and delete files/folders in temporary directory
+    os.remove(usr_tmp_file)
     db.close()
-    os.remove(usr_db)
-
-    if len(os.listdir(usr_dir)) == 0:
-        os.rmdir(usr_dir)
-
+    os.remove(usr_tmp_db)
+    os.rmdir(usr_tmp_dir)
+    # If no other users are currently parsing .sm files, we can delete the root temp folder
     if len(os.listdir(TMP_DIR)) == 0:
         os.rmdir(TMP_DIR)
 
+
 @bot.command(name="help")
 async def help(ctx):
-    message = """
-Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
-Breakdown Buddy.
+    """
+    Outputs the bot's help message.
 
-I can currently parse .sm files using a library of popular packs. Use
-`-search` followed by the song name.
+    :param ctx: Discord API's context
+                https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#context
+    :return: Nothing
+    """
+    await ctx.send(HELP_MESSAGE)
 
-If you want me to parse a .sm file, attach the .sm file to your message and
-type `-parse`.
-
-I also have built in stream visualizer functionality. Use `-sv` followed
-by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
-brackets around arrows to denote jumps, e.g. `[LR]`
-"""
-    await ctx.send(message)
 
 bot.run(TOKEN)
