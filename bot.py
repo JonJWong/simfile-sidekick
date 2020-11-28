@@ -1,6 +1,9 @@
 from discord.ext import commands
 from dotenv import load_dotenv
 from search import *
+from scan import parse_file
+from tinydb import TinyDB, Query
+import urllib.request
 import asyncio
 import discord
 import enum
@@ -14,6 +17,9 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Author avatar, used in footer
 AVATAR_URL = "https://cdn.discordapp.com/avatars/542501947547320330/a_fd4512e7da6691d45387618677c3f01b.gif?size=1024"
+
+USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36"
+TMP_DIR = "./tmp/"
 
 bot = commands.Bot(command_prefix="-")
 
@@ -376,6 +382,48 @@ async def stream_visualiser(ctx, input: str):
             message += "\n"
         await ctx.send(message)
 
+@bot.command(name="parse")
+async def parse(ctx):
+    attachment = ctx.message.attachments[0]
+    # TODO check if .sm file
+
+    await ctx.send("I received your file. Currently processing...")
+
+    opener = urllib.request.build_opener()
+    opener.addheaders=[("User-Agent", USER_AGENT)]
+    urllib.request.install_opener(opener)
+
+    url = attachment.url
+
+    usr_dir = TMP_DIR + str(ctx.message.author.id) + "/"
+    usr_file = usr_dir + attachment.filename
+    usr_db = usr_dir + attachment.filename + ".json"
+
+    if not os.path.exists(usr_dir):
+        os.makedirs(usr_dir)
+    db = TinyDB(usr_db)
+
+    urllib.request.urlretrieve(url, usr_file)
+
+    parse_file(usr_file, usr_dir, "Uploaded", db)
+
+    result = [r for r in db]
+
+    for r in result:
+        embed, file = create_embed(r, ctx)
+        await ctx.send(file=file, embed=embed)
+        os.remove(r["graph_location"])
+
+    os.remove(usr_file)
+    db.close()
+    os.remove(usr_db)
+
+    if len(os.listdir(usr_dir)) == 0:
+        os.rmdir(usr_dir)
+
+    if len(os.listdir(TMP_DIR)) == 0:
+        os.rmdir(TMP_DIR)
+
 @bot.command(name="help")
 async def help(ctx):
     message="""
@@ -385,7 +433,8 @@ Breakdown Buddy.
 I can currently parse .sm files using a library of popular packs. Use
 `-search` followed by the song name.
 
-Support for uploading .sm files will come in a future version.
+If you want me to parse a .sm file, attach the .sm file to your message and
+type `-parse`.
 
 I also have built in stream visualizer functionality. Use `-sv` followed
 by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
