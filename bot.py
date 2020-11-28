@@ -1,19 +1,24 @@
 from discord.ext import commands
 from dotenv import load_dotenv
-from search import *
 from scan import parse_file
-from tinydb import TinyDB, Query
-import urllib.request
+from search import *
+from tinydb import TinyDB
 import asyncio
 import discord
-import enum
 import json
 import os
-import random
 import re
+import urllib.request
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+
+if not TOKEN:
+    print("It looks like you don't have an \".env\" file, or it's not setup correctly.")
+    print("Please make sure you have an \".env\" file in the same directory as this file.")
+    print("The \".env\" file should contain one line:")
+    print("DISCORD_TOKEN=YourBotsDiscordTokenHere")
+    sys.exit(1)
 
 # Author avatar, used in footer
 AVATAR_URL = "https://cdn.discordapp.com/avatars/542501947547320330/a_fd4512e7da6691d45387618677c3f01b.gif?size=1024"
