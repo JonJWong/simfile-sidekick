@@ -308,7 +308,7 @@ async def search_song(ctx, *, song_name):
             
             if msg:
                 embed, file = create_embed(data[int(msg.content) - 1], ctx)
-                # TODO add check to make sure in value
+                # TODO add check to make sure user input is proper value
                 await ctx.send(file=file, embed=embed)
 
 
@@ -431,8 +431,8 @@ async def parse(ctx):
 
 @bot.command(name="help")
 async def help(ctx):
-    message="""
-Hello, I'm Breakdown Buddy Jr., a Discord bot inspired by the original
+    message = """
+Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
 Breakdown Buddy.
 
 I can currently parse .sm files using a library of popular packs. Use
