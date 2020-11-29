@@ -77,10 +77,6 @@ To use:
 
 `python3 bot.py`
 
-### search.py
-
-This is an intermediary file that is used by bot.py to communicate with db.json. It's purpose is to simply search for a song and return the information to bot.py. If more than one result is found, it will return a list to bot.py. I will probably just move this into bot.py at a later date when I get around to code cleanup.
-
 ## Tips
 
 - I highly recommend using screen when using scan.py. Your first scan will take more than a few hours. See https://linuxize.com/post/how-to-use-linux-screen/
