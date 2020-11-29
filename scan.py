@@ -1,9 +1,10 @@
+from common import ChartInfo as ci
+from common import PatternAnalysis as pa
 from pathlib import Path
 from tinydb import Query, TinyDB, where
 import enum
 import getopt
 import hashlib
-import io
 import json
 import os
 import plotly.graph_objects as go
@@ -11,21 +12,21 @@ import re
 import statistics
 import string
 import sys
-import time
 
 SHORT_OPTIONS = "rvd:m"
 LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove"]
 
 DATABASE_NAME = "db.json"
 
-L_REG = "[124]+000"
-D_REG = "0[124]+00"
-U_REG = "00[124]+0"
-R_REG = "000[124]+"
-NL_REG = "[\s]+"
-OR_REG = "|"
-NO_NOTES_REG = "[03M][03M][03M][03M]"
-ANY_NOTES_REG = "(.*)[124]+(.*)"
+# Regex constants
+L_REG = "[124]+000"                     # Left arrow (1000)
+D_REG = "0[124]+00"                     # Down arrow (0100)
+U_REG = "00[124]+0"                     # Up Arrow (0010)
+R_REG = "000[124]+"                     # Right Arrow (0001)
+NL_REG = "[\s]+"                        # New line
+OR_REG = "|"                            # Regex for "or"
+NO_NOTES_REG = "[03M][03M][03M][03M]"   # Matches a line containing no notes (0000)
+ANY_NOTES_REG = "(.*)[124]+(.*)"        # Matches a line containing at least 1 note
 
 
 class RunDensity(enum.Enum):
@@ -34,67 +35,6 @@ class RunDensity(enum.Enum):
     Run_24 = 2
     Run_32 = 3
 
-
-class ChartInfo:
-    title = ""
-    subtitle = ""
-    artist = ""
-    pack = ""
-    
-    length = ""
-    notes = 0
-    jumps = 0
-    holds = 0
-    mines = 0
-    hands = 0
-    rolls = 0
-    total_stream = 0
-    total_break = 0
-    
-    displaybpm = ""
-    stepartist = ""
-    difficulty = ""
-    rating = ""
-    breakdown = ""
-    partial_breakdown = ""
-    simple_breakdown = ""
-    max_bpm = ""
-    min_bpm = ""
-    max_nps = ""
-    median_nps = ""
-    graph_location = ""
-    md5 = ""
-    
-    def __init__(self, length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break):
-        self.length = length
-        self.notes = notes
-        self.jumps = jumps
-        self.holds = holds
-        self.mines = mines
-        self.hands = hands
-        self.rolls = rolls
-        self.total_stream = total_stream
-        self.total_break = total_break
-
-class PatternAnalysis:
-    left_foot_candles = 0
-    right_foot_candles = 0
-    total_candles = 0
-    candles_percent = 0
-    
-    mono_percent = 0
-    
-    lr_boxes = 0
-    ud_boxes = 0
-    corner_ld_boxes = 0
-    corner_lu_boxes = 0
-    corner_rd_boxes = 0
-    corner_ru_boxes = 0
-    
-    anchor_left = 0
-    anchor_down = 0
-    anchor_up = 0
-    anchor_right = 0
 
 def remove_comments(chart):
     return re.sub("//(.*)", "", chart)
@@ -321,7 +261,7 @@ def get_pattern_analysis(chart, num_notes):
     pattern = R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG
     anchor_right = len(re.findall(re.compile(pattern), chart))
     
-    analysis = PatternAnalysis()
+    analysis = pa.PatternAnalysis()
     analysis.left_foot_candles = left_foot_candles
     analysis.right_foot_candles = right_foot_candles
     
@@ -535,7 +475,7 @@ def get_density_and_breakdown(measures, bpms):
     
     
     
-    chartinfo = ChartInfo(length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break)
+    chartinfo = ci.ChartInfo(length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break)
     
     
     return density, breakdown.strip(), chartinfo, analysis

@@ -1,7 +1,7 @@
+from common import DBManager as dbm
 from discord.ext import commands
 from dotenv import load_dotenv
 from scan import parse_file
-from search import *
 from tinydb import TinyDB
 import asyncio
 import discord
@@ -259,7 +259,7 @@ def create_embed(data, ctx):
 @bot.command(name="search")
 async def search_song(ctx, *, song_name):
 #async def search_song(ctx, song_name: str):
-    results = search(song_name)
+    results = dbm.search(song_name)
     
     if isinstance(results, int):
         if results == 0:
@@ -465,7 +465,7 @@ async def parse(ctx):
     # Retrieve the .sm file, and place it in temporary directory
     urllib.request.urlretrieve(attachment.url, usr_tmp_file)
 
-    # Call search.py's parser function and put results in temporary database
+    # Call scan.py's parser function and put results in temporary database
     parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db)
 
     # Get results from temporary database

@@ -2,6 +2,8 @@
 
 A discord bot to scan and parse StepMania simfiles. Inspired by Nav's Breakdown Buddy.
 
+![Screenshot](images/screenshot.png)
+
 ## About this guide
 
 This guide was tailored for linux users, however I've gotten everything to work locally on macOS using the same steps (minus the systemd section, of course).
@@ -126,7 +128,7 @@ Then install python3-dev:
 - If you're getting 2 or more responses from the discord bot, you most likely have 2 or more processes of bot.py running.
 
 ## To-do
-- [ ] Replace all references of "Breakdown Buddy Jr." with "Simfile Sidekick"
+- [x] Replace all references of "Breakdown Buddy Jr." with "Simfile Sidekick"
 - [ ] Log songs that couldn't be parsed by scan.py to a logfile
 - [ ] Flag in scan.py to enter in a database name
 - [ ] Create a tool to insert/update/delete from the TinyDB database
