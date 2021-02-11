@@ -131,3 +131,7 @@ Then install python3-dev:
 - [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
 - [x] Parse manually uploaded .sm files from discord
 - [ ] Preferences for users (hide title & artist and other original Breakdown Buddy features)
+- [ ] Unit testing and built-in debug options
+- [ ] Admin tools to add/remove packs from within Discord
+- [ ] Investigate if switching to msdparser is worthwhile
+- [ ] Review pattern analysis and mono calculation

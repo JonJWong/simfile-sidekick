@@ -1,7 +1,10 @@
 from common import ChartInfo as ci
 from common import PatternAnalysis as pa
+from common import Test as test
+from common import VerboseHelper as vh
 from pathlib import Path
 from tinydb import Query, TinyDB, where
+import datetime
 import enum
 import getopt
 import hashlib
@@ -13,10 +16,13 @@ import statistics
 import string
 import sys
 
-SHORT_OPTIONS = "rvd:m"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove"]
+SHORT_OPTIONS = "rvd:mlu"
+LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log", "unittest"]
 
 DATABASE_NAME = "db.json"
+LOGFILE_NAME = "scan.log"
+LOG_TIMESTAMP = "%Y-%m-%d %I:%M:%S %p"
+UNITTEST_FOLDER = "tests"
 
 # Regex constants
 L_REG = "[124]+000"                     # Left arrow (1000)
@@ -480,7 +486,7 @@ def get_density_and_breakdown(measures, bpms):
     
     return density, breakdown.strip(), chartinfo, analysis
 
-def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db):
+def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log):
     metadata = chart.split("\n", 6)
     
     type = metadata[1].strip().replace(":", "") # dance-single, etc.
@@ -495,22 +501,33 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
         return # we only want single charts
     
     if chart.strip() == ";":
+        if log:
+            log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
+            log.flush()
         return # empty chart
+
+    if not findall_with_regex(chart, ANY_NOTES_REG):
+        if log:
+            log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
+            log.flush()
+        return # chart only contains 0's
         
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
     
     # bpms need to be part of MD5 for most of the for business/for pleasure charts
     bpm_string = ""
     for bpm in bpms:
-        # parsed to int, as 215.0000 = 215.0
+        # parsed to int, as we want to match 215.0000 with 215.0
         # only need a rough estimate for our purpose here
         bpm_string += str(int(float(bpm[0]))) + str(int(float(bpm[1])))
     
     md5 = generate_md5("".join(measures) + bpm_string)
     
     if measures == -1:
-        print("Unable to parse " + difficulty + " chart for \"" + title + "\" in " + pack)
-        print("Skipping to next chart/file.")
+        if log:
+            log.write("WARN: Unable to parse the " + difficulty + " " + rating + " chart for " + title + ". Skipping\n")
+            log.flush()
+        return
     
     density, breakdown, chartinfo, analysis = get_density_and_breakdown(measures, bpms)
     partially_simplified = get_simplified(breakdown, True)
@@ -543,7 +560,7 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     
     add_to_database(chartinfo, db, analysis)
 
-def parse_file(filename, folder, pack, db):
+def parse_file(filename, folder, pack, db, log):
     file = open(filename, "r", errors="ignore")
     data = file.read()
     
@@ -552,19 +569,27 @@ def parse_file(filename, folder, pack, db):
     artist = find_with_regex(data, r"#ARTIST:(.*);")
     bpms = find_with_regex_dotall(data, r"#BPMS:(.*?)[;]+?")
     if bpms == -1:
-        print("BPM for file \"" + filename + "\" is not readable.")
-        print("Skipping to next file.")
+        if log:
+            log.write("ERROR: BPM for file \"" + filename + "\" is not readable. Skipping.\n")
+            log.flush()
         return
     else:
         bpms = bpms.split(",")
         temp = []
         for bpm in bpms:
             if "#" in bpm:
-                # Some BPMs are missing a trailing ;
+                # Some BPMs are missing a trailing ; (30MIN HARDER in Cirque du Beast)
                 bpm = bpm.split("#", 1)[0]
+                if log:
+                    log.write("WARN: BPM for file \"" + filename + "\" is missing semicolon. Handled and continuing.\n")
+                    log.flush()
             # Quick way to remove non-printable characters that, for whatever reason,
-            # exist in a few .sm files
+            # exist in a few .sm files (Oceanlab Megamix)
+            old_bpm = bpm
             bpm = "".join(filter(lambda c: c in string.printable, bpm))
+            if log and old_bpm != bpm:
+                log.write("WARN: BPM for file \"" + filename + "\" contains non-printable characters. Handled and continuing.\n")
+                log.flush()
             bpm = bpm.strip().split("=")
             temp.insert(0, bpm)
         bpms = temp
@@ -572,16 +597,21 @@ def parse_file(filename, folder, pack, db):
     charts = findall_with_regex_dotall(data, r"#NOTES:(.*?);")
     
     if charts == -1:
-        print("Unable to parse chart(s) data for \"" + filename + "\"")
-        print("Skipping to next file.")
+        if log:
+            log.write("ERROR: Unable to parse chart(s) data for \"" + filename + "\". Skipping.\n")
+            log.flush()
         return
     else:
         for i, chart in enumerate(charts):
             sanity_check = chart.split("\n", 6)
             if len(sanity_check) != 7:
+                if log:
+                    log.write("WARN: Unable to parse chart(s) data for \"" + filename + "\". Attempting to handle...\n")
+                    log.flush()
                 # There's something in this file that is causing the regex to not parse properly.
                 # Usually a misplaced ; instead of a :
                 # This is a quick and dirty attempt to salvage it.
+                # e.g. SHARPNELSTREAMZ v2 I'm a Maid has this issue
                 chart = chart.splitlines()
                 problem_line = chart[len(chart) - 1]
                 substring_index = data.find(problem_line)
@@ -604,26 +634,64 @@ def parse_file(filename, folder, pack, db):
                     # a few files manually.
                 else:
                     # Our guess was incorrect
-                    print("Unable to parse " + filename + " correctly.")
-                    print("Skipping to next file.")
+                    if log:
+                        log.write("ERROR: Unable to parse \"" + filename + "\" correctly. Skipping.\n")
+                        log.flush()
                     return
-            parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db)
+            parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db, log)
 
-def scan_folder(dir, verbose, media_remove, db):
+def scan_folder(dir, verbose, media_remove, db, log):
+    total = 0
+    # If user wants verbose output, we'll need to find the number of .sm files upfront
+    if verbose:
+        for root, dirs, files in os.walk(dir):
+            for file in files:
+                if file.lower().endswith(".sm"):
+                    total += 1
+
+    i = 0 # Current file
     for root, dirs, files in os.walk(dir):
         for file in files:
+            filename = root + "/" + file
             if file.lower().endswith(".sm"):
-                filename = root + "/" + file
+                i += 1
                 folder = root + "/"
                 pack = os.path.basename(Path(folder).parent)
                 if verbose:
-                    print("Currently processing: " + pack + " - " + file)
-                parse_file(filename, folder, pack, db)
+                    output_i, output_total = vh.normalize_num(i, total)
+                    output = "[" + output_i + "/" + output_total + "] "
+                    output_percent = "[" + vh.get_percent(i, total) + "]"
+                    output += output_percent + " Pack: "
+                    output += vh.normalize_string(pack, 30) + " File: "
+                    output += vh.normalize_string(file, 30)
+                    print(output, end="\r")
+                if log:
+                    log.write("INFO: Preparing to parse \"" + filename + "\".\n")
+                    log.flush()
+                parse_file(filename, folder, pack, db, log)
+                if log:
+                    log.write("INFO: Completed parsing \"" + filename + "\".\n")
+                    log.flush()
             if media_remove:
                 if file.lower().endswith(".ogg") or file.lower().endswith(".mpg") or file.lower().endswith(".avi"):
                     os.remove(root + "/" + file)
-                    if verbose:
-                        print("Removed: " + pack + " - " + file)
+                    if log:
+                        log.write("INFO: Removed \"" + filename + "\".\n")
+                        log.flush()
+
+    if verbose:
+        output_i, output_total = vh.normalize_num(i, total)
+        output = "[" + output_i + "/" + output_total + "] "
+        output_percent = "[" + vh.get_percent(i, total) + "] "
+        output += output_percent
+        output += vh.normalize_string("Complete!", 75)
+        print(output)
+
+    if log:
+        ct = datetime.datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+        log.write("scan.py finished at: " + ct)
+        log.write("\n")
+        log.flush()
 
 def main(argv):
     try:
@@ -634,6 +702,8 @@ def main(argv):
     
     verbose = False
     media_remove = False
+    unittest = False
+    log = None
     db = TinyDB(DATABASE_NAME)
     
     for arg, val in arguments:
@@ -648,16 +718,38 @@ def main(argv):
             dir = val
         elif arg in ("-m", "--mediaremove"):
             media_remove = True
-    
-    if os.path.isdir(dir):
-        scan_folder(dir, verbose, media_remove, db)
+        elif arg in ("-l", "--log"):
+            log = open(LOGFILE_NAME, "a")
+        elif arg in ("-u", "--unittest"):
+            unittest = True
+
+    if unittest:
+        database = UNITTEST_FOLDER + "/" + DATABASE_NAME
+        songs = UNITTEST_FOLDER + "/" + "songs"
+        log_location = UNITTEST_FOLDER + "/" + LOGFILE_NAME
+        os.remove(log_location)
+        os.remove(database)
+        log = open(log_location, "a")
+        db = TinyDB(database)
+        scan_folder(songs, verbose, media_remove, db, log)
+        test.run_tests()
+        sys.exit(0)
     else:
-        print("\"" + dir + "\" is not a valid directory. Exiting.")
-        sys.exit(2)
-    
-    db.close()
-    os.chmod(DATABASE_NAME, 0o777)
-    sys.exit(0)
+        if log:
+            ct = datetime.datetime.now().strftime(LOG_TIMESTAMP)
+            log.write("scan.py started at: " + ct)
+            log.write("\n")
+            log.flush()
+
+        if os.path.isdir(dir):
+            scan_folder(dir, verbose, media_remove, db, log)
+        else:
+            print("\"" + dir + "\" is not a valid directory. Exiting.")
+            sys.exit(2)
+
+        db.close()
+        os.chmod(DATABASE_NAME, 0o777)
+        sys.exit(0)
 
 if __name__ == "__main__":
     main(sys.argv)
