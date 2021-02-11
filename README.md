@@ -61,6 +61,10 @@ List of all command line options:
 
 `-d` is directory, and a mandatory option. It is the directory where all your song packs are located.
 
+`-l` is log. It will generate a log file and output errors to it.
+
+`-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout. 
+
 When finished, you should have a new db.json file in the same folder as scan.py.
 
 ### bot.py
@@ -131,7 +135,7 @@ Then install python3-dev:
 - [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
 - [x] Parse manually uploaded .sm files from discord
 - [ ] Preferences for users (hide title & artist and other original Breakdown Buddy features)
-- [ ] Unit testing and built-in debug options
+- [x] Unit testing and built-in debug options
 - [ ] Admin tools to add/remove packs from within Discord
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation

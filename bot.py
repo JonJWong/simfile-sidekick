@@ -140,7 +140,10 @@ def create_embed(data, ctx):
     song_details += "by **" + data["artist"] + "**" + "\n"
     song_details += "From pack(s): " + data["pack"] + "\n"
     # Rating, Difficulty, and Stepartist
-    song_details += get_footer_image(int(data["rating"])) + " "
+    try:
+        song_details += get_footer_image(int(data["rating"])) + " "
+    except ValueError:
+        song_details += get_footer_image(-1) + " "
     stepartist = data["stepartist"].replace("*", "\*")
     song_details += data["difficulty"] + " - " + stepartist + "\n\n"
     # Length

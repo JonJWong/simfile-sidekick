@@ -398,7 +398,7 @@ def get_density_and_breakdown(measures, bpms):
                 hands += 1
             # Holding computation is done last, as it doesn't affect the current line
             # since current line, if jump or roll, would be 2 or 4 respectively.
-            for i, char in enumerate(line): # For each of the 4 possible arrows
+            for j, char in enumerate(line): # For each of the 4 possible arrows
                 if char == "2" or char == "4": # If arrow is hold or roll
                     # We are currently holding an arrows
                     holding += 1
@@ -450,7 +450,7 @@ def get_density_and_breakdown(measures, bpms):
             measures_of_run[RunDensity.Break.value] += 1
             current_measure = RunDensity.Break
             total_break += 1
-        
+
         if current_measure != previous_measure:
             if previous_measure == RunDensity.Run_32:
                 breakdown += "=" + str(measures_of_run[RunDensity.Run_32.value]) + "= "
@@ -467,7 +467,15 @@ def get_density_and_breakdown(measures, bpms):
                 measures_of_run[RunDensity.Break.value] = 0
 
         previous_measure = current_measure
-    
+
+    # This will handle if the last note of the song is part of a run
+    if measures_of_run[RunDensity.Run_32.value] > 0:
+        breakdown += "=" + str(measures_of_run[RunDensity.Run_32.value]) + "= "
+    elif measures_of_run[RunDensity.Run_24.value] > 0:
+        breakdown += "\\" + str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
+    elif measures_of_run[RunDensity.Run_16.value] > 0:
+        breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
+
     analysis = get_pattern_analysis(chart_runs_only, notes)
     del chart_runs_only
     
@@ -476,23 +484,20 @@ def get_density_and_breakdown(measures, bpms):
     length = str(int(minutes)) + "m " + str(int(seconds)) + "s"
     
     total_break = adjust_total_break(total_break, measures)
-    
-    
-    
+
     chartinfo = ci.ChartInfo(length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break)
-    
-    
+
     return density, breakdown.strip(), chartinfo, analysis
 
 def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log):
-    metadata = chart.split("\n", 6)
-    
-    type = metadata[1].strip().replace(":", "") # dance-single, etc.
-    stepartist = metadata[2].strip().replace(":", "")
-    difficulty = metadata[3].strip().replace(":", "")
-    rating = metadata[4].strip().replace(":", "")
-    chart = remove_comments(metadata[6])
-    
+    metadata = chart.split(":")
+
+    type = metadata[0].strip().replace(":", "")  # dance-single, etc.
+    stepartist = metadata[1].strip().replace(":", "")
+    difficulty = metadata[2].strip().replace(":", "")
+    rating = metadata[3].strip().replace(":", "")
+    chart = remove_comments(metadata[5])
+
     del metadata
     
     if type != "dance-single":

@@ -82,6 +82,35 @@ def run_tests():
         fail("scan.py did not properly handle an empty chart.")
         failed += 1
 
+    # Fairytale is a chart that has an extra return in the stepartist section. Previously, the logic looked at this per
+    # line, instead of splitting it by colon (:).
+
+    data = dbm.search_ut("Fairytale")
+    result = json.loads(json.dumps(data[1]))  # [1] so we grab the hard chart, since it's the chart with the extra return
+
+    if result["difficulty"] == "Hard":
+        good("scan.py correctly handled extra return characters in metadata.")
+        passed += 1
+    else:
+        fail("scan.py did not properly handle extra return characters in metadata.")
+        failed += 1
+
+    # Chelsea is a song that immediately stops on the last measure of the song, there is no padding. Due to the way I
+    # previously calculated runs in 16ths, 24ths, or 32nds, I suspect that the parser did not properly switch back to
+    # "Break" and add the appropriate run to the breakdown.
+
+    data = dbm.search_ut("Chelsea")
+    result = json.loads(json.dumps(data[2]))  # [2] so we grab the challenge chart
+
+    correct_breakdown = "15 7 (17) 3 11 (14) 15"
+
+    if result["breakdown"] == correct_breakdown:
+        good("scan.py correctly handled songs that end on the last measure.")
+        passed += 1
+    else:
+        fail_val("scan.py did not properly handle songs that end on the last measure.", correct_breakdown, result["breakdown"])
+        failed += 1
+
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Generic tests to check measure counter
 
