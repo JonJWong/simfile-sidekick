@@ -138,22 +138,20 @@ def get_seperator(length):
     else:
         return "|"
 
-# Adjusts the total break counter to consider long fadeouts
+# Adjusts the total break counter to consider long fadeouts or slow endings
 def adjust_total_break(total_break, measures):
-    count = 0
     for i, measure in enumerate(reversed(measures)):
+        # Since we're navigating backwards in the chart, we want to break at the first full run we see
         lines = measure.strip().split("\n")
-        for line in lines:
-            count += 1
-            if re.search(r"[124]", line):
-                # Since we're navigating backwards through the list, break out
-                # on the first arrow we find
-                return total_break
-            else:
-                if count % len(lines) == 0:
-                    if total_break > 0:
-                        total_break -= 1
-                    count = 0
+        if len(lines) < 16: # measure only contains 4th or 8th notes
+            total_break -= 1
+            continue
+        notes_in_measure = len(findall_with_regex(measure, ANY_NOTES_REG))
+        if notes_in_measure < 16: # measure is not a full run
+            total_break -= 1
+            continue
+        return total_break
+
 
 def remove_breakdown_characters(data):
     data = data.replace("(", "").replace(")", "")

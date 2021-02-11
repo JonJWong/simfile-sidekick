@@ -247,7 +247,6 @@ def create_embed(data, ctx):
     
     # - - - FOOTER - - -
     footer_text = "Made with love by Artimst for the Dickson City Heroes. "
-    footer_text += "Special thanks to feedbacker. "
     footer_text += "Icon by Johahn."
     embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
     
