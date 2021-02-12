@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """ Searches for .sm files and creates a database of information based off their contents.
 
 This is a tool used to scan StepMania (.sm) files <https://www.stepmania.com>. StepMania is a cross-platform rhythm
@@ -31,15 +33,11 @@ import statistics
 import string
 import sys
 
+# Flag constants. These are the available command line arguments you can use when running this application.
 SHORT_OPTIONS = "rvd:mlu"
 LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log", "unittest"]
 
-DATABASE_NAME = "db.json"
-LOGFILE_NAME = "scan.log"
-LOG_TIMESTAMP = "%Y-%m-%d %I:%M:%S %p"
-UNITTEST_FOLDER = "tests"
-
-# Regex constants
+# Regex constants. Used mainly in the pattern recognition section.
 L_REG = "[124]+000"                     # Left arrow (1000)
 D_REG = "0[124]+00"                     # Down arrow (0100)
 U_REG = "00[124]+0"                     # Up Arrow (0010)
@@ -49,45 +47,70 @@ OR_REG = "|"                            # Regex for "or"
 NO_NOTES_REG = "[03M][03M][03M][03M]"   # Matches a line containing no notes (0000)
 ANY_NOTES_REG = "(.*)[124]+(.*)"        # Matches a line containing at least 1 note
 
+# Other constants.
+LOG_TIMESTAMP = "%Y-%m-%d %I:%M:%S %p"
+
+# File name and folder constants. Change these if you want to use a different name or folder.
+UNITTEST_FOLDER = "tests"               # The folder the unit test songs are located
+DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
+LOGFILE_NAME = "scan.log"               # Name of the log file that will be created if enabled
+
 
 class RunDensity(enum.Enum):
-    Break = 0
-    Run_16 = 1
-    Run_24 = 2
-    Run_32 = 3
+    """Represents the different types of stream in a series of measures.
+
+    This enum is used when calculating the measure breakdown of a song.
+    """
+    Break = 0                           # Denotes a break (measure with less than 16 notes)
+    Run_16 = 1                          # Denotes a full measure of 16th notes
+    Run_24 = 2                          # Denotes a full measure of 24th notes
+    Run_32 = 3                          # Denotes a full measure of 32nd notes
 
 
 def remove_comments(chart):
+    """Removes lines in .sm file that begin with //."""
     return re.sub("//(.*)", "", chart)
 
+
 def findall_with_regex_dotall(data, regex):
+    """Returns array of results from the given regex. Search will span over newline characters."""
     try:
         return re.findall(regex, data, re.DOTALL)
     except AttributeError:
         return -1
 
+
 def findall_with_regex(data, regex):
+    """Returns array of results from the given regex."""
     try:
         return re.findall(regex, data)
     except AttributeError:
         return -1
 
+
 def find_with_regex_dotall(data, regex):
+    """Returns the first match from a given regex. Search will span over newline characters."""
     try:
         return re.search(regex, data, re.DOTALL).group(1)
     except AttributeError:
         return -1
 
+
 def find_with_regex(data, regex):
+    """Returns the first match from a given regex."""
     try:
         return re.search(regex, data).group(1)
     except AttributeError:
         return "N/A"
 
+
 def add_to_database(chartinfo, db, analysis):
+    """Adds the chart information and pattern analysis to the TinyDB database."""
+    # Search if the chart already exists in our database.
     result = db.search(where("md5") == chartinfo.md5)
-    
+
     if not result:
+        # If the chart doesn't exist, add a new entry.
         db.insert({
             "title": chartinfo.title,
             "subtitle": chartinfo.subtitle,
@@ -108,7 +131,6 @@ def add_to_database(chartinfo, db, analysis):
             "breakdown": chartinfo.breakdown,
             "partial_breakdown": chartinfo.partial_breakdown,
             "simple_breakdown": chartinfo.simple_breakdown,
-            
             "left_foot_candles": analysis.left_foot_candles,
             "right_foot_candles": analysis.right_foot_candles,
             "total_candles": analysis.total_candles,
@@ -124,7 +146,6 @@ def add_to_database(chartinfo, db, analysis):
             "anchor_down": analysis.anchor_down,
             "anchor_up": analysis.anchor_up,
             "anchor_right": analysis.anchor_right,
-            
             "display_bpm": chartinfo.displaybpm,
             "max_bpm": chartinfo.max_bpm,
             "min_bpm": chartinfo.min_bpm,
@@ -134,16 +155,23 @@ def add_to_database(chartinfo, db, analysis):
             "md5": chartinfo.md5
         })
     else:
+        # If the chart already exists (i.e. we have a matching MD5), we want to update the entry and append the pack to
+        # it. This usually happens with ECS or SRPG songs taken from other packs.
         data = json.loads(json.dumps(result[0]))
         pack = data["pack"] + ", " + chartinfo.pack
         Chart = Query()
         db.update({"pack": pack}, Chart.md5 == chartinfo.md5)
-    
+
 
 def generate_md5(data):
-    return hashlib.md5("".join(data).strip().replace(" ","").replace("\n","").replace("\r","").encode("UTF-8")).hexdigest()
-    
-def get_seperator(length):
+    """Creates an MD5 hash using the songs chart and BPM data as the input, removing all whitespace before hashing."""
+    return hashlib.md5(
+        "".join(data).strip().replace(" ", "").replace("\n", "").replace("\r", "").encode("UTF-8")
+    ).hexdigest()
+
+
+def get_separator(length):
+    """Returns the separator used in the simplified breakdowns."""
     if length <= 1:
         return " "
     elif length > 1 and length <= 4:
@@ -153,77 +181,121 @@ def get_seperator(length):
     else:
         return "|"
 
-# Adjusts the total break counter to consider long fadeouts or slow endings
+
 def adjust_total_break(total_break, measures):
+    """Adjust the "total break" statistic to remove unused measures.
+
+    This will adjust the "total break" statistic to account for songs that have a long fadeout, fadeout mine, or
+    charts that do not end in a stream. This is because we do not consider notes after the last stream as a break.
+    The "total break" is used to denote the measures of break between the first and last run."""
     for i, measure in enumerate(reversed(measures)):
         # Since we're navigating backwards in the chart, we want to break at the first full run we see
         lines = measure.strip().split("\n")
-        if len(lines) < 16: # measure only contains 4th or 8th notes
+        if len(lines) < 16:             # measure only contains 4th or 8th notes
             total_break -= 1
             continue
         notes_in_measure = len(findall_with_regex(measure, ANY_NOTES_REG))
-        if notes_in_measure < 16: # measure is not a full run
+        if notes_in_measure < 16:       # measure is not a full run
             total_break -= 1
             continue
         return total_break
 
 
 def remove_breakdown_characters(data):
+    """Removes the breakdown separators.
+
+    This removes the breakdown separators (i.e. parenthesis, asterisks, equal signs, and backslashes). Used when
+    simplifying the partially simplified breakdown into the simplified breakdown."""
     data = data.replace("(", "").replace(")", "")
     data = data.replace("*", "")
     data = data.replace("=", "").replace("\\", "")
     return data
 
+
 def find_max_bpm(bpms):
+    """Finds largest BPM in an array of BPMs."""
     max_bpm = 0
     for bpm in bpms:
         if float(bpm[1]) > float(max_bpm):
             max_bpm = bpm[1]
     return max_bpm
 
+
 def find_min_bpm(bpms):
+    """Finds smallest BPM in an array of BPMs."""
     min_bpm = sys.maxsize
     for bpm in bpms:
         if float(bpm[1]) < float(min_bpm):
             min_bpm = bpm[1]
     return min_bpm
 
+
 def find_max(data):
+    """Finds largest number in an array of numbers."""
     max_data = 0
     for d in data:
         if d > max_data:
             max_data = d
     return max_data
 
+
 def find_current_bpm(measure, bpms):
+    """Finds the current BPM in a given measure of a song."""
     for bpm in bpms:
         if float(bpm[0]) <= measure:
             return bpm[1]
 
+
 def create_density_graph(x, y, folder, difficulty, rating):
+    """Creates the density graph.
+
+    Parameters
+    -----------
+    x:
+        An array containing the measure numbers.
+    y:
+        An array containing the density of each measure.
+    folder:
+        The folder to write the density graph to.
+    difficulty:
+        The difficulty of the chart. Used in the file creation of the image.
+    rating:
+        The rating of the chart. Used in the file creation of the image.
+    """
     fig = go.Figure(go.Scatter(
-    x=x, y=y, fill="tozeroy", fillcolor="yellow", line_color="orange", line=dict(width=0.5)
+        x=x, y=y, fill="tozeroy", fillcolor="yellow", line_color="orange", line=dict(width=0.5)
     ))
     fig.update_layout(
         plot_bgcolor="rgba(52,54,61,255)", paper_bgcolor="rgba(52,54,61,255)",
-        margin=dict(l = 10, r = 10, b = 10, t = 10, pad = 10),
+        margin=dict(l=10, r=10, b=10, t=10, pad=10),
         autosize=False, width=1000, height=400
     )
     fig.update_yaxes(visible=False)
     fig.update_xaxes(visible=False)
     fig.write_image(folder + difficulty + rating + "density.png")
 
+
 def get_pattern_analysis(chart, num_notes):
-    # Candle analysis
+    """Performs pattern analysis on a chart.
+
+    This function will perform a series of pattern analysis of the chart that is passed in. It uses a series of regex
+    search functions to obtain the data. It will return an analysis object.
+    """
+    # - - - CANDLE ANALYSIS - - -
+    # Capture patterns that require one foot to move up to down, or vice versa.
     pattern = D_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + R_REG + NL_REG + D_REG
     left_foot_candles = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = D_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + L_REG + NL_REG + D_REG
     right_foot_candles = len(re.findall(re.compile(pattern), chart))
-    
-    # Mono analysis
+
+    # - - - MONO ANALYSIS - - -
+    # Capture patterns that lock the direction you face. To be considered a mono segment, your feet will be locked to
+    # the 2 same arrows for 4 notes.
+    # TODO: How to properly calculate mono with more than 4 notes per foot?
+
     # For patterns that lock your left foot to LD and right foot to RU
     pattern = ""
     for i in range(4):
@@ -232,7 +304,7 @@ def get_pattern_analysis(chart, num_notes):
         if i != 3:
             pattern += NL_REG
     ld_ru_mono = len(re.findall(re.compile(pattern), chart))
-    
+
     # For patterns that lock your left foot to LU and right foot to RD
     pattern = ""
     for i in range(4):
@@ -241,74 +313,99 @@ def get_pattern_analysis(chart, num_notes):
         if i != 3:
             pattern += NL_REG
     lu_rd_mono = len(re.findall(re.compile(pattern), chart))
-    
-    # Box analysis
+
+    # - - - BOX ANALYSIS - - -
+    # For patterns that lock both feet to an arrow for 2 notes each
+    # TODO: How to properly calculate boxes with 3 notes?
     pattern = L_REG + NL_REG + R_REG + NL_REG + L_REG + NL_REG + R_REG + OR_REG
     pattern += R_REG + NL_REG + L_REG + NL_REG + R_REG + NL_REG + L_REG
     lr_boxes = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = U_REG + NL_REG + D_REG + NL_REG + U_REG + NL_REG + D_REG + OR_REG
     pattern += D_REG + NL_REG + U_REG + NL_REG + D_REG + NL_REG + U_REG
     ud_boxes = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = L_REG + NL_REG + D_REG + NL_REG + L_REG + NL_REG + D_REG + OR_REG
     pattern += D_REG + NL_REG + L_REG + NL_REG + D_REG + NL_REG + L_REG
     corner_ld_boxes = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = L_REG + NL_REG + U_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + L_REG + NL_REG + U_REG + NL_REG + L_REG
     corner_lu_boxes = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = R_REG + NL_REG + D_REG + NL_REG + R_REG + NL_REG + D_REG + OR_REG
     pattern += D_REG + NL_REG + R_REG + NL_REG + D_REG + NL_REG + R_REG
     corner_rd_boxes = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = R_REG + NL_REG + U_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + R_REG + NL_REG + U_REG + NL_REG + R_REG
     corner_ru_boxes = len(re.findall(re.compile(pattern), chart))
-    
-    # Anchor analysis
+
+    # - - - ANCHOR ANALYSIS - - -
+    # For patterns that lock one foot to an arrow for 3 notes
+    # TODO: How to properly calculate anchors with more than 3 notes?
     pattern = L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG
     anchor_left = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG
     anchor_down = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG
     anchor_up = len(re.findall(re.compile(pattern), chart))
-    
+
     pattern = R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG
     anchor_right = len(re.findall(re.compile(pattern), chart))
-    
+
+    # Begin to populate PatternAnalysis object
     analysis = pa.PatternAnalysis()
     analysis.left_foot_candles = left_foot_candles
     analysis.right_foot_candles = right_foot_candles
-    
+
     total_candles = left_foot_candles + right_foot_candles
     analysis.total_candles = total_candles
     # Even though we use 3 notes to detect a candle, we only multiply by 2
     # since we only want to calculate the actual candle step, not the arrow in-between.
     # This means a song can be, at max, 66% candles
+    # TODO: Revisit this, as most would assume a chart of all candles would be 100%.
     analysis.candles_percent = ((total_candles * 2)/num_notes) * 100
-    
+
     # Multiplied by 8 as there are 8 notes for every instance of mono
     analysis.mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
-    
+
     analysis.lr_boxes = lr_boxes
     analysis.ud_boxes = ud_boxes
     analysis.corner_ld_boxes = corner_ld_boxes
     analysis.corner_lu_boxes = corner_lu_boxes
     analysis.corner_rd_boxes = corner_rd_boxes
     analysis.corner_ru_boxes = corner_ru_boxes
-    
     analysis.anchor_left = anchor_left
     analysis.anchor_down = anchor_down
     analysis.anchor_up = anchor_up
     analysis.anchor_right = anchor_right
-    
+
     return analysis
 
+
 def get_simplified(breakdown, partially):
+    """Takes the detailed breakdown and creates a simplified breakdown.
+
+    Function that generates both the "Partially Simplified" and "Simplified Breakdown" sections. It uses the separators
+    in get_separator function.
+
+    The "Partially Simplified" will use all symbols. Runs that are separated by a 1 measure break will be grouped
+    together and marked with a *.
+
+    The "Simplified Breakdown" won't use the "-" symbol. Runs that are separated by a <= 4 measure break will be grouped
+    together and marked with a *.
+
+    Parameters
+    -----------
+    breakdown:
+        The detailed breakdown.
+    partially:
+        A boolean. If true will generate the "Partially Simplified" breakdown. False will generate the "Simplified
+        Breakdown" section.
+    """
     breakdown = breakdown.split(" ")
     simplified = breakdown
     previous_measure = RunDensity.Break
@@ -322,17 +419,17 @@ def get_simplified(breakdown, partially):
         elif re.search(r"[()]", b):
             if partially:
                 current_measure = RunDensity.Break
-                b = get_seperator(int(remove_breakdown_characters(simplified[i])))
+                b = get_separator(int(remove_breakdown_characters(simplified[i])))
             else:
                 if int(remove_breakdown_characters(b)) <= 4:
                     b = remove_breakdown_characters(b)
                     small_break = True
                 else:
-                    b = get_seperator(int(remove_breakdown_characters(simplified[i])))
+                    b = get_separator(int(remove_breakdown_characters(simplified[i])))
                     current_measure = RunDensity.Break
         else:
             current_measure = RunDensity.Run_16
-        
+
         if current_measure == previous_measure and i > 0:
             previous_value = remove_breakdown_characters(simplified[i - 1])
             b = remove_breakdown_characters(b)
@@ -355,12 +452,25 @@ def get_simplified(breakdown, partially):
                 simplified[i] = str(int(previous_value) + int(b) + 1) + "*"
         else:
             simplified[i] = b
-            
+
         previous_measure = current_measure
 
     return " ".join(filter(None, simplified))
 
+
 def get_density_and_breakdown(measures, bpms):
+    """Retrieves generic chart info, and generates the detailed breakdown and density.
+
+    Generates the number of notes, holds, jumps, etc. in a chart, and generates the detailed breakdown. The density
+    is also calculated here and used to generate the density graph later.
+
+    Parameters
+    -----------
+    measures:
+        An array, each entry is 1 measure of the chart.
+    bpms:
+        A 2D array, each entry contains the BPM and the measure it changes to that BPM
+    """
     density = []
     breakdown = ""
     measures_of_run = [0] * 4
@@ -378,7 +488,7 @@ def get_density_and_breakdown(measures, bpms):
     total_stream = 0
     total_break = 0
     chart_runs_only = ""
-    
+
     for i, measure in enumerate(measures):
         bpm = find_current_bpm(i * 4, bpms)
         lines = measure.strip().split("\n")
@@ -390,12 +500,12 @@ def get_density_and_breakdown(measures, bpms):
             holds += len(re.findall(r"[2]", line))
             mines += len(re.findall(r"[M]", line))
             rolls += len(re.findall(r"[4]", line))
-            
+
             notes_on_line = len(re.findall(r"[124]", line))
             if notes_on_line >= 2:
                 jumps += 1
-            
-            # HANDS CALCULATION
+
+            # - - - HANDS CALCULATION - - -
             # How many 1s (notes), 2s (initial holds), or 4s (initial rolls) are
             # on the current line?
             notes_on_line = len(re.findall(r"[124]", line))
@@ -420,19 +530,19 @@ def get_density_and_breakdown(measures, bpms):
                 if char == "3":
                     # We have let go of a hold or roll
                     holding -= 1
-            #END HANDS CALCULATION
-                    
+            # - - - END HANDS CALCULATION - - -
+
         nps = ((float(bpm) / 4) * measure_density) / 60
         density.append(nps)
-        
+
         length += (4 / float(bpm)) * 60
-        
+
         # We don't want to count measures of break before first run
         if measure_density >= 16:
             hit_first_run = True
         if not hit_first_run:
             continue
-        
+
         # This creates a chart of only the run sections, that will be used to run pattern analysis against
         if measure_density >= 16:
             m = measure
@@ -448,7 +558,7 @@ def get_density_and_breakdown(measures, bpms):
             chart_runs_only += m
         else:
             chart_runs_only += "\n"
-        
+
         if measure_density >= 32:
             measures_of_run[RunDensity.Run_32.value] += 1
             current_measure = RunDensity.Run_32
@@ -493,18 +603,25 @@ def get_density_and_breakdown(measures, bpms):
 
     analysis = get_pattern_analysis(chart_runs_only, notes)
     del chart_runs_only
-    
+
     minutes = length // 60
     seconds = length % 60
     length = str(int(minutes)) + "m " + str(int(seconds)) + "s"
-    
+
     total_break = adjust_total_break(total_break, measures)
 
     chartinfo = ci.ChartInfo(length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break)
 
     return density, breakdown.strip(), chartinfo, analysis
 
+
 def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log):
+    """Retrieves and sets chart information.
+
+    Grabs the charts step artist, difficulty, rating, and actual chart data. Calls most other functions in this file to
+    handle pattern recognition and density breakdown. Calls the function to generate the density graph, and finally
+    calls the function to save the chart info to the database.
+    """
     metadata = chart.split(":")
 
     type = metadata[0].strip().replace(":", "")  # dance-single, etc.
@@ -514,50 +631,50 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     chart = remove_comments(metadata[5])
 
     del metadata
-    
+
     if type != "dance-single":
-        return # we only want single charts
-    
+        return                          # we only want single charts
+
     if chart.strip() == ";":
         if log:
             log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
             log.flush()
-        return # empty chart
+        return                          # empty chart
 
     if not findall_with_regex(chart, ANY_NOTES_REG):
         if log:
             log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
             log.flush()
-        return # chart only contains 0's
-        
+        return                          # chart only contains 0's
+
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
-    
+
     # bpms need to be part of MD5 for most of the for business/for pleasure charts
     bpm_string = ""
     for bpm in bpms:
         # parsed to int, as we want to match 215.0000 with 215.0
         # only need a rough estimate for our purpose here
         bpm_string += str(int(float(bpm[0]))) + str(int(float(bpm[1])))
-    
+
     md5 = generate_md5("".join(measures) + bpm_string)
-    
+
     if measures == -1:
         if log:
             log.write("WARN: Unable to parse the " + difficulty + " " + rating + " chart for " + title + ". Skipping\n")
             log.flush()
         return
-    
+
     density, breakdown, chartinfo, analysis = get_density_and_breakdown(measures, bpms)
     partially_simplified = get_simplified(breakdown, True)
     simplified = get_simplified(breakdown, False)
-    
+
     max_bpm = find_max_bpm(bpms)
     min_bpm = find_min_bpm(bpms)
     max_nps = find_max(density)
     median_nps = statistics.median(density)
-    
+
     create_density_graph(list(range(0, len(measures))), density, folder, difficulty, rating)
-    
+
     chartinfo.title = title
     chartinfo.subtitle = subtitle
     chartinfo.artist = artist
@@ -575,13 +692,15 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     chartinfo.median_nps = median_nps
     chartinfo.graph_location = folder + difficulty + rating + "density.png"
     chartinfo.md5 = md5
-    
+
     add_to_database(chartinfo, db, analysis)
 
+
 def parse_file(filename, folder, pack, db, log):
+    """Parses through a .sm file and separates charts."""
     file = open(filename, "r", errors="ignore")
     data = file.read()
-    
+
     title = find_with_regex(data, r"#TITLE:(.*);")
     subtitle = find_with_regex(data, r"#SUBTITLE:(.*);")
     artist = find_with_regex(data, r"#ARTIST:(.*);")
@@ -613,7 +732,7 @@ def parse_file(filename, folder, pack, db, log):
         bpms = temp
     displaybpm = find_with_regex(data, r"#DISPLAYBPM:(.*);")
     charts = findall_with_regex_dotall(data, r"#NOTES:(.*?);")
-    
+
     if charts == -1:
         if log:
             log.write("ERROR: Unable to parse chart(s) data for \"" + filename + "\". Skipping.\n")
@@ -634,7 +753,7 @@ def parse_file(filename, folder, pack, db, log):
                 problem_line = chart[len(chart) - 1]
                 substring_index = data.find(problem_line)
                 possible_bad_semicolon_index = substring_index + len(problem_line)
-                
+
                 if data[possible_bad_semicolon_index] == ";":
                     # Our guess is correct, we found a premature semicolon
                     # First, split the entire file into chars so we can work with it
@@ -734,13 +853,13 @@ def main(argv):
     except getopt.error as err:
         print(str(err))
         sys.exit(2)
-    
+
     verbose = False
     media_remove = False
     unittest = False
     log = None
     db = TinyDB(DATABASE_NAME)
-    
+
     for arg, val in arguments:
         if arg in ("-r", "--rebuild"):
             if os.path.isfile(DATABASE_NAME):
