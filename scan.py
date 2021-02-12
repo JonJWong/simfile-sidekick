@@ -1,3 +1,17 @@
+""" Searches for .sm files and creates a database of information based off their contents.
+
+This is a tool used to scan StepMania (.sm) files <https://www.stepmania.com>. StepMania is a cross-platform rhythm
+video game and engine. This tool is intended only for "Dance" game files and will only scan "dance-single" charts. This
+tool creates a database of information from the scanned files. The database contains information such as a song's
+length, BPM, density breakdown, and pattern analysis. The purpose of this file is to be used in conjunction with the
+Discord bot.py program, to allow users to search for information from within Discord.
+
+This is free and unencumbered software released into the public domain. For more information, please refer to the
+LICENSE file or visit <https://unlicense.org>.
+
+Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+"""
+
 from common import ChartInfo as ci
 from common import PatternAnalysis as pa
 from common import Test as test
@@ -7,6 +21,7 @@ from tinydb import Query, TinyDB, where
 import datetime
 import enum
 import getopt
+import glob
 import hashlib
 import json
 import os
@@ -644,16 +659,33 @@ def parse_file(filename, folder, pack, db, log):
             parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db, log)
 
 def scan_folder(dir, verbose, media_remove, db, log):
+    # First fetch total number of found .sm files
     total = 0
-    # If user wants verbose output, we'll need to find the number of .sm files upfront
-    if verbose:
-        for root, dirs, files in os.walk(dir):
-            for file in files:
-                if file.lower().endswith(".sm"):
-                    total += 1
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            if file.lower().endswith(".sm"):
+                total += 1
+
+    if total <= 0:
+        return # no .sm files found
 
     i = 0 # Current file
     for root, dirs, files in os.walk(dir):
+
+        sm_counter = len(glob.glob1(root, "*.sm"))
+
+        if sm_counter <= 0:
+            if log:
+                log.write("INFO: There are no .sm file(s) in folder \"" + root + "\". Skipping folder.\n")
+                log.flush()
+            continue  # no .sm files in current directory, continue to next folder
+        elif sm_counter >= 2:
+            if log:
+                log.write("ERROR: There are more than 1 .sm file in folder \"" + root + "\". Skipping folder.\n")
+                log.flush()
+            i += sm_counter
+            continue
+
         for file in files:
             filename = root + "/" + file
             if file.lower().endswith(".sm"):

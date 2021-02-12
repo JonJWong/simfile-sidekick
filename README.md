@@ -61,7 +61,10 @@ List of all command line options:
 
 `-d` is directory, and a mandatory option. It is the directory where all your song packs are located.
 
-`-l` is log. It will generate a log file and output errors to it.
+`-l` is log. It will generate a log file and output errors to it. At a later date I will add a parameter to this that will filter out different log levels. They are:
+- INFO: Generic parsing messages for songs.
+- WARN: Something is wrong in the file but scan.py was able to handle and proceed with processing.
+- ERROR: A file was skipped due to an unhandled exception or error.
 
 `-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout. 
 
@@ -85,6 +88,7 @@ To use:
 
 - I highly recommend using screen when using scan.py. Your first scan will take more than a few hours. See https://linuxize.com/post/how-to-use-linux-screen/
 - If you never used python pip, see https://pip.pypa.io/en/stable/installing/
+- For active development, I recommend running python with the `-B` flag to prevent the creation of the `__pycache__` folders. I've had issues where results from the database aren't retrieved properly when working on the unit tests. 
 - For linux users, if you wish to set bot.py as a systemd service (to allow the bot to start with the system), here is my .service file I created in `/etc/systemd/system` (I called it discordss.service):
 
 ```
@@ -139,3 +143,4 @@ Then install python3-dev:
 - [ ] Admin tools to add/remove packs from within Discord
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation
+- [ ] Add option/logic to treat 16ths as break if runs are 24ths/32nds
