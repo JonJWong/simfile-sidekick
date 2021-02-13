@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" Searches for .sm files and creates a database of information based off their contents.
+"""Searches for .sm files and creates a database of information based off their contents.
 
 This is a tool used to scan StepMania (.sm) files <https://www.stepmania.com>. StepMania is a cross-platform rhythm
 video game and engine. This tool is intended only for "Dance" game files and will only scan "dance-single" charts. This

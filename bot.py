@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+
+"""Searches a TinyDB database created by scan.py and reports information back to a Discord user.
+
+This program is to be used in conjunction with scan.py. It will scan the database created by scan.py and allow users
+to search this database through a Discord interface. Also allows users to upload their own data and have the scanner
+parse through the uploaded file.
+
+This is free and unencumbered software released into the public domain. For more information, please refer to the
+LICENSE file or visit <https://unlicense.org>.
+
+Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+"""
+
 from common import DBManager as dbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
@@ -9,20 +23,32 @@ import discord
 import json
 import os
 import re
+import sys
 import urllib.request
 
+# File name and folder constants. Change these if you want to use a different name or folder.
 SERVER_SETTINGS = "server_settings.json"
-#USER_SETTINGS = "user_settings.json"
+USER_SETTINGS = "user_settings.json"
+TMP_DIR = "./tmp/"  # Directory to temporarily store user's uploaded .sm files to parse
 
+# The database that contains server configurations, such as what prefix is set
 server_db = TinyDB(SERVER_SETTINGS)
 
+# The database that contains user configurations
+user_db = TinyDB(USER_SETTINGS)
+
+# The default prefix for the bot
 DEFAULT_PREFIX = "-"
+
+# The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
+# set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
 prefixes = [DEFAULT_PREFIX]
 
+# Loads the discord token from the .env file.
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-if not TOKEN:
+if not TOKEN:  # if the DISCORD_TOKEN is blank in the .env file, or if the .env file doesn't exist
     print("It looks like you don't have an \".env\" file, or it's not setup correctly.")
     print("Please make sure you have an \".env\" file in the same directory as this file.")
     print("The \".env\" file should contain one line:")
@@ -32,8 +58,8 @@ if not TOKEN:
 # Author avatar, used in footer
 AVATAR_URL = "https://cdn.discordapp.com/avatars/542501947547320330/a_fd4512e7da6691d45387618677c3f01b.gif?size=1024"
 
+# User Agent needed in order to download user's uploaded .sm files.
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36"
-TMP_DIR = "./tmp/"
 
 HELP_MESSAGE = """ \
 Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
@@ -50,37 +76,52 @@ by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
 brackets around arrows to denote jumps, e.g. `[LR]`
 """
 
+
 def get_prefixes():
+    """Loads server prefixes from database.
+
+    Even though servers can have their own prefixes, each one of these prefixes will need to be in the prefixes array
+    created above. When the bot starts, this function is called. It will check the server database settings and add each
+    servers chosen prefix to the prefixes array.
+    """
     for item in server_db:
         prefix = item["prefix"]
         if prefix not in prefixes:
             prefixes.append(prefix)
     return prefixes
 
+
 def is_prefix_for_server(id, prefix):
-    ServerDB = Query()
+    """Check to see if prefix is used for server.
+
+    This function checks if a command entered by a user is using the servers set prefix.
+    """
     results = server_db.search(where("id") == id)
 
     if not results:
-        # nothing in db, use default
+        # There is no entry in the database for this server. No configurations were set, so check if it matches the
+        # default prefix.
         if prefix == DEFAULT_PREFIX:
             return True
         else:
             return False
     else:
-        # check database for prefix
+        # The server has a set prefix
         data = json.loads(json.dumps(results[0]))
         if prefix == data["prefix"]:
             return True
         else:
             return False
 
+
+# Loads the bot's prefixes using the get_prefixes function above
 bot = commands.Bot(command_prefix=get_prefixes())
 
+bot.remove_command("help")  # Needed in order to replace existing help command with our own
 
-bot.remove_command("help") # Needed to replace existing help command
 
 def get_mono_desc(mono):
+    """Helper function to return pre-formatted text used in mono pattern analysis."""
     if mono == 0:
         return "*None*"
     if mono > 0 and mono < 10:
@@ -92,10 +133,14 @@ def get_mono_desc(mono):
     elif mono > 50:
         return "__**Repetitive**__"
 
+
 def normalize_float(num):
+    """Helper function that returns a floating point number to 2 decimal places."""
     return "{:.2f}".format(float(num))
 
+
 def get_footer_image(level):
+    """Helper function that returns a fancy image for the difficulty of a chart."""
     if level == 1:
         return "<:1footer:772954101960015923>"
     elif level == 2:
@@ -158,6 +203,7 @@ def get_footer_image(level):
         return "<:30footer:772954974266982430>"
     else:
         return "<:uhhfooter:772955010522808353>"
+
 
 def create_embed(data, ctx):
     embed = discord.Embed(description="Requested by {}".format(ctx.author.mention))
@@ -259,6 +305,7 @@ def create_embed(data, ctx):
     if data["breakdown"]:
         # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
         # larger than this restriction.
+        # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
         if len(data["breakdown"]) > 1024:
             embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
         else:
@@ -284,7 +331,7 @@ def create_embed(data, ctx):
     
     
     # - - - FOOTER - - -
-    footer_text = "Made with love by Artimst for the Dickson City Heroes. "
+    footer_text = "Made with love by Artimst for the Dickson City Heroes and Stamina Nation. "
     footer_text += "Icon by Johahn."
     embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
     
@@ -588,15 +635,20 @@ async def help(ctx):
 
 @bot.event
 async def on_message(message):
+    """Called when a message is created and sent.
+
+    This function handles the bot prefix settings. It's a little complicated since each server can have its own prefix.
+    Therefore this function checks if the prefix for the user's server is set, and if the user is using the correct
+    prefix. If it is, we process the command.
+    """
     prefix = message.content
 
-    if prefix: #if message is not an empty string or something weird, or even the bot's own embedded messages
-        prefix = prefix[0]
+    if prefix:  # if prefix is not null, this sometimes happens if a user/another bot sends an embedded message
+        prefix = prefix[0]  # retrieves the first character
 
-    id = message.guild.id
+    server_id = message.guild.id  # ID for the Discord server the user is in
 
-    if is_prefix_for_server(id, prefix):
+    if is_prefix_for_server(server_id, prefix):
         await bot.process_commands(message)
-
 
 bot.run(TOKEN)
