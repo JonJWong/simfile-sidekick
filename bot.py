@@ -1,14 +1,23 @@
 from common import DBManager as dbm
 from discord.ext import commands
+from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
 from scan import parse_file
-from tinydb import TinyDB
+from tinydb import Query, TinyDB, where
 import asyncio
 import discord
 import json
 import os
 import re
 import urllib.request
+
+SERVER_SETTINGS = "server_settings.json"
+#USER_SETTINGS = "user_settings.json"
+
+server_db = TinyDB(SERVER_SETTINGS)
+
+DEFAULT_PREFIX = "-"
+prefixes = [DEFAULT_PREFIX]
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -41,7 +50,33 @@ by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
 brackets around arrows to denote jumps, e.g. `[LR]`
 """
 
-bot = commands.Bot(command_prefix="-")
+def get_prefixes():
+    for item in server_db:
+        prefix = item["prefix"]
+        if prefix not in prefixes:
+            prefixes.append(prefix)
+    return prefixes
+
+def is_prefix_for_server(id, prefix):
+    ServerDB = Query()
+    results = server_db.search(where("id") == id)
+
+    if not results:
+        # nothing in db, use default
+        if prefix == DEFAULT_PREFIX:
+            return True
+        else:
+            return False
+    else:
+        # check database for prefix
+        data = json.loads(json.dumps(results[0]))
+        if prefix == data["prefix"]:
+            return True
+        else:
+            return False
+
+bot = commands.Bot(command_prefix=get_prefixes())
+
 
 bot.remove_command("help") # Needed to replace existing help command
 
@@ -492,6 +527,53 @@ async def parse(ctx):
     if len(os.listdir(TMP_DIR)) == 0:
         os.rmdir(TMP_DIR)
 
+@bot.command(name="prefix")
+@has_permissions(administrator=True)
+# TODO: handle this better, and allow roles to be added as a bot manager
+# See https://stackoverflow.com/a/51246799
+async def prefix(ctx, input: str):
+    server_id = ctx.message.guild.id
+    # if admin, change
+    # else do nothing
+
+    if len(input) > 1:
+        await ctx.send("Sorry, the prefix can only be 1 character")
+        return
+
+    result = server_db.search(where("id") == server_id)
+    old_prefix = None
+    new_prefix = input
+
+    if result:
+        # There is a prefix already set in the server, update it
+        result = json.loads(json.dumps(result[0]))
+        old_prefix = result["prefix"]
+        ServerDB = Query()
+        server_db.update({"prefix": input}, ServerDB.id == server_id)
+    else:
+        # Server never set a prefix
+        server_db.insert({
+            "id": server_id,
+            "prefix": input
+        })
+
+    if old_prefix != None and old_prefix != DEFAULT_PREFIX:
+        # We should search for the old prefix and see if it's used in any of the other channels. If not, we can remove
+        # it from the array of prefixes.
+        ServerDB = Query()
+        results = server_db.search(ServerDB.prefix.search(old_prefix))
+        if not result:
+            prefixes.remove(old_prefix)
+
+    if new_prefix not in prefixes:
+        # If new prefix isn't in the array of prefixes to listen for, we need to add it.
+        prefixes.append(new_prefix)
+
+    bot.command_prefix = prefixes
+
+    await ctx.send("Prefix is now: " + new_prefix)
+
+
 
 @bot.command(name="help")
 async def help(ctx):
@@ -503,6 +585,18 @@ async def help(ctx):
     :return: Nothing
     """
     await ctx.send(HELP_MESSAGE)
+
+@bot.event
+async def on_message(message):
+    prefix = message.content
+
+    if prefix: #if message is not an empty string or something weird, or even the bot's own embedded messages
+        prefix = prefix[0]
+
+    id = message.guild.id
+
+    if is_prefix_for_server(id, prefix):
+        await bot.process_commands(message)
 
 
 bot.run(TOKEN)

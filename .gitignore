@@ -6,3 +6,4 @@ db.json
 scan.log
 tests/songs/*/*.png
 Thumbs.db
+server_settings.json
