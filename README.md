@@ -133,7 +133,7 @@ Then install python3-dev:
 
 ## To-do
 - [x] Replace all references of "Breakdown Buddy Jr." with "Simfile Sidekick"
-- [ ] Log songs that couldn't be parsed by scan.py to a logfile
+- [x] Log songs that couldn't be parsed by scan.py to a logfile
 - [ ] Flag in scan.py to enter in a database name
 - [ ] Create a tool to insert/update/delete from the TinyDB database
 - [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
