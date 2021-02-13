@@ -550,7 +550,7 @@ async def parse(ctx):
     urllib.request.urlretrieve(attachment.url, usr_tmp_file)
 
     # Call scan.py's parser function and put results in temporary database
-    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db)
+    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db, None)
 
     # Get results from temporary database
     results = [result for result in db]
