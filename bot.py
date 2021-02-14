@@ -13,6 +13,7 @@ Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
 
 from common import DBManager as dbm
+from common import UserDBManager as udbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
@@ -39,6 +40,9 @@ user_db = TinyDB(USER_SETTINGS)
 
 # The default prefix for the bot
 DEFAULT_PREFIX = "-"
+
+# Default behavior to automatically delete user's uploaded .sm files
+DEFAULT_AUTODELETE_BEHAVIOR = True
 
 # The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
 # set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
@@ -487,32 +491,36 @@ async def stream_visualiser(ctx, input: str):
         await ctx.send(message)
 
 
-def set_autodelete(id, autodelete):
-    user_db = TinyDB(USER_SETTINGS)
-    UserDB = Query()
-    user_db.upsert({"id": id, "autodelete": autodelete}, UserDB.id == id)
-    user_db.close()
-
 @bot.command(name="settings")
 async def settings(ctx, *, input: str):
     input = input.split(" ")
     user_id = ctx.message.author.id
 
-    if len(input) == 0:
-        await ctx.send("placeholder to display user's settings")
-
     if input[0] == "autodelete":
         if len(input) <= 1:
-            await ctx.send("placeholder to display user's autodelete settings")
+            result = udbm.get_autodelete(user_id, USER_SETTINGS)
+            if result is None:
+                message = "{}, it looks like you don't have this preference set. ".format(ctx.author.mention)
+                message += "The default behavior is: "
+                if DEFAULT_AUTODELETE_BEHAVIOR:
+                    message += "I will automatically delete .sm files."
+                else:
+                    message += "I will not automatically delete .sm files."
+                await ctx.send(message)
+            elif result:
+                await ctx.send("{}, I'm automatically deleting .sm files you upload.".format(ctx.author.mention))
+            elif not result:
+                await ctx.send("{}. I'm not automatically deleting .sm files you upload.".format(ctx.author.mention))
             return
         if input[1].upper() == "Y" or input[1].upper() == "T":
-            set_autodelete(user_id, True)
-            await ctx.send("autodelete set")
+            udbm.set_autodelete(user_id, True, USER_SETTINGS)
+            await ctx.send("{}, I will now auto-delete your uploaded .sm files.".format(ctx.author.mention))
         elif input[1].upper() == "N" or input[1].upper() == "F":
-            set_autodelete(user_id, False)
-            await ctx.send("autodelete unset")
+            udbm.set_autodelete(user_id, False, USER_SETTINGS)
+            await ctx.send("{}, I will no longer auto-delete your uploaded .sm files.".format(ctx.author.mention))
         else:
-            await ctx.send("invalid option")
+            await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
+        return
 
 
 @bot.command(name="parse")
@@ -561,11 +569,6 @@ async def parse(ctx):
         # Create temporary directory if it doesn't exist
         os.makedirs(usr_tmp_dir)
 
-    message = "{}, ".format(ctx.author.mention)
-    message += "I received your file `" + attachment.filename + "`. "
-    message += "Currently processing... :hourglass:"
-    process_msg = await ctx.send(message)
-
     # If we don't have a User-Agent in our header, we won't be able to retrieve the file
     opener = urllib.request.build_opener()
     opener.addheaders = [("User-Agent", USER_AGENT)]
@@ -576,6 +579,15 @@ async def parse(ctx):
 
     # Retrieve the .sm file, and place it in temporary directory
     urllib.request.urlretrieve(attachment.url, usr_tmp_file)
+
+    message = "{}, ".format(ctx.author.mention)
+    message += "I received your file `" + attachment.filename + "`. "
+    message += "Currently processing... :hourglass:"
+    process_msg = await ctx.send(message)
+
+    autodelete = udbm.get_autodelete_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
+    if autodelete:
+        await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
     parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db, None)
