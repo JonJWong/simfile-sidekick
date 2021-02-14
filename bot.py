@@ -407,7 +407,7 @@ async def search_song(ctx, *, song_name):
             
             if msg:
                 embed, file = create_embed(data[int(msg.content) - 1], ctx)
-                # TODO add check to make sure user input is proper value
+                # TODO: add check to make sure user input is proper value
                 await ctx.send(file=file, embed=embed)
 
 
@@ -485,6 +485,34 @@ async def stream_visualiser(ctx, input: str):
                         message += "<:bg:772541312229703710>"
             message += "\n"
         await ctx.send(message)
+
+
+def set_autodelete(id, autodelete):
+    user_db = TinyDB(USER_SETTINGS)
+    UserDB = Query()
+    user_db.upsert({"id": id, "autodelete": autodelete}, UserDB.id == id)
+    user_db.close()
+
+@bot.command(name="settings")
+async def settings(ctx, *, input: str):
+    input = input.split(" ")
+    user_id = ctx.message.author.id
+
+    if len(input) == 0:
+        await ctx.send("placeholder to display user's settings")
+
+    if input[0] == "autodelete":
+        if len(input) <= 1:
+            await ctx.send("placeholder to display user's autodelete settings")
+            return
+        if input[1].upper() == "Y" or input[1].upper() == "T":
+            set_autodelete(user_id, True)
+            await ctx.send("autodelete set")
+        elif input[1].upper() == "N" or input[1].upper() == "F":
+            set_autodelete(user_id, False)
+            await ctx.send("autodelete unset")
+        else:
+            await ctx.send("invalid option")
 
 
 @bot.command(name="parse")
@@ -580,8 +608,6 @@ async def parse(ctx):
 # See https://stackoverflow.com/a/51246799
 async def prefix(ctx, input: str):
     server_id = ctx.message.guild.id
-    # if admin, change
-    # else do nothing
 
     if len(input) > 1:
         await ctx.send("Sorry, the prefix can only be 1 character")
