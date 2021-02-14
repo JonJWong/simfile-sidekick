@@ -75,6 +75,12 @@ I can currently parse .sm files using a library of popular packs. Use
 If you want me to parse a .sm file, attach the .sm file to your message and
 type `-parse`.
 
+To adjust your user settings, type `-settings help`. I can automatically
+delete uploaded .sm files.
+
+Admins can change the prefix using `-prefix` followed by the prefix they
+want to use, e.g. `-prefix !`
+
 I also have built in stream visualizer functionality. Use `-sv` followed
 by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
 brackets around arrows to denote jumps, e.g. `[LR]`
@@ -219,10 +225,13 @@ def create_embed(data, ctx):
     # - - - SONG DETAILS - - -
     song_details = ""
     # Title, Subtitle, and Artist
-    song_details += "**" + data["title"] + "** "
-    if data["subtitle"] and data["subtitle"] != "N/A":
-        song_details += "*" + data["subtitle"] + "* "
-    song_details += "by **" + data["artist"] + "**" + "\n"
+    if data["title"] == "*Hidden*" and data["artist"] == "*Hidden*":
+        song_details += "*<Title and artist hidden>*\n"
+    else:
+        song_details += "**" + data["title"] + "** "
+        if data["subtitle"] and data["subtitle"] != "N/A":
+            song_details += "*" + data["subtitle"] + "* "
+        song_details += "by **" + data["artist"] + "**" + "\n"
     song_details += "From pack(s): " + data["pack"] + "\n"
     # Rating, Difficulty, and Stepartist
     try:
@@ -492,9 +501,25 @@ async def stream_visualiser(ctx, input: str):
 
 
 @bot.command(name="settings")
-async def settings(ctx, *, input: str):
-    input = input.split(" ")
+async def settings(ctx, *input: str):
     user_id = ctx.message.author.id
+
+    if not input or input[0] == "help":
+        embed = discord.Embed(description="{}'s Settings".format(ctx.author.mention))
+        title = "**Auto-delete** is "
+
+        if udbm.get_autodelete_with_default(user_id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR):
+            title += "`enabled`"
+        else:
+            title += "`disabled`"
+
+        body = "This will automatically delete your uploaded .sm file when using `-parse`. Title and "
+        body += "artist information will also be hidden. "
+        body += "Use `-settings autodelete Y` to set, or `-settings autodelete N` to unset."
+
+        embed.add_field(name=title, value=body, inline=False)
+        await ctx.send(embed=embed)
+        return
 
     if input[0] == "autodelete":
         if len(input) <= 1:
@@ -593,7 +618,7 @@ async def parse(ctx):
         await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
-    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db, None, hide_artist_info)
+    parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info)
 
     # Get results from temporary database
     results = [result for result in db]

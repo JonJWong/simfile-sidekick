@@ -138,9 +138,10 @@ Then install python3-dev:
 - [ ] Create a tool to insert/update/delete from the TinyDB database
 - [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
 - [x] Parse manually uploaded .sm files from discord
-- [ ] Preferences for users (hide title & artist and other original Breakdown Buddy features)
+- [x] Preferences for users (hide title & artist and other original Breakdown Buddy features)
 - [x] Unit testing and built-in debug options
 - [ ] Admin tools to add/remove packs from within Discord
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation
 - [ ] Add option/logic to treat 16ths as break if runs are 24ths/32nds
+- [ ] Code cleanup. DBManager files should handle all the json parsing. I currently have it scrambled through the code. I'm sorry.
