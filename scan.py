@@ -696,14 +696,20 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     add_to_database(chartinfo, db, analysis)
 
 
-def parse_file(filename, folder, pack, db, log):
+def parse_file(filename, folder, pack, db, log, hide_artist_info):
     """Parses through a .sm file and separates charts."""
     file = open(filename, "r", errors="ignore")
     data = file.read()
 
-    title = find_with_regex(data, r"#TITLE:(.*);")
-    subtitle = find_with_regex(data, r"#SUBTITLE:(.*);")
-    artist = find_with_regex(data, r"#ARTIST:(.*);")
+    if not hide_artist_info:
+        title = find_with_regex(data, r"#TITLE:(.*);")
+        subtitle = find_with_regex(data, r"#SUBTITLE:(.*);")
+        artist = find_with_regex(data, r"#ARTIST:(.*);")
+    else:
+        title = "*Hidden*"
+        subtitle = ""
+        artist = "*Hidden*"
+
     bpms = find_with_regex_dotall(data, r"#BPMS:(.*?)[;]+?")
     if bpms == -1:
         if log:
@@ -822,7 +828,7 @@ def scan_folder(dir, verbose, media_remove, db, log):
                 if log:
                     log.write("INFO: Preparing to parse \"" + filename + "\".\n")
                     log.flush()
-                parse_file(filename, folder, pack, db, log)
+                parse_file(filename, folder, pack, db, log, False)
                 if log:
                     log.write("INFO: Completed parsing \"" + filename + "\".\n")
                     log.flush()

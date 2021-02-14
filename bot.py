@@ -585,12 +585,15 @@ async def parse(ctx):
     message += "Currently processing... :hourglass:"
     process_msg = await ctx.send(message)
 
+    hide_artist_info = False
+
     autodelete = udbm.get_autodelete_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
     if autodelete:
+        hide_artist_info = True
         await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
-    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db, None)
+    parse_file(usr_tmp_file, usr_tmp_dir, "Uploaded", db, None, hide_artist_info)
 
     # Get results from temporary database
     results = [result for result in db]
