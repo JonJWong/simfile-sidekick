@@ -17,19 +17,23 @@ from common import UserDBManager as udbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
-from scan import parse_file
+from scan import parse_file, scan_folder
 from tinydb import Query, TinyDB, where
+from zipfile import BadZipFile, ZipFile
 import asyncio
 import discord
+import gdown
 import json
 import os
 import re
+import shutil
 import sys
 import urllib.request
 
 # File name and folder constants. Change these if you want to use a different name or folder.
 SERVER_SETTINGS = "server_settings.json"
 USER_SETTINGS = "user_settings.json"
+DATABASE_NAME = "db.json"  # Name of the TinyDB database file that contains parsed song information
 TMP_DIR = "./tmp/"  # Directory to temporarily store user's uploaded .sm files to parse
 
 # The database that contains server configurations, such as what prefix is set
@@ -79,7 +83,8 @@ To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
 
 Admins can change the prefix using `-prefix` followed by the prefix they
-want to use, e.g. `-prefix !`
+want to use, e.g. `-prefix !`. Admins can also add packs to the database
+by using `-dlpack URL`.
 
 I also have built in stream visualizer functionality. Use `-sv` followed
 by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
@@ -638,9 +643,85 @@ async def parse(ctx):
     db.close()
     os.remove(usr_tmp_db)
     os.rmdir(usr_tmp_dir)
-    # If no other users are currently parsing .sm files, we can delete the root temp folder
-    if len(os.listdir(TMP_DIR)) == 0:
-        os.rmdir(TMP_DIR)
+
+
+@bot.command(name="dlpack")
+@has_permissions(administrator=True)
+async def prefix(ctx, input: str):
+
+    # TODO: server-role lock this to SN mods and approved people. The same db is used across multiple servers.
+    # Adding per-server databases is outside the scope of this program and too much for my tiny server to handle.
+    # TODO: update readme to remove the above limitation for users hosting their own bot.
+
+    # This ONLY takes Google Drive URLs, and the file MUST be a zip!
+
+    # Google Drive URLs should follow the pattern
+    # https://drive.google.com/uc?id=1F3i3YXk-6EqMibl089d5jsVTA26eykSs
+
+    #input = "thisisabadurl"
+    #input = "https://drive.google.com/uc?id=1F3i3YXk-6EqMibl089d5jsVTA26eykSs"
+
+    if input[-1] == "/":  # remove trailing /
+        input = input[:-1]
+
+    input = input.split("/")
+    input = input[len(input) - 1]
+
+    input = input.split("=")
+    input = input[len(input) - 1]
+
+    url = "https://drive.google.com/uc?id=" + input
+    output = TMP_DIR + "pack.zip"
+
+    if not os.path.exists(TMP_DIR):
+        os.makedirs(TMP_DIR)
+
+    message = "{}, I'm retrieving the file. ".format(ctx.author.mention)
+    message += "*This might take awhile*... :hourglass:"
+    process_msg = await ctx.send(message)
+
+    success = gdown.download(url, output, quiet=True)
+
+    if not success:
+        message = "{}, ".format(ctx.author.mention)
+        message += "please check if the URL is correct. I wasn't able to retrieve the file. :x:"
+        await process_msg.edit(content=message)
+        return
+
+    message = "{}, ".format(ctx.author.mention)
+    message += " I'm now extracting the .zip file. :hourglass:"
+    await process_msg.edit(content=message)
+
+    zipfile = None
+    try:
+        zipfile = ZipFile(output)
+    except BadZipFile:
+        message = "{}, ".format(ctx.author.mention)
+        message += "please check if the URL is correct. I was able to download a file but it doesn't appear to be a .zip. :x:"
+        await process_msg.edit(content=message)
+        return
+
+    zipfile.extractall(TMP_DIR + "pack/")
+
+    message = "{}, ".format(ctx.author.mention)
+    message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
+    await process_msg.edit(content=message)
+
+    db = TinyDB(DATABASE_NAME)
+    scan_folder(TMP_DIR + "pack/", False, True, db, False)
+    db.close()
+
+    pack = next(os.walk(TMP_DIR + "pack/"))[1]
+    pack = pack[0]
+
+    message = "{}, ".format(ctx.author.mention)
+    message += "\"" + pack + "\""
+    message += " was successfully added! :white_check_mark:"
+    await process_msg.edit(content=message)
+
+    os.remove(output)
+    shutil.rmtree(TMP_DIR + "pack/")
+
 
 @bot.command(name="prefix")
 @has_permissions(administrator=True)

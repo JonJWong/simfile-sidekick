@@ -38,6 +38,10 @@ The actual discord bot, bot.py, has dependencies on discord and python-dotenv:
 
 `pip install python-dotenv`
 
+It also requires gdown to download song packs from Google Drive right within discord:
+
+`pip install gdown`
+
 
 You'll want to run scan.py first, then after generating the database, you can run bot.py.
 
@@ -140,7 +144,7 @@ Then install python3-dev:
 - [x] Parse manually uploaded .sm files from discord
 - [x] Preferences for users (hide title & artist and other original Breakdown Buddy features)
 - [x] Unit testing and built-in debug options
-- [ ] Admin tools to add/remove packs from within Discord
+- [x] Admin tools to add/remove packs from within Discord
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation
 - [ ] Add option/logic to treat 16ths as break if runs are 24ths/32nds
