@@ -4,11 +4,11 @@ import json
 import re
 
 def search_by_title(song_title: str, db: Union[str, TinyDB]) -> Union[int, List]:
-    """
+    """ Search the database for a song.
 
-    :param song_title: The
-    :param db:
-    :return:
+    :param song_title: The title of the song to search for.
+    :param db: The name of the database, or the TinyDB object for that database.
+    :return: Array of results that match criteria.
     """
     db_param_is_string = False
 
