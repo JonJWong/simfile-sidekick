@@ -42,6 +42,8 @@ server_db = TinyDB(SERVER_SETTINGS)
 # The database that contains user configurations
 user_db = TinyDB(USER_SETTINGS)
 
+DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
+
 # The default prefix for the bot
 DEFAULT_PREFIX = "-"
 
@@ -361,7 +363,7 @@ def create_embed(data, ctx):
 @bot.command(name="search")
 async def search_song(ctx, *, song_name):
 #async def search_song(ctx, song_name: str):
-    results = dbm.search(song_name)
+    results = dbm.search_by_title(song_name, DATABASE_NAME)
     
     if isinstance(results, int):
         if results == 0:
@@ -372,15 +374,13 @@ async def search_song(ctx, *, song_name):
             await ctx.send(embed=embed)
     elif isinstance(results, list):
         if len(results) == 1:
-            data = json.loads(json.dumps(results[0]))
+            data = results[0]
             
             embed, file = create_embed(data, ctx)
             
             await ctx.send(file=file, embed=embed)
         elif len(results) > 1:
-            data = []
-            for r in results:
-                data.append(json.loads(json.dumps(r)))
+            data = results
             
             user = "{}".format(ctx.author.mention)
             max_results = len(data)
@@ -395,7 +395,7 @@ async def search_song(ctx, *, song_name):
                 embed = discord.Embed(title="Search Results", description=user + ", enter a number from `1` to `" + str(len(data)) + "` to select the search result.")
             
             for i, d in enumerate(data):
-                if(i >= 25):
+                if i >= 25:
                     break
                 title = "` " + str(i + 1) + " ` " + d["title"] + " "
                 if d["subtitle"] and d["subtitle"] != "N/A":

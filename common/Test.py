@@ -1,6 +1,8 @@
 from common import DBManager as dbm
 import json
 
+DATABASE_FILE = "./tests/db.json"
+
 GREEN = "\033[92m"
 RED = "\033[91m"
 RESET = "\033[0m"
@@ -85,8 +87,8 @@ def run_tests():
     # Fairytale is a chart that has an extra return in the stepartist section. Previously, the logic looked at this per
     # line, instead of splitting it by colon (:).
 
-    data = dbm.search_ut("Fairytale")
-    result = json.loads(json.dumps(data[1]))  # [1] so we grab the hard chart, since it's the chart with the extra return
+    data = dbm.search_by_title("Fairytale", DATABASE_FILE)
+    result = data[1]  # [1] so we grab the hard chart, since it's the chart with the extra return
 
     if result["difficulty"] == "Hard":
         good("scan.py correctly handled extra return characters in metadata.")
@@ -99,8 +101,8 @@ def run_tests():
     # previously calculated runs in 16ths, 24ths, or 32nds, I suspect that the parser did not properly switch back to
     # "Break" and add the appropriate run to the breakdown.
 
-    data = dbm.search_ut("Chelsea")
-    result = json.loads(json.dumps(data[2]))  # [2] so we grab the challenge chart
+    data = dbm.search_by_title("Chelsea", DATABASE_FILE)
+    result = data[2]  # [2] so we grab the challenge chart
 
     correct_breakdown = "15 7 (17) 3 11 (14) 15"
 
@@ -117,8 +119,8 @@ def run_tests():
     # We want to make sure Encoder's breakdown is 32. We don't want to capture any break segments before or after
     # the one and only run.
 
-    data = dbm.search_ut("Encoder")
-    result = json.loads(json.dumps(data[4])) # [4] so we grab the challenge chart, and not the easy or medium, etc.
+    data = dbm.search_by_title("Encoder", DATABASE_FILE)
+    result = data[4] # [4] so we grab the challenge chart, and not the easy or medium, etc.
 
     if result["breakdown"] == "32":
         good("Encoder's breakdown is correct.")
@@ -146,8 +148,8 @@ def run_tests():
 
     # Generic breakdown test for Ganbatte
 
-    data = dbm.search_ut("Ganbatte")
-    result = json.loads(json.dumps(data[1]))  # [1] so we grab the challenge chart, and not the other
+    data = dbm.search_by_title("Ganbatte", DATABASE_FILE)
+    result = data[1]  # [1] so we grab the challenge chart, and not the other
 
     correct_breakdown = "7 19 3 39 39 31 16 (4) 7 7 23 7 15 64 (8) 7 16 23"
 
@@ -192,8 +194,8 @@ def run_tests():
 
     # Generic breakdown test for Pendulum Essential Mix (Side A)
 
-    data = dbm.search_ut("Pendulum Essential Mix")
-    result = json.loads(json.dumps(data[0]))
+    data = dbm.search_by_title("Pendulum Essential Mix", DATABASE_FILE)
+    result = data[0]
 
     correct_breakdown = "31 (2) 35 (46) 2 (2) 17 46 (2) 38 (2) 47 (2) 13 (4) 5 32 (6) 1 32 (2) 14 (2) 45 32 (2) 62 (32)"
     correct_breakdown += " 7 (14) 2 (9) 7 (2) 7 (13) 2 (3) 5 (2) 6 (2) 6 4 (4) 7 (3) 5 7 (3) 53 14 (2) 16 (16) 95 (2) 6"

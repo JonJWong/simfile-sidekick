@@ -887,8 +887,10 @@ def main(argv):
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
         songs = UNITTEST_FOLDER + "/" + "songs"
         log_location = UNITTEST_FOLDER + "/" + LOGFILE_NAME
-        os.remove(log_location)
-        os.remove(database)
+        if os.path.isfile(log_location):
+            os.remove(log_location)
+        if os.path.isfile(database):
+            os.remove(database)
         log = open(log_location, "a")
         db = TinyDB(database)
         scan_folder(songs, verbose, media_remove, db, log)

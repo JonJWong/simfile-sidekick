@@ -1,27 +1,31 @@
 from tinydb import TinyDB, Query
+from typing import List, Union
+import json
 import re
 
-db = TinyDB("db.json")
-db_ut = TinyDB("tests/db.json")
+def search_by_title(song_title: str, db: Union[str, TinyDB]) -> Union[int, List]:
+    """
 
-# TODO - combine these into one function and pass in DB as an argument.
+    :param song_title: The
+    :param db:
+    :return:
+    """
+    db_param_is_string = False
 
-def search(title):
-    q = Query()
-    results = db.search(q.title.search(title, flags=re.IGNORECASE))
+    if isinstance(db, str):
+        db = TinyDB(db)
+        db_param_is_string = True
+
+    results = db.search(Query().title.search(song_title, flags=re.IGNORECASE))
+
     if len(results) == 0:
         return 0
     elif len(results) >= 1:
-        return results
-    else:
-        return -1
-
-def search_ut(title):
-    q = Query()
-    results = db_ut.search(q.title.search(title, flags=re.IGNORECASE))
-    if len(results) == 0:
-        return 0
-    elif len(results) >= 1:
+        results_array = []
+        for r in results:
+            results_array.append(json.loads(json.dumps(r)))
+        if db_param_is_string:
+            db.close()
         return results
     else:
         return -1
