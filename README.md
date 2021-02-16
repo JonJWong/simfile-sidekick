@@ -88,6 +88,8 @@ To use:
 
 `python3 bot.py`
 
+*Note:* One of the bots features `-dlpack` is currently locked to specific Discord servers. This is because there is only one database file that is shared between all the servers. Creating a database for each server is currently outside the scope for this project. If you are running this on your own hardware, you can remove this limitation by changing the `DLPACK_ON_SELECTED_SERVERS_ONLY` variable to false, or modify `APPROVED_SERVERS` to contain your server ID.
+
 ## Tips
 
 - I highly recommend using screen when using scan.py. Your first scan will take more than a few hours. See https://linuxize.com/post/how-to-use-linux-screen/
@@ -147,5 +149,5 @@ Then install python3-dev:
 - [x] Admin tools to add/remove packs from within Discord
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation
-- [ ] Add option/logic to treat 16ths as break if runs are 24ths/32nds
+- [x] Add option/logic to treat 16ths as break if runs are 24ths/32nds
 - [ ] Code cleanup. DBManager files should handle all the json parsing. I currently have it scrambled through the code. I'm sorry.

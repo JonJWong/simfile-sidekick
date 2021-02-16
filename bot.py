@@ -13,6 +13,7 @@ Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
 
 from common import DBManager as dbm
+from common import Normalize as normalizer
 from common import UserDBManager as udbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
@@ -29,6 +30,15 @@ import re
 import shutil
 import sys
 import urllib.request
+
+DLPACK_ON_SELECTED_SERVERS_ONLY = True
+
+# The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
+APPROVED_SERVERS = [
+    772539884019253248, # Simfile Sidekick Support
+    766773423593881620, # Dickson City Heroes
+    165133532199387136 # Stamina Nation
+]
 
 # File name and folder constants. Change these if you want to use a different name or folder.
 SERVER_SETTINGS = "server_settings.json"
@@ -49,6 +59,7 @@ DEFAULT_PREFIX = "-"
 
 # Default behavior to automatically delete user's uploaded .sm files
 DEFAULT_AUTODELETE_BEHAVIOR = True
+DEFAULT_NORMALIZE_BEHAVIOR = False
 
 # The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
 # set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
@@ -79,14 +90,16 @@ I can currently parse .sm files using a library of popular packs. Use
 `-search` followed by the song name.
 
 If you want me to parse a .sm file, attach the .sm file to your message and
-type `-parse`.
+type `-parse`. If I get stuck parsing a file, you can try and run `-fix` and
+I'll do my best to cleanup in order to parse files again for you.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
 
 Admins can change the prefix using `-prefix` followed by the prefix they
-want to use, e.g. `-prefix !`. Admins can also add packs to the database
-by using `-dlpack URL`.
+want to use, e.g. `-prefix !`. Admins can add packs to the database
+by using `-dlpack URL`. Admins can delete packs from the database by using
+`-delpack packName`.
 
 I also have built in stream visualizer functionality. Use `-sv` followed
 by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
@@ -348,6 +361,15 @@ def create_embed(data, ctx):
             embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
         else:
             embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
+
+    normalize = udbm.get_normalize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR)
+    if normalize:
+        normalized_breakdown = normalizer.normalize(data["breakdown"])
+        if normalized_breakdown != data["breakdown"]:
+            body = "*This is in beta and may be inaccurate.*\n"
+            body += normalized_breakdown
+            embed.add_field(name="__*Normalized Breakdown*__", value=body, inline=False)
+
     
     
     # - - - FOOTER - - -
@@ -511,6 +533,7 @@ async def settings(ctx, *input: str):
 
     if not input or input[0] == "help":
         embed = discord.Embed(description="{}'s Settings".format(ctx.author.mention))
+
         title = "**Auto-delete** is "
 
         if udbm.get_autodelete_with_default(user_id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR):
@@ -523,6 +546,22 @@ async def settings(ctx, *input: str):
         body += "Use `-settings autodelete Y` to set, or `-settings autodelete N` to unset."
 
         embed.add_field(name=title, value=body, inline=False)
+
+        title = "**Normalize** is "
+
+        if udbm.get_normalize_with_default(user_id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR):
+            title += "`enabled`"
+        else:
+            title += "`disabled`"
+
+        body = "This will display an additional field when you search or parse a song, called "
+        body += "\"Normalized Breakdown\". For charts that have 24th or 32nd note runs, it will "
+        body += "treat 16th note runs as breaks, and runs will be measured to their 16th note "
+        body += "equivalent. "
+        body += "Use `-settings normalize Y` to set, or `-settings normalize N` to unset."
+
+        embed.add_field(name=title, value=body, inline=False)
+
         await ctx.send(embed=embed)
         return
 
@@ -551,6 +590,44 @@ async def settings(ctx, *input: str):
         else:
             await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
         return
+
+    if input[0] == "normalize":
+        if len(input) <= 1:
+            result = udbm.get_normalize(user_id, USER_SETTINGS)
+            if result is None:
+                message = "{}, it looks like you don't have this preference set. ".format(ctx.author.mention)
+                message += "The default behavior is: "
+                if DEFAULT_NORMALIZE_BEHAVIOR:
+                    message += "I will show normalized output for charts containing 24ths or 32nd notes."
+                else:
+                    message += "I will not show normalized output."
+                await ctx.send(message)
+            elif result:
+                await ctx.send("{}, I'm displaying normalized outputs for your searches.".format(ctx.author.mention))
+            elif not result:
+                await ctx.send("{}. I'm hiding normalized outputs for your searches.".format(ctx.author.mention))
+            return
+        if input[1].upper() == "Y" or input[1].upper() == "T":
+            udbm.set_normalize(user_id, True, USER_SETTINGS)
+            await ctx.send("{}, I will now show normalized outputs for your searches.".format(ctx.author.mention))
+        elif input[1].upper() == "N" or input[1].upper() == "F":
+            udbm.set_normalize(user_id, False, USER_SETTINGS)
+            await ctx.send("{}, I will no longer show normalized outputs for your searches.".format(ctx.author.mention))
+        else:
+            await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
+        return
+
+@bot.command(name="fix")
+async def fix(ctx):
+    """ Cleans up the user's temp directory for parsing files. If the scanner runs into an error when parsing a file,
+    the bot will think he is still trying to parse something.
+    """
+    usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
+    if os.path.exists(usr_tmp_dir):
+        shutil.rmtree(usr_tmp_dir)
+        await ctx.send("I did some cleanup {}, I should be able to parse files again for you!".format(ctx.author.mention))
+    else:
+        await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
 
 
 @bot.command(name="parse")
@@ -644,22 +721,77 @@ async def parse(ctx):
     os.remove(usr_tmp_db)
     os.rmdir(usr_tmp_dir)
 
+@bot.command(name="delpack")
+@has_permissions(administrator=True)
+async def delpack(ctx, input: str):
+    server_id = ctx.message.guild.id
+    if DLPACK_ON_SELECTED_SERVERS_ONLY and server_id not in APPROVED_SERVERS:
+        await ctx.send("Sorry, but this command can currently only be used by admins in the DCH or SN servers.")
+        return
+
+    try:
+        updates, deletes = dbm.delete_pack_search_results(input, DATABASE_NAME)
+    except TypeError:
+        # Returned 0 or -1
+        # TODO: clean this up
+        await ctx.send("I can't find that pack, sorry!")
+        return
+
+    # Grabs unique results, since the arrays returned include multiple difficulties
+    updates_list = list(set(updates[u] for u in updates))
+    deletes_list = list(set(deletes[d] for d in deletes))
+
+    embed = discord.Embed(description="Deleting Pack")
+
+    body = ""
+
+    for u in updates_list:
+        body += " - " + u + "\n"
+
+    if body:
+        embed.add_field(name="Songs will be updated (they exist in other packs):", value=body, inline=False)
+
+    body = ""
+
+    for d in deletes_list:
+        body += " - " + d + "\n"
+
+    if body:
+        embed.add_field(name="Songs will be deleted:", value=body, inline=False)
+
+    embed.add_field(name="Are you sure you want to do this?", value="Type Y or N.", inline=False)
+
+    await ctx.send(embed=embed)
+
+    try:
+        msg = await bot.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
+    except asyncio.TimeoutError:
+        # User didn't respond in 30s, just exit
+        return
+
+    if msg and msg.content.upper() == "Y":
+        dbm.delete_by_ids(list(d for d in deletes), DATABASE_NAME)
+        dbm.remove_pack_from_songs_by_id(input, list(u for u in updates), DATABASE_NAME)
+        await ctx.send("Songs deleted.")
+
+
 
 @bot.command(name="dlpack")
 @has_permissions(administrator=True)
-async def prefix(ctx, input: str):
+async def dlpack(ctx, input: str):
 
-    # TODO: server-role lock this to SN mods and approved people. The same db is used across multiple servers.
+    server_id = ctx.message.guild.id
+    if DLPACK_ON_SELECTED_SERVERS_ONLY and server_id not in APPROVED_SERVERS:
+        await ctx.send("Sorry, but this command can currently only be used by admins in the DCH or SN servers.")
+        return
     # Adding per-server databases is outside the scope of this program and too much for my tiny server to handle.
-    # TODO: update readme to remove the above limitation for users hosting their own bot.
 
     # This ONLY takes Google Drive URLs, and the file MUST be a zip!
 
     # Google Drive URLs should follow the pattern
     # https://drive.google.com/uc?id=1F3i3YXk-6EqMibl089d5jsVTA26eykSs
 
-    #input = "thisisabadurl"
-    #input = "https://drive.google.com/uc?id=1F3i3YXk-6EqMibl089d5jsVTA26eykSs"
+    # String manipulations below will try to retrieve the ID from Google Drive multiple URL formats.
 
     if input[-1] == "/":  # remove trailing /
         input = input[:-1]
@@ -699,20 +831,30 @@ async def prefix(ctx, input: str):
         message = "{}, ".format(ctx.author.mention)
         message += "please check if the URL is correct. I was able to download a file but it doesn't appear to be a .zip. :x:"
         await process_msg.edit(content=message)
+        os.remove(output)
         return
 
     zipfile.extractall(TMP_DIR + "pack/")
+
+    pack = next(os.walk(TMP_DIR + "pack/"))[1]
+    pack = pack[0]
+
+    db = TinyDB(DATABASE_NAME)
+
+    if dbm.pack_exists(pack, db):
+        message = "{}, ".format(ctx.author.mention)
+        message += "it looks like this pack is already added. :x:"
+        await process_msg.edit(content=message)
+        os.remove(output)
+        shutil.rmtree(TMP_DIR + "pack/")
+        return
 
     message = "{}, ".format(ctx.author.mention)
     message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
     await process_msg.edit(content=message)
 
-    db = TinyDB(DATABASE_NAME)
     scan_folder(TMP_DIR + "pack/", False, True, db, False)
     db.close()
-
-    pack = next(os.walk(TMP_DIR + "pack/"))[1]
-    pack = pack[0]
 
     message = "{}, ".format(ctx.author.mention)
     message += "\"" + pack + "\""

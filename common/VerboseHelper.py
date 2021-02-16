@@ -40,9 +40,3 @@ def normalize_string(string, length):
         string += " " # need to add spaces since carriage return won't overlay last input
 
     return string
-
-
-
-
-def get_length(str):
-    return str
