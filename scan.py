@@ -188,17 +188,19 @@ def adjust_total_break(total_break, measures):
     This will adjust the "total break" statistic to account for songs that have a long fadeout, fadeout mine, or
     charts that do not end in a stream. This is because we do not consider notes after the last stream as a break.
     The "total break" is used to denote the measures of break between the first and last run."""
-    for i, measure in enumerate(reversed(measures)):
-        # Since we're navigating backwards in the chart, we want to break at the first full run we see
-        lines = measure.strip().split("\n")
-        if len(lines) < 16:             # measure only contains 4th or 8th notes
-            total_break -= 1
-            continue
-        notes_in_measure = len(findall_with_regex(measure, ANY_NOTES_REG))
-        if notes_in_measure < 16:       # measure is not a full run
-            total_break -= 1
-            continue
-        return total_break
+    if total_break > 0:
+        for i, measure in enumerate(reversed(measures)):
+            # Since we're navigating backwards in the chart, we want to break at the first full run we see
+            lines = measure.strip().split("\n")
+            if len(lines) < 16:             # measure only contains 4th or 8th notes
+                total_break -= 1
+                continue
+            notes_in_measure = len(findall_with_regex(measure, ANY_NOTES_REG))
+            if notes_in_measure < 16:       # measure is not a full run
+                total_break -= 1
+                continue
+            break
+    return total_break
 
 
 def remove_breakdown_characters(data):
