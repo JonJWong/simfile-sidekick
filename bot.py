@@ -382,9 +382,17 @@ def create_embed(data, ctx):
     
     return embed, file
 
-@bot.command(name="search")
-async def search_song(ctx, *, song_name):
+@bot.command(name="search", rest_is_raw=True)
+async def search_song(ctx, *, song_name: str):
 #async def search_song(ctx, song_name: str):
+    if not song_name:
+        embed = discord.Embed(description=f"Sorry {ctx.author.mention}, but please supply a title.")
+        await ctx.send(embed=embed)
+        return
+
+    # Strip the whitespaces since song_name is unstripped due to rest_is_raw=True 
+    song_name = song_name.strip()
+    
     results = dbm.search_by_title(song_name, DATABASE_NAME)
     
     if isinstance(results, int):
