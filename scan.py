@@ -20,6 +20,8 @@ from common import Test as test
 from common import VerboseHelper as vh
 from pathlib import Path
 from tinydb import Query, TinyDB, where
+from tinydb.storages import JSONStorage
+from tinydb.middlewares import CachingMiddleware
 import datetime
 import enum
 import getopt
@@ -881,8 +883,6 @@ def main(argv):
         elif arg in ("-u", "--unittest"):
             unittest = True
     
-    db = TinyDB(DATABASE_NAME)
-
     if unittest:
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
         songs = UNITTEST_FOLDER + "/" + "songs"
@@ -892,26 +892,26 @@ def main(argv):
         if os.path.isfile(database):
             os.remove(database)
         log = open(log_location, "a")
-        db = TinyDB(database)
-        scan_folder(songs, verbose, media_remove, db, log)
-        test.run_tests()
-        sys.exit(0)
+        with TinyDB(database) as db:
+            scan_folder(songs, verbose, media_remove, db, log)
+            test.run_tests()
+            sys.exit(0)
     else:
-        if log:
-            ct = datetime.datetime.now().strftime(LOG_TIMESTAMP)
-            log.write("scan.py started at: " + ct)
-            log.write("\n")
-            log.flush()
+        with TinyDB(DATABASE_NAME, storage=CachingMiddleware(JSONStorage)) as db:
+            if log:
+                ct = datetime.datetime.now().strftime(LOG_TIMESTAMP)
+                log.write("scan.py started at: " + ct)
+                log.write("\n")
+                log.flush()
 
-        if os.path.isdir(dir):
-            scan_folder(dir, verbose, media_remove, db, log)
-        else:
-            print("\"" + dir + "\" is not a valid directory. Exiting.")
-            sys.exit(2)
+            if os.path.isdir(dir):
+                scan_folder(dir, verbose, media_remove, db, log)
+            else:
+                print("\"" + dir + "\" is not a valid directory. Exiting.")
+                sys.exit(2)
 
-        db.close()
-        os.chmod(DATABASE_NAME, 0o777)
-        sys.exit(0)
+            os.chmod(DATABASE_NAME, 0o777)
+            sys.exit(0)
 
 if __name__ == "__main__":
     main(sys.argv)
