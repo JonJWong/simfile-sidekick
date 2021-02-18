@@ -866,14 +866,10 @@ def main(argv):
     media_remove = False
     unittest = False
     log = None
-    db = TinyDB(DATABASE_NAME)
 
     for arg, val in arguments:
-        if arg in ("-r", "--rebuild"):
-            if os.path.isfile(DATABASE_NAME):
-                db.close()
-                os.remove(DATABASE_NAME)
-            db = TinyDB(DATABASE_NAME)
+        if arg in ("-r", "--rebuild") and os.path.isfile(DATABASE_NAME):
+            os.remove(DATABASE_NAME)
         elif arg in ("-v", "--verbose"):
             verbose = True
         elif arg in ("-d", "--directory"):
@@ -884,6 +880,8 @@ def main(argv):
             log = open(LOGFILE_NAME, "a")
         elif arg in ("-u", "--unittest"):
             unittest = True
+    
+    db = TinyDB(DATABASE_NAME)
 
     if unittest:
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
