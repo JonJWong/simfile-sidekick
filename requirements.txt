@@ -1,0 +1,7 @@
+plotly
+psutil
+kaleido
+tinydb
+discord
+python-dotenv
+gdown
