@@ -20,7 +20,7 @@ from common import Test as test
 from common import VerboseHelper as vh
 from pathlib import Path
 from tinydb import Query, TinyDB, where
-from tinydb.storages import JSONStorage
+from tinydb.storages import JSONStorage, MemoryStorage
 from tinydb.middlewares import CachingMiddleware
 import datetime
 import enum
@@ -106,10 +106,26 @@ def find_with_regex(data, regex):
         return "N/A"
 
 
-def add_to_database(chartinfo, db, analysis):
+def load_md5s_into_cache(db, cache):
+    charts = db.all()
+    for chart in charts:
+        cache.insert({"md5": chart["md5"]})
+    return cache
+
+
+def add_to_database(chartinfo, db, analysis, cache):
     """Adds the chart information and pattern analysis to the TinyDB database."""
+
+    result = None
+
     # Search if the chart already exists in our database.
-    result = db.search(where("md5") == chartinfo.md5)
+    if cache is not None:
+        # We are using the MD5 MemoryStorage. Check if the MD5 exists there
+        result = cache.search(where("md5") == chartinfo.md5)
+        cache.insert({"md5": chartinfo.md5})
+    else:
+        # We weren't provided a MD5 MemoryStorage, so we have to query the database.
+        result = db.search(where("md5") == chartinfo.md5)
 
     if not result:
         # If the chart doesn't exist, add a new entry.
@@ -159,6 +175,9 @@ def add_to_database(chartinfo, db, analysis):
     else:
         # If the chart already exists (i.e. we have a matching MD5), we want to update the entry and append the pack to
         # it. This usually happens with ECS or SRPG songs taken from other packs.
+        if cache:
+            # result is currently set to MemoryStorage, so grab the db entry
+            result = db.search(where("md5") == chartinfo.md5)
         data = json.loads(json.dumps(result[0]))
         pack = data["pack"] + ", " + chartinfo.pack
         Chart = Query()
@@ -619,7 +638,7 @@ def get_density_and_breakdown(measures, bpms):
     return density, breakdown.strip(), chartinfo, analysis
 
 
-def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log):
+def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log, cache):
     """Retrieves and sets chart information.
 
     Grabs the charts step artist, difficulty, rating, and actual chart data. Calls most other functions in this file to
@@ -697,10 +716,10 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     chartinfo.graph_location = folder + difficulty + rating + "density.png"
     chartinfo.md5 = md5
 
-    add_to_database(chartinfo, db, analysis)
+    add_to_database(chartinfo, db, analysis, cache)
 
 
-def parse_file(filename, folder, pack, db, log, hide_artist_info):
+def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
     """Parses through a .sm file and separates charts."""
     file = open(filename, "r", errors="ignore")
     data = file.read()
@@ -785,9 +804,10 @@ def parse_file(filename, folder, pack, db, log, hide_artist_info):
                         log.write("ERROR: Unable to parse \"" + filename + "\" correctly. Skipping.\n")
                         log.flush()
                     return
-            parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db, log)
+            parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db, log, cache)
 
-def scan_folder(dir, verbose, media_remove, db, log):
+
+def scan_folder(dir, verbose, media_remove, db, log, cache=None):
     # First fetch total number of found .sm files
     total = 0
     for root, dirs, files in os.walk(dir):
@@ -801,7 +821,7 @@ def scan_folder(dir, verbose, media_remove, db, log):
     i = 0 # Current file
     for root, dirs, files in os.walk(dir):
 
-        sm_counter = len(glob.glob1(root, "*.sm"))
+        sm_counter = len(glob.glob1(root, "*.[sS][mM]"))
 
         if sm_counter <= 0:
             if log:
@@ -832,7 +852,7 @@ def scan_folder(dir, verbose, media_remove, db, log):
                 if log:
                     log.write("INFO: Preparing to parse \"" + filename + "\".\n")
                     log.flush()
-                parse_file(filename, folder, pack, db, log, False)
+                parse_file(filename, folder, pack, db, log, False, cache)
                 if log:
                     log.write("INFO: Completed parsing \"" + filename + "\".\n")
                     log.flush()
@@ -864,6 +884,7 @@ def main(argv):
         print(str(err))
         sys.exit(2)
 
+    rebuild = False
     verbose = False
     media_remove = False
     unittest = False
@@ -872,6 +893,7 @@ def main(argv):
     for arg, val in arguments:
         if arg in ("-r", "--rebuild") and os.path.isfile(DATABASE_NAME):
             os.remove(DATABASE_NAME)
+            rebuild = True
         elif arg in ("-v", "--verbose"):
             verbose = True
         elif arg in ("-d", "--directory"):
@@ -882,7 +904,7 @@ def main(argv):
             log = open(LOGFILE_NAME, "a")
         elif arg in ("-u", "--unittest"):
             unittest = True
-    
+
     if unittest:
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
         songs = UNITTEST_FOLDER + "/" + "songs"
@@ -897,7 +919,13 @@ def main(argv):
             test.run_tests()
             sys.exit(0)
     else:
-        with TinyDB(DATABASE_NAME, storage=CachingMiddleware(JSONStorage)) as db:
+        with TinyDB(DATABASE_NAME, storage=CachingMiddleware(JSONStorage)) as db, \
+                TinyDB(storage=MemoryStorage) as cache:
+
+            # No need to populate cache if db is being rebuilt
+            if not rebuild:
+                load_md5s_into_cache(db, cache)
+
             if log:
                 ct = datetime.datetime.now().strftime(LOG_TIMESTAMP)
                 log.write("scan.py started at: " + ct)
@@ -905,7 +933,7 @@ def main(argv):
                 log.flush()
 
             if os.path.isdir(dir):
-                scan_folder(dir, verbose, media_remove, db, log)
+                scan_folder(dir, verbose, media_remove, db, log, cache)
             else:
                 print("\"" + dir + "\" is not a valid directory. Exiting.")
                 sys.exit(2)

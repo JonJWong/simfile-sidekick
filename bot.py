@@ -708,7 +708,7 @@ async def parse(ctx):
         await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
-    parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info)
+    parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
 
     # Get results from temporary database
     results = [result for result in db]
@@ -861,7 +861,7 @@ async def dlpack(ctx, input: str):
     message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
     await process_msg.edit(content=message)
 
-    scan_folder(TMP_DIR + "pack/", False, True, db, False)
+    scan_folder(TMP_DIR + "pack/", False, True, db, False, None)
     db.close()
 
     message = "{}, ".format(ctx.author.mention)

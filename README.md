@@ -16,6 +16,8 @@ This was created and tested using Python 3.6.9, but will probably work with earl
 
 You'll need to install a few packages before using, most easily done using pip.
 
+`pip install -r requirements.txt` will install all the dependencies automatically. If you wish to install them one by one, continue reading:
+
 I use Plotly for the density graph creation. It is open source:
 https://github.com/plotly/plotly.py
 
