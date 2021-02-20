@@ -390,10 +390,10 @@ async def search_song(ctx, *, song_name: str):
         await ctx.send(embed=embed)
         return
 
-    # Strip the whitespaces since song_name is unstripped due to rest_is_raw=True 
-    song_name = song_name.strip()
+    # Strip the whitespaces since query is unstripped due to rest_is_raw=True 
+    query = song_name.strip()
     
-    results = dbm.search_by_title(song_name, DATABASE_NAME)
+    results = dbm.search(query, DATABASE_NAME)
     
     if isinstance(results, int):
         if results == 0:
