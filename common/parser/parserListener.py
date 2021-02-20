@@ -1,5 +1,5 @@
-from searchListener import searchListener
-from searchParser import searchParser
+from .searchListener import searchListener
+from .searchParser import searchParser
 
 class parserListener(searchListener):
     def __init__(self):

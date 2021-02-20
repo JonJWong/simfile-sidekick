@@ -1,10 +1,10 @@
 from antlr4 import InputStream, CommonTokenStream, ParseTreeWalker
-from searchLexer import searchLexer
-from searchParser import searchParser
-from parserListener import parserListener
-from parserErrorListener import ParserErrorListener
+from .searchLexer import searchLexer
+from .searchParser import searchParser
+from .parserListener import parserListener
+from .parserErrorListener import ParserErrorListener
 
-def generateQueryObject(input: str) -> dict:
+def generateQueryObject(input: str):
     lexer = searchLexer(InputStream(input))
     stream = CommonTokenStream(lexer)
     try:
@@ -20,4 +20,4 @@ def generateQueryObject(input: str) -> dict:
         return {'queryObject': listener.getQueryObject(), 
                 'error': None}
     except Exception as re:
-        return {'queryObject': None, 'error': re.args[0] }
+        return {'queryObject': None, 'error': re.args[0]}
