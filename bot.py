@@ -454,9 +454,21 @@ async def search_song(ctx, *, song_name: str):
                 return
             
             if msg:
-                embed, file = create_embed(data[int(msg.content) - 1], ctx)
-                # TODO: add check to make sure user input is proper value
-                await ctx.send(file=file, embed=embed)
+                embed, file = None, None 
+                try:
+                    index = int(msg.content) - 1
+                    
+                    if index < 0 or index >= len(data):
+                        raise IndexError
+
+                    embed, file = create_embed(data[index], ctx)
+                except ValueError:     
+                    embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that wasn't an integer. Try searching again.")
+                except IndexError:
+                    embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
+                finally:
+                    await ctx.send(file=file, embed=embed)
+                
 
 
 
