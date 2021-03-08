@@ -462,14 +462,15 @@ async def search_song(ctx, *, song_name: str):
                         raise IndexError
 
                     embed, file = create_embed(data[index], ctx)
-                except ValueError:     
-                    embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that wasn't an integer. Try searching again.")
+                except ValueError:
+                    # Users may be continuing a conversation, or using another command. This would prevent the bot from
+                    # saying "invalid input" if the user searches for another song/uses another command.
+                    pass
                 except IndexError:
                     embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
                 finally:
-                    await ctx.send(file=file, embed=embed)
-                
-
+                    if embed:
+                        await ctx.send(file=file, embed=embed)
 
 
 @bot.command(name="sv")
