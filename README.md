@@ -44,6 +44,9 @@ It also requires gdown to download song packs from Google Drive right within dis
 
 `pip install gdown`
 
+ANTLR runtime is required for parsing queries:
+
+`pip install antlr4-python3-runtime`
 
 You'll want to run scan.py first, then after generating the database, you can run bot.py.
 
@@ -68,11 +71,12 @@ List of all command line options:
 `-d` is directory, and a mandatory option. It is the directory where all your song packs are located.
 
 `-l` is log. It will generate a log file and output errors to it. At a later date I will add a parameter to this that will filter out different log levels. They are:
+
 - INFO: Generic parsing messages for songs.
 - WARN: Something is wrong in the file but scan.py was able to handle and proceed with processing.
 - ERROR: A file was skipped due to an unhandled exception or error.
 
-`-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout. 
+`-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout.
 
 When finished, you should have a new db.json file in the same folder as scan.py.
 
@@ -90,13 +94,13 @@ To use:
 
 `python3 bot.py`
 
-*Note:* One of the bots features `-dlpack` is currently locked to specific Discord servers. This is because there is only one database file that is shared between all the servers. Creating a database for each server is currently outside the scope for this project. If you are running this on your own hardware, you can remove this limitation by changing the `DLPACK_ON_SELECTED_SERVERS_ONLY` variable to false, or modify `APPROVED_SERVERS` to contain your server ID.
+_Note:_ One of the bots features `-dlpack` is currently locked to specific Discord servers. This is because there is only one database file that is shared between all the servers. Creating a database for each server is currently outside the scope for this project. If you are running this on your own hardware, you can remove this limitation by changing the `DLPACK_ON_SELECTED_SERVERS_ONLY` variable to false, or modify `APPROVED_SERVERS` to contain your server ID.
 
 ## Tips
 
 - I highly recommend using screen when using scan.py. Your first scan will take more than a few hours. See https://linuxize.com/post/how-to-use-linux-screen/
 - If you never used python pip, see https://pip.pypa.io/en/stable/installing/
-- For active development, I recommend running python with the `-B` flag to prevent the creation of the `__pycache__` folders. I've had issues where results from the database aren't retrieved properly when working on the unit tests. 
+- For active development, I recommend running python with the `-B` flag to prevent the creation of the `__pycache__` folders. I've had issues where results from the database aren't retrieved properly when working on the unit tests.
 - For linux users, if you wish to set bot.py as a systemd service (to allow the bot to start with the system), here is my .service file I created in `/etc/systemd/system` (I called it discordss.service):
 
 ```
@@ -128,7 +132,6 @@ Just install python3-distutils:
 
 `sudo apt-get install python3-distutils`
 
-
 - If you're trying to install psutil and getting and error like:
 
 `error: command 'x86_64-linux-gnu-gcc' failed with exit status 1`
@@ -140,6 +143,7 @@ Then install python3-dev:
 - If you're getting 2 or more responses from the discord bot, you most likely have 2 or more processes of bot.py running.
 
 ## To-do
+
 - [x] Replace all references of "Breakdown Buddy Jr." with "Simfile Sidekick"
 - [x] Log songs that couldn't be parsed by scan.py to a logfile
 - [ ] Flag in scan.py to enter in a database name
