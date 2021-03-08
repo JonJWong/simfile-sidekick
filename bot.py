@@ -96,6 +96,13 @@ I'll do my best to cleanup in order to parse files again for you.
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
 
+I can also search by tags. The syntax is `-[tag]:[value]`
+Currently supported tags are `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
+Song title must come before the tags.
+
+Example: `-search -bpm:160`
+`-search sigatrev -rating:20`
+
 Admins can change the prefix using `-prefix` followed by the prefix they
 want to use, e.g. `-prefix !`. Admins can add packs to the database
 by using `-dlpack URL`. Admins can delete packs from the database by using
