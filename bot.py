@@ -469,9 +469,8 @@ async def search_song(ctx, *, song_name: str):
                 except IndexError:
                     embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
                 finally:
-                    await ctx.send(file=file, embed=embed)
-                
-
+                    if embed:
+                        await ctx.send(file=file, embed=embed)
 
 
 @bot.command(name="sv")
