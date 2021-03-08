@@ -1,5 +1,5 @@
 from common import DBManager as dbm
-import json
+import sys
 
 DATABASE_FILE = "./tests/db.json"
 
@@ -87,7 +87,7 @@ def run_tests():
     # Fairytale is a chart that has an extra return in the stepartist section. Previously, the logic looked at this per
     # line, instead of splitting it by colon (:).
 
-    data = dbm.search_by_title("Fairytale", DATABASE_FILE)
+    data = dbm.search("Fairytale", DATABASE_FILE)
     result = data[1]  # [1] so we grab the hard chart, since it's the chart with the extra return
 
     if result["difficulty"] == "Hard":
@@ -101,7 +101,7 @@ def run_tests():
     # previously calculated runs in 16ths, 24ths, or 32nds, I suspect that the parser did not properly switch back to
     # "Break" and add the appropriate run to the breakdown.
 
-    data = dbm.search_by_title("Chelsea", DATABASE_FILE)
+    data = dbm.search("Chelsea", DATABASE_FILE)
     result = data[2]  # [2] so we grab the challenge chart
 
     correct_breakdown = "15 7 (17) 3 11 (14) 15"
@@ -119,7 +119,7 @@ def run_tests():
     # We want to make sure Encoder's breakdown is 32. We don't want to capture any break segments before or after
     # the one and only run.
 
-    data = dbm.search_by_title("Encoder", DATABASE_FILE)
+    data = dbm.search("Encoder", DATABASE_FILE)
     result = data[4] # [4] so we grab the challenge chart, and not the easy or medium, etc.
 
     if result["breakdown"] == "32":
@@ -148,7 +148,7 @@ def run_tests():
 
     # Generic breakdown test for Ganbatte
 
-    data = dbm.search_by_title("Ganbatte", DATABASE_FILE)
+    data = dbm.search("Ganbatte", DATABASE_FILE)
     result = data[1]  # [1] so we grab the challenge chart, and not the other
 
     correct_breakdown = "7 19 3 39 39 31 16 (4) 7 7 23 7 15 64 (8) 7 16 23"
@@ -194,7 +194,7 @@ def run_tests():
 
     # Generic breakdown test for Pendulum Essential Mix (Side A)
 
-    data = dbm.search_by_title("Pendulum Essential Mix", DATABASE_FILE)
+    data = dbm.search("Pendulum Essential Mix", DATABASE_FILE)
     result = data[0]
 
     correct_breakdown = "31 (2) 35 (46) 2 (2) 17 46 (2) 38 (2) 47 (2) 13 (4) 5 32 (6) 1 32 (2) 14 (2) 45 32 (2) 62 (32)"
@@ -243,3 +243,6 @@ def run_tests():
     else:
         fail_val("PEMA's total break is incorrect.", 448, result["total_break"])
         failed += 1
+
+    if failed > 0:
+        sys.exit("Unit tests did not pass.")
