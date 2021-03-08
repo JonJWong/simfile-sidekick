@@ -1,12 +1,38 @@
-from tinydb import Query, TinyDB
+from tinydb import Query, TinyDB, where
 from tinydb.operations import delete
 from typing import List, Union
 import json
 import re
+from .parser.generateQueryObject import generateQueryObject
 
 # TODO: handle db.close on bad results (i.e. db.close() isn't called if we return 0/-1)
 
-def search_by_title(song_title: str, db: Union[str, TinyDB]) -> Union[int, List]:
+def buildDBQuery(queryObject: dict):
+    DBQuery = None
+    # supported tags: 'title', 'subtitle', 'artist', 'stepartist', 'rating', 'bpm'
+    # bpm logic: 'min_bpm' == 'max_bpm'
+
+    for key, value in queryObject.items():
+        if value:              
+            currentQuery = None
+
+            # Generate query
+            if key == 'bpm':
+                currentQuery = (where('min_bpm') == float(value)) & (where('max_bpm') == float(value))
+            elif key == 'rating':
+                # this one is a string in our db and it needs to be exact
+                currentQuery = where('rating') == value
+            else:
+                currentQuery = where(key).search(value, flags=re.IGNORECASE) 
+            
+            # AND the queries
+            if DBQuery:
+                DBQuery &= currentQuery
+            else:
+                DBQuery = currentQuery
+    return DBQuery
+
+def search(query: str, db: Union[str, TinyDB]) -> Union[int, List]:
     """ Search the database for a song.
 
     :param song_title: The title of the song to search for.
@@ -19,7 +45,13 @@ def search_by_title(song_title: str, db: Union[str, TinyDB]) -> Union[int, List]
         db = TinyDB(db)
         db_param_is_string = True
 
-    results = db.search(Query().title.search(song_title, flags=re.IGNORECASE))
+    queryObject = generateQueryObject(query)
+    
+    if queryObject["error"]:
+        return -1
+    
+    dbQuery = buildDBQuery(queryObject["queryObject"])
+    results = db.search(dbQuery)
 
     if len(results) == 0:
         return 0

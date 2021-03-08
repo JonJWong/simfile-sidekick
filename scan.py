@@ -691,8 +691,8 @@ def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, 
     partially_simplified = get_simplified(breakdown, True)
     simplified = get_simplified(breakdown, False)
 
-    max_bpm = find_max_bpm(bpms)
-    min_bpm = find_min_bpm(bpms)
+    max_bpm = float(find_max_bpm(bpms))
+    min_bpm = float(find_min_bpm(bpms))
     max_nps = find_max(density)
     median_nps = statistics.median(density)
 

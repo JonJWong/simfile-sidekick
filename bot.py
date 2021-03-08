@@ -96,6 +96,13 @@ I'll do my best to cleanup in order to parse files again for you.
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
 
+I can also search by tags. The syntax is `-[tag]:[value]`
+Currently supported tags are `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
+Song title must come before the tags.
+
+Example: `-search -bpm:160`
+`-search sigatrev -rating:20`
+
 Admins can change the prefix using `-prefix` followed by the prefix they
 want to use, e.g. `-prefix !`. Admins can add packs to the database
 by using `-dlpack URL`. Admins can delete packs from the database by using
@@ -390,10 +397,10 @@ async def search_song(ctx, *, song_name: str):
         await ctx.send(embed=embed)
         return
 
-    # Strip the whitespaces since song_name is unstripped due to rest_is_raw=True 
-    song_name = song_name.strip()
+    # Strip the whitespaces since query is unstripped due to rest_is_raw=True 
+    query = song_name.strip()
     
-    results = dbm.search_by_title(song_name, DATABASE_NAME)
+    results = dbm.search(query, DATABASE_NAME)
     
     if isinstance(results, int):
         if results == 0:
