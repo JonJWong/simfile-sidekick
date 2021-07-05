@@ -244,5 +244,35 @@ def run_tests():
         fail_val("PEMA's total break is incorrect.", 448, result["total_break"])
         failed += 1
 
+    data = dbm.search("Hardware Store", DATABASE_FILE)
+    result = data[0]
+
+    correct_breakdown = "=3= =59= (8) =34= \\1\\ =7="
+
+    if result["breakdown"] == correct_breakdown:
+        good("Hardware Store's breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Hardware Store's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        failed += 1
+
+    correct_breakdown = "=63=* / =34= \\1\\ =7="
+
+    if result["partial_breakdown"] == correct_breakdown:
+        good("Hardware Store's partially simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Hardware Store's partially simplified breakdown is incorrect.", correct_breakdown, result["partial_breakdown"])
+        failed += 1
+
+    correct_breakdown = "=63=* / =34= \\1\\ =7="
+
+    if result["simple_breakdown"] == correct_breakdown:
+        good("Hardware Store's simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Hardware Store's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        failed += 1
+
     if failed > 0:
         sys.exit("Unit tests did not pass.")

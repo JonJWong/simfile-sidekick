@@ -468,11 +468,13 @@ def get_simplified(breakdown, partially):
             else:
                 if current_measure == RunDensity.Run_32:
                     simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
+                    simplified[i] = "=" + str(int(previous_value) + int(b) + 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
                     simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\*"
+                    simplified[i] = "\\" + str(int(previous_value) + int(b) + 1) + "\\*"
                 else:
                     simplified[i] = str(int(previous_value) + int(b) - 1) + "*"
-                simplified[i] = str(int(previous_value) + int(b) + 1) + "*"
+                    simplified[i] = str(int(previous_value) + int(b) + 1) + "*"
         else:
             simplified[i] = b
 
