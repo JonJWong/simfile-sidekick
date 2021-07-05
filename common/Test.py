@@ -150,7 +150,7 @@ def run_tests():
     # Generic breakdown test for Ganbatte
 
     data = dbm.search("Ganbatte", DATABASE_FILE)
-    result = data[1]  # [1] so we grab the challenge chart, and not the other
+    result = data[0]  # [0] so we grab the challenge chart, and not the other
 
     correct_breakdown = "7 19 3 39 39 31 16 (4) 7 7 23 7 15 64 (8) 7 16 23"
 
@@ -191,6 +191,37 @@ def run_tests():
         passed += 1
     else:
         fail_val("Ganbatte's total break is incorrect.", 25, result["total_break"])
+        failed += 1
+
+    data = dbm.search("Ganbatte", DATABASE_FILE)
+    result = data[1]  # [0] so we grab the chart with the 20ths
+
+    correct_breakdown = "7 19 3 39 24 ~4~ 4 ~4~ 3 31 16 (4) 7 7 23 7 15 32 ~4~ 12 ~4~ 12 (8) 7 16 11 ~4~ 8"
+
+    if result["breakdown"] == correct_breakdown:
+        good("Ganbatte (18)'s breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Ganbatte (18)'s breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        failed += 1
+
+    correct_breakdown = "96* ~4~ 4 ~4~ 52* - 96* ~4~ 12 ~4~ 12 / 36* ~4~ 8"
+
+    if result["partial_breakdown"] == correct_breakdown:
+        good("Ganbatte (18)'s partially simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Ganbatte (18)'s partially simplified breakdown is incorrect.", correct_breakdown,
+                 result["partial_breakdown"])
+        failed += 1
+
+    correct_breakdown = "96* ~4~ 4 ~4~ 152* ~4~ 12 ~4~ 12 / 36* ~4~ 8"
+
+    if result["simple_breakdown"] == correct_breakdown:
+        good("Ganbatte (18)'s simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Ganbatte (18)'s simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
         failed += 1
 
     # Generic breakdown test for Pendulum Essential Mix (Side A)
@@ -284,6 +315,51 @@ def run_tests():
         passed += 1
     else:
         fail_val("Hardware Store's normalized breakdown is incorrect.", correct_normalized_breakdown, normalized_breakdown)
+        failed += 1
+
+
+    data = dbm.search("Noise Discipline", DATABASE_FILE)
+    result = data[0]
+
+    correct_breakdown = "~1~ ~7~ ~15~ ~39~ 1 (16) ~1~ 1 ~7~ ~15~ ~40~ (12) 1 ~1~ 2 ~8~ (2) ~30~ (2) ~4~ (2) ~48~ (8) ~183~ ~63~ (3) ~45~ ~39~ 1 ~12~ (4) ~39~ ~6~ (2) ~7~ 1 ~11~ 1 (4) ~64~ (32) ~64~ (47) 1 ~32~"
+
+    if result["breakdown"] == correct_breakdown:
+        good("Noise Discipline's breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Noise Discipline's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        failed += 1
+
+    correct_breakdown = "~65~* 1 / ~1~ 1 ~64~* / 1 ~1~ 2 ~8~ - ~30~ - ~4~ - ~48~ / ~247~* - ~85~* 1 ~12~ - ~46~* - ~7~ 1 ~11~ 1 - ~64~ / ~64~ | 1 ~32~"
+
+    if result["partial_breakdown"] == correct_breakdown:
+        good("Noise Discipline's partially simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Noise Discipline's partially simplified breakdown is incorrect.", correct_breakdown,
+                 result["partial_breakdown"])
+        failed += 1
+
+    correct_breakdown = "~65~* 1 / ~1~ 1 ~64~* / 1 ~1~ 2 ~96~* / ~335~* 1 ~71~* 1 ~11~ 4* ~64~ / ~64~ | 1 ~32~"
+
+    if result["simple_breakdown"] == correct_breakdown:
+        good("Noise Discipline's simplified breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Noise Discipline's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        failed += 1
+
+    correct_normalized_breakdown = "1 8 18 48 (22) 1 (1) 8 18 50 (17) 1 (2) 10 (2) 37 (2) 5 (2) 60 (10) 228 78 (3) 56 48 (1) 15 (5) 48 7 (2) 8 (1) 13 (7) 80 (40) 80 (60) 40 *@218BPM*"
+    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"],
+                                                result["display_bpm"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use)
+
+    if normalized_breakdown == correct_normalized_breakdown:
+        good("Noise Discipline's normalized breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Noise Discipline's normalized breakdown is incorrect.", correct_normalized_breakdown,
+                 normalized_breakdown)
         failed += 1
 
     if failed > 0:

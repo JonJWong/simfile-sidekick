@@ -65,8 +65,9 @@ class RunDensity(enum.Enum):
     """
     Break = 0                           # Denotes a break (measure with less than 16 notes)
     Run_16 = 1                          # Denotes a full measure of 16th notes
-    Run_24 = 2                          # Denotes a full measure of 24th notes
-    Run_32 = 3                          # Denotes a full measure of 32nd notes
+    Run_20 = 2                          # Denotes a full measure of 20th notes
+    Run_24 = 3                          # Denotes a full measure of 24th notes
+    Run_32 = 4                          # Denotes a full measure of 32nd notes
 
 
 def remove_comments(chart):
@@ -231,7 +232,7 @@ def remove_breakdown_characters(data):
     simplifying the partially simplified breakdown into the simplified breakdown."""
     data = data.replace("(", "").replace(")", "")
     data = data.replace("*", "")
-    data = data.replace("=", "").replace("\\", "")
+    data = data.replace("=", "").replace("\\", "").replace("~", "")
     return data
 
 
@@ -439,6 +440,8 @@ def get_simplified(breakdown, partially):
             current_measure = RunDensity.Run_32
         elif re.search(r"[\\]", b):
             current_measure = RunDensity.Run_24
+        elif re.search(r"[~]", b):
+            current_measure = RunDensity.Run_20
         elif re.search(r"[()]", b):
             if partially:
                 current_measure = RunDensity.Break
@@ -462,6 +465,8 @@ def get_simplified(breakdown, partially):
                     simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
                     simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\*"
+                elif current_measure == RunDensity.Run_20:
+                    simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
                 else:
                     simplified[i] = str(int(previous_value) + int(b) - 1) + "*"
                 small_break = False
@@ -472,6 +477,9 @@ def get_simplified(breakdown, partially):
                 elif current_measure == RunDensity.Run_24:
                     simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\*"
                     simplified[i] = "\\" + str(int(previous_value) + int(b) + 1) + "\\*"
+                elif current_measure == RunDensity.Run_20:
+                    simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
+                    simplified[i] = "~" + str(int(previous_value) + int(b) + 1) + "~*"
                 else:
                     simplified[i] = str(int(previous_value) + int(b) - 1) + "*"
                     simplified[i] = str(int(previous_value) + int(b) + 1) + "*"
@@ -498,7 +506,7 @@ def get_density_and_breakdown(measures, bpms):
     """
     density = []
     breakdown = ""
-    measures_of_run = [0] * 4
+    measures_of_run = [0] * 5
     previous_measure = RunDensity.Break
     current_measure = RunDensity.Break
     hit_first_run = False
@@ -592,6 +600,10 @@ def get_density_and_breakdown(measures, bpms):
             measures_of_run[RunDensity.Run_24.value] += 1
             current_measure = RunDensity.Run_24
             total_stream += 1
+        elif measure_density >= 20:
+            measures_of_run[RunDensity.Run_20.value] += 1
+            current_measure = RunDensity.Run_20
+            total_stream += 1
         elif measure_density >= 16:
             measures_of_run[RunDensity.Run_16.value] += 1
             current_measure = RunDensity.Run_16
@@ -608,6 +620,9 @@ def get_density_and_breakdown(measures, bpms):
             elif previous_measure == RunDensity.Run_24:
                 breakdown += "\\" + str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
                 measures_of_run[RunDensity.Run_24.value] = 0
+            elif previous_measure == RunDensity.Run_20:
+                breakdown += "~" + str(measures_of_run[RunDensity.Run_20.value]) + "~ "
+                measures_of_run[RunDensity.Run_20.value] = 0
             elif previous_measure == RunDensity.Run_16:
                 breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
                 measures_of_run[RunDensity.Run_16.value] = 0
@@ -623,6 +638,8 @@ def get_density_and_breakdown(measures, bpms):
         breakdown += "=" + str(measures_of_run[RunDensity.Run_32.value]) + "= "
     elif measures_of_run[RunDensity.Run_24.value] > 0:
         breakdown += "\\" + str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
+    elif measures_of_run[RunDensity.Run_20.value] > 0:
+        breakdown += "~" + str(measures_of_run[RunDensity.Run_20.value]) + "~ "
     elif measures_of_run[RunDensity.Run_16.value] > 0:
         breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
 

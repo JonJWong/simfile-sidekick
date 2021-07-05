@@ -374,7 +374,7 @@ def create_embed(data, ctx):
         bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["displaybpm"])
         normalized_breakdown = normalizer.normalize(data["breakdown"], bpm_to_use)
         if normalized_breakdown != data["breakdown"]:
-            body = "*This is in beta and may be inaccurate.*\n"
+            body = "*This is in beta and may be inaccurate. Songs with variable BPM currently not supported.*\n"
             body += normalized_breakdown
             embed.add_field(name="__*Normalized Breakdown*__", value=body, inline=False)
 

@@ -14,7 +14,7 @@ def get_best_bpm_to_use(minbpm, maxbpm, mediannps, displaybpm):
         try:
             return float(displaybpm)
         except ValueError:
-            print("can't convert this string")
+            pass
 
     if mediannps:
         # If all else, try to derive the BPM from the median NPS
@@ -23,16 +23,25 @@ def get_best_bpm_to_use(minbpm, maxbpm, mediannps, displaybpm):
     return None
 
 def normalize(breakdown, bpm):
+    # TODO - this normalization logic will eventually need the density array.
+    # songs like "Groovy Fire, Rushing Wind" has the same density but different
+    # BPMs (the song shifts between 16th notes @ 234bpm and 24th notes @ 156 bpm)
+    # and this code does not currently handle BPM changes like that
+
     breakdown_arr = breakdown.split(" ")
 
     # first check to see if there are any 24th/32nd note runs
     # if there are, we continue logic, if not, break
 
     can_normalize = False
+    normalize_20ths = False
     normalize_24ths = False
     normalize_32nds = False
 
     for b in breakdown_arr:
+        if b.find("~") != -1:
+            can_normalize = True
+            normalize_20ths = True
         if b.find("\\") != -1:
             can_normalize = True
             normalize_24ths = True
@@ -85,6 +94,24 @@ def normalize(breakdown, bpm):
                 # we need to treat this as a break
                 b = str(math.floor(int(b) * 1.5))  # floor, incase of decimal, we only count "full" measure runs
                 normalized_breakdown.append("(" + b + ")")
+    elif normalize_20ths:
+        # normalize to 20ths
+        for b in breakdown_arr:
+            if b.find("~") != -1:
+                #this measure is a 20th run
+                b = b.replace("~", "")
+                b = str(math.floor(int(b) * 1.25)) # floor, incase of decimal, we only count "full" measure runs
+                normalized_breakdown.append(b)
+            elif b.find("(") != -1:
+                # measure is a break
+                b = b.replace("(", "").replace(")", "")
+                b = str(math.floor(int(b) * 1.25))  # floor, incase of decimal, we only count "full" measure runs
+                normalized_breakdown.append("(" + str(b) + ")")
+            else:
+                # measure is 16th note run
+                # we need to treat this as a break
+                b = str(math.floor(int(b) * 1.25))  # floor, incase of decimal, we only count "full" measure runs
+                normalized_breakdown.append("(" + b + ")")
 
     prev_measure = None
     this_measure = None
@@ -119,6 +146,9 @@ def normalize(breakdown, bpm):
             normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
         elif normalize_24ths:
             normalized_bpm = str(round(float(bpm) * 1.5))
+            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
+        elif normalize_20ths:
+            normalized_bpm = str(round(float(bpm) * 1.25))
             normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
 
     return " ".join(list(filter(None, normalized_breakdown))).strip()
