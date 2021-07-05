@@ -1,6 +1,28 @@
 import math
 
-def normalize(breakdown):
+def get_best_bpm_to_use(minbpm, maxbpm, mediannps, displaybpm):
+
+    if minbpm == maxbpm:
+        # Use the float bpm listed in the file
+        # We'll only enter here if there's one BPM
+        return minbpm
+
+    if displaybpm and displaybpm != "N/A":
+        # Try to use the display BPM
+        # (I have no idea if display BPM can contain non-integer values,
+        # so this is a failsafe)
+        try:
+            return float(displaybpm)
+        except ValueError:
+            print("can't convert this string")
+
+    if mediannps:
+        # If all else, try to derive the BPM from the median NPS
+        return (float(mediannps) * 60) / 4
+
+    return None
+
+def normalize(breakdown, bpm):
     breakdown_arr = breakdown.split(" ")
 
     # first check to see if there are any 24th/32nd note runs
@@ -17,7 +39,7 @@ def normalize(breakdown):
         if b.find("=") != -1:
             can_normalize = True
             normalize_32nds = True
-            # TODO: check for at least 4 measures?
+            # TODO: check for at least 4 measures? or percentage of song
 
 
     if not can_normalize:
@@ -36,11 +58,14 @@ def normalize(breakdown):
                 normalized_breakdown.append(b)
             elif b.find("(") != -1:
                 # measure is a break
-                normalized_breakdown.append(b)
+                b = b.replace("(", "").replace(")", "")
+                b = str(math.floor(int(b) * 2))  # floor, incase of decimal, we only count "full" measure runs
+                normalized_breakdown.append("(" + str(b) + ")")
             else:
                 # measure is 16th note or 24th note run
                 # we need to treat this as a break
                 b = b.replace("\\", "")
+                b = str(math.floor(int(b) * 2))  # floor, incase of decimal, we only count "full" measure runs
                 normalized_breakdown.append("(" + b + ")")
     elif normalize_24ths:
         # normalize to 24ths
@@ -52,10 +77,13 @@ def normalize(breakdown):
                 normalized_breakdown.append(b)
             elif b.find("(") != -1:
                 # measure is a break
-                normalized_breakdown.append(b)
+                b = b.replace("(", "").replace(")", "")
+                b = str(math.floor(int(b) * 1.5))  # floor, incase of decimal, we only count "full" measure runs
+                normalized_breakdown.append("(" + str(b) + ")")
             else:
                 # measure is 16th note run
                 # we need to treat this as a break
+                b = str(math.floor(int(b) * 1.5))  # floor, incase of decimal, we only count "full" measure runs
                 normalized_breakdown.append("(" + b + ")")
 
     prev_measure = None
@@ -84,5 +112,13 @@ def normalize(breakdown):
             normalized_breakdown[i] = "(" + str(int(prev_val + this_val + 1)) + ")"
 
         prev_measure = this_measure
+
+    if bpm:
+        if normalize_32nds:
+            normalized_bpm = str(round(float(bpm) * 2))
+            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
+        elif normalize_24ths:
+            normalized_bpm = str(round(float(bpm) * 1.5))
+            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
 
     return " ".join(list(filter(None, normalized_breakdown))).strip()

@@ -1,4 +1,5 @@
 from common import DBManager as dbm
+from common import Normalize as normalizer
 import sys
 
 DATABASE_FILE = "./tests/db.json"
@@ -272,6 +273,17 @@ def run_tests():
         passed += 1
     else:
         fail_val("Hardware Store's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        failed += 1
+
+    correct_normalized_breakdown = "6 118 (16) 68 (2) 14 *@253BPM*"
+    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"], result["display_bpm"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use)
+
+    if normalized_breakdown == correct_normalized_breakdown:
+        good("Hardware Store's normalized breakdown is correct.")
+        passed += 1
+    else:
+        fail_val("Hardware Store's normalized breakdown is incorrect.", correct_normalized_breakdown, normalized_breakdown)
         failed += 1
 
     if failed > 0:
