@@ -371,7 +371,7 @@ def create_embed(data, ctx):
 
     normalize = udbm.get_normalize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR)
     if normalize:
-        bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["displaybpm"])
+        bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["display_bpm"])
         normalized_breakdown = normalizer.normalize(data["breakdown"], bpm_to_use)
         if normalized_breakdown != data["breakdown"]:
             body = "*This is in beta and may be inaccurate. Songs with variable BPM currently not supported.*\n"
