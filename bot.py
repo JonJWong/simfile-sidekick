@@ -18,7 +18,7 @@ from common import UserDBManager as udbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
-from scan import parse_file, scan_folder
+from scan import parse_file, scan_folder, RunDensity
 from tinydb import Query, TinyDB, where
 from zipfile import BadZipFile, ZipFile
 import asyncio
@@ -370,16 +370,17 @@ def create_embed(data, ctx):
             embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
 
     normalize = udbm.get_normalize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR)
-    if normalize:
-        bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["display_bpm"])
-        normalized_breakdown = normalizer.normalize(data["breakdown"], bpm_to_use)
-        if normalized_breakdown != data["breakdown"]:
-            body = "*This is in beta and may be inaccurate. Songs with variable BPM currently not supported.*\n"
-            body += normalized_breakdown
-            embed.add_field(name="__*Normalized Breakdown*__", value=body, inline=False)
 
-    
-    
+    if normalize:
+        should_normalize = normalizer.if_should_normalize(data["breakdown"], data["total_stream"])
+        if should_normalize != RunDensity.Run_16:
+            bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["display_bpm"])
+            normalized_breakdown = normalizer.normalize(data["breakdown"], bpm_to_use, should_normalize)
+            if normalized_breakdown != data["breakdown"]:
+                body = "*This is in beta and may be inaccurate. Songs with variable BPM currently not supported.*\n"
+                body += normalized_breakdown
+                embed.add_field(name="__*Normalized Breakdown*__", value=body, inline=False)
+
     # - - - FOOTER - - -
     footer_text = "Made with love by Artimst for the Dickson City Heroes and Stamina Nation. "
     footer_text += "Icon by Johahn."

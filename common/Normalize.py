@@ -1,154 +1,163 @@
+# -*- coding: utf-8 -*-
+
+"""Helper function that is responsible for normalizing breakdowns if the song is mostly 32nds,
+24ths, 20ths, etc.
+"""
+
+from scan import RunDensity, remove_breakdown_characters
 import math
 
-def get_best_bpm_to_use(minbpm, maxbpm, mediannps, displaybpm):
+# Percent of the song that meets normalization criteria. If, for example, the song has over 50%
+# 20th notes, it will normalize the breakdown to 20th notes.
+NORMALIZE_THRESHOLD = 0.50
 
-    if minbpm == maxbpm:
-        # Use the float bpm listed in the file
-        # We'll only enter here if there's one BPM
-        return minbpm
 
-    if displaybpm and displaybpm != "N/A":
-        # Try to use the display BPM
-        # (I have no idea if display BPM can contain non-integer values,
-        # so this is a failsafe)
-        try:
-            return float(displaybpm)
-        except ValueError:
-            pass
+def if_should_normalize(breakdown: str, total_stream: int):
+    """
+    Takes the breakdown and total_stream. Returns the enum that meets NORMALIZE_THRESHOLD. The most
+    dense normalizations are prioritized (e.g. it will first check if the chart can be normalized
+    to 32nds, then 24ths, then 20ths, etc.)
 
-    if mediannps:
-        # If all else, try to derive the BPM from the median NPS
-        return (float(mediannps) * 60) / 4
+    :param breakdown: chart's detailed breakdown
+    :param total_stream: measures of stream that exist in chart
+    :return: enum RunDensity (see scan.py)
+    """
 
-    return None
+    # An array that will keep track of the total number of runs at the specific density (16ths,
+    # 20ths, 24ths, 32nds, etc.)
+    measures_of_run = [0] * len(RunDensity)
 
-def normalize(breakdown, bpm):
-    # TODO - this normalization logic will eventually need the density array.
-    # songs like "Groovy Fire, Rushing Wind" has the same density but different
-    # BPMs (the song shifts between 16th notes @ 234bpm and 24th notes @ 156 bpm)
-    # and this code does not currently handle BPM changes like that
-
-    breakdown_arr = breakdown.split(" ")
-
-    # first check to see if there are any 24th/32nd note runs
-    # if there are, we continue logic, if not, break
-
-    can_normalize = False
-    normalize_20ths = False
-    normalize_24ths = False
-    normalize_32nds = False
-
-    for b in breakdown_arr:
-        if b.find("~") != -1:
-            can_normalize = True
-            normalize_20ths = True
-        if b.find("\\") != -1:
-            can_normalize = True
-            normalize_24ths = True
+    for b in breakdown.split(" "):
         if b.find("=") != -1:
-            can_normalize = True
-            normalize_32nds = True
-            # TODO: check for at least 4 measures? or percentage of song
+            measures_of_run[RunDensity.Run_32.value] += int(b.replace("=", ""))
+        elif b.find("\\") != -1:
+            measures_of_run[RunDensity.Run_24.value] += int(b.replace("\\", ""))
+        elif b.find("~") != -1:
+            measures_of_run[RunDensity.Run_20.value] += int(b.replace("~", ""))
+        elif b.find("(") != -1:
+            measures_of_run[RunDensity.Break.value] += int(b.replace("(", "").replace(")", ""))
+        else:
+            measures_of_run[RunDensity.Run_16.value] += int(b)
+
+    # Start with the most dense. If we don't meet the threshold, see if we can normalize to the
+    # next lowest density.
+    for rd in reversed(RunDensity):
+        if rd == RunDensity.Run_16 or rd == RunDensity.Break:
+            # The density is already created using 16th notes. Checking breaks as a failsafe.
+            continue
+        if (measures_of_run[rd.value] / total_stream) > NORMALIZE_THRESHOLD:
+            return rd
+
+    # The chart doesn't have enough stream to meet our NORMALIZE_THRESHOLD, return default enum of
+    # Run_16
+    return RunDensity.Run_16
 
 
-    if not can_normalize:
-        # return the original breakdown
-        return breakdown
+def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
+    """
+    Normalizes a breakdown for charts that are mostly 32nd, 24th, or 20th note runs.
+
+    :param breakdown: chart's detailed breakdown
+    :param bpm: BPM of the chart
+    :param normalize_to: enum RunDensity (selected density to normalize to)
+    :return: normalized breakdown of chart
+    """
+
+    # TODO
+    # We will eventually have to make use of the density array in this function. Songs like "Groovy
+    # Fire, Rushing Wind" switch between 234bpm 16th notes and 156bpm 24th notes - which is the
+    # same density. This function currently doesn't account for BPM changes.
+
+    breakdown_icon = ""
+    multiplier = 1
+
+    if normalize_to == RunDensity.Run_32:
+        breakdown_icon = "="
+        multiplier = 2
+    elif normalize_to == RunDensity.Run_24:
+        breakdown_icon = "\\"
+        multiplier = 1.5
+    elif normalize_to == RunDensity.Run_20:
+        breakdown_icon = "~"
+        multiplier = 1.25
+    else:
+        return None
 
     normalized_breakdown = []
 
-    if normalize_32nds:
-        # normalize to 32nds
-        for b in breakdown_arr:
-            if b.find("=") != -1:
-                # this measure is a 32nd run
-                b = b.replace("=", "")
-                b = str(math.floor(int(b) * 2))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append(b)
-            elif b.find("(") != -1:
-                # measure is a break
-                b = b.replace("(", "").replace(")", "")
-                b = str(math.floor(int(b) * 2))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + str(b) + ")")
-            else:
-                # measure is 16th note or 24th note run
-                # we need to treat this as a break
-                b = b.replace("\\", "")
-                b = str(math.floor(int(b) * 2))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + b + ")")
-    elif normalize_24ths:
-        # normalize to 24ths
-        for b in breakdown_arr:
-            if b.find("\\") != -1:
-                #this measure is a 24th run
-                b = b.replace("\\", "")
-                b = str(math.floor(int(b) * 1.5)) # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append(b)
-            elif b.find("(") != -1:
-                # measure is a break
-                b = b.replace("(", "").replace(")", "")
-                b = str(math.floor(int(b) * 1.5))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + str(b) + ")")
-            else:
-                # measure is 16th note run
-                # we need to treat this as a break
-                b = str(math.floor(int(b) * 1.5))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + b + ")")
-    elif normalize_20ths:
-        # normalize to 20ths
-        for b in breakdown_arr:
-            if b.find("~") != -1:
-                #this measure is a 20th run
-                b = b.replace("~", "")
-                b = str(math.floor(int(b) * 1.25)) # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append(b)
-            elif b.find("(") != -1:
-                # measure is a break
-                b = b.replace("(", "").replace(")", "")
-                b = str(math.floor(int(b) * 1.25))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + str(b) + ")")
-            else:
-                # measure is 16th note run
-                # we need to treat this as a break
-                b = str(math.floor(int(b) * 1.25))  # floor, incase of decimal, we only count "full" measure runs
-                normalized_breakdown.append("(" + b + ")")
+    for b in breakdown.split(" "):
 
-    prev_measure = None
-    this_measure = None
-    for i, b in enumerate(normalized_breakdown):
+        # TODO
+        # We will ultimately want to keep breakdown icons that are higher than the selected
+        # normalization, e.g. in the instance we're supposed to normalize a song to 20ths but
+        # the chart has minor 32nd note bursts. This is complicated, as we would have to define
+        # new symbols. When a song is normalized to 20ths, 32nds would appear as some fraction of
+        # a 25th note (32 / 1.25) if my understanding is correct.
+        #
+        # For now, we'll ignore those cases and simply add potential denser runs to the selected
+        # normalization.
 
-        if b.find("(") != -1:
-            # curr measure is break
-            this_measure = "break"
+        if b.find(breakdown_icon) != -1:
+            b = remove_breakdown_characters(b)
+            # Use floor since we only want to multiply full measure runs
+            b = str(math.floor(int(b) * multiplier))
+            normalized_breakdown.append(b)
         else:
-            # curr measure is run
-            this_measure = "run"
+            # Treat everything slower* (see above) than selected density as break
+            b = remove_breakdown_characters(b)
+            # Use floor since we only want to multiply full measure runs
+            b = str(math.floor(int(b) * multiplier))
+            normalized_breakdown.append("(" + b + ")")
 
-        if i == 0:
-            prev_measure = this_measure
-            continue # don't do anything to first element
+    # Runs through the normalized_breakdown and combines break segments
+    for i, b in enumerate(normalized_breakdown):
+        if i <= 0:
+            # Don't do anything for the first element
+            continue
 
-        if prev_measure == "break" and this_measure == "break":
-            prev_val = normalized_breakdown[i-1].replace("(", "").replace(")", "")
-            prev_val = int(prev_val)
+        if normalized_breakdown[i-1].find("(") != -1 and b.find("(") != -1:
+            # Previous measure and this measure are both breaks, so combine them
+            prev_break = int(remove_breakdown_characters(normalized_breakdown[i-1]))
+            this_break = int(remove_breakdown_characters(b))
+            new_break = str(prev_break + this_break + 1)
 
-            this_val = normalized_breakdown[i].replace("(", "").replace(")", "")
-            this_val = int(this_val)
-
+            # Remove previous element (will be cleaned up with strip()) and add new break
             normalized_breakdown[i-1] = ""
-            normalized_breakdown[i] = "(" + str(int(prev_val + this_val + 1)) + ")"
+            normalized_breakdown[i] = "(" + new_break + ")"
 
-        prev_measure = this_measure
-
+    # Appends the normalized BPM to the end of our breakdown array, if we have it
     if bpm:
-        if normalize_32nds:
-            normalized_bpm = str(round(float(bpm) * 2))
-            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
-        elif normalize_24ths:
-            normalized_bpm = str(round(float(bpm) * 1.5))
-            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
-        elif normalize_20ths:
-            normalized_bpm = str(round(float(bpm) * 1.25))
-            normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
+        normalized_bpm = str(round(float(bpm) * multiplier))
+        normalized_breakdown.append("*@" + normalized_bpm + "BPM*")
 
     return " ".join(list(filter(None, normalized_breakdown))).strip()
+
+
+def get_best_bpm_to_use(min_bpm: float, max_bpm: float, median_nps: float, display_bpm: str):
+    """
+    Of the 4 provided parameters, takes the best guess at what the song's actual BPM is that's used
+    throughout the majority of the song.
+    :param min_bpm: minimum BPM of the chart
+    :param max_bpm: maximum BPM of the chart
+    :param median_nps: the charts median notes per second
+    :param display_bpm: the display BPM of the chart
+    :return: the best candidate of which BPM to use for normalization, or None
+    """
+
+    # Best scenario: the BPM doesn't change
+    if min_bpm == max_bpm:
+        return min_bpm
+
+    # The BPM changes in the song. We'll assume it's minor BPM changes for sync purposes.
+    # Try and use the display BPM.
+    if display_bpm and display_bpm != "N/A":
+        try:
+            return float(display_bpm)
+        except ValueError:
+            pass
+
+    # Try to derive BPM from the median NPS.
+    if median_nps and median_nps != "N/A":
+        return (float(median_nps) * 60) / 4
+
+    return None

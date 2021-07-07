@@ -1,5 +1,6 @@
 from common import DBManager as dbm
 from common import Normalize as normalizer
+from scan import RunDensity
 import sys
 
 DATABASE_FILE = "./tests/db.json"
@@ -224,6 +225,16 @@ def run_tests():
         fail_val("Ganbatte (18)'s simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
         failed += 1
 
+    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
+
+    if should_normalize == RunDensity.Run_16:
+        good("Ganbatte (18) is correctly NOT normalizing and keeping 16th note breakdown.")
+        passed += 1
+    else:
+        fail_val("Ganbatte (18) is being normalized.", RunDensity.Run_20,
+                 should_normalize)
+        failed += 1
+
     # Generic breakdown test for Pendulum Essential Mix (Side A)
 
     data = dbm.search("Pendulum Essential Mix", DATABASE_FILE)
@@ -308,7 +319,8 @@ def run_tests():
 
     correct_normalized_breakdown = "6 118 (16) 68 (2) 14 *@253BPM*"
     bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"], result["display_bpm"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use)
+    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use, should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Hardware Store's normalized breakdown is correct.")
@@ -352,7 +364,8 @@ def run_tests():
     correct_normalized_breakdown = "1 8 18 48 (22) 1 (1) 8 18 50 (17) 1 (2) 10 (2) 37 (2) 5 (2) 60 (10) 228 78 (3) 56 48 (1) 15 (5) 48 7 (2) 8 (1) 13 (7) 80 (40) 80 (60) 40 *@218BPM*"
     bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"],
                                                 result["display_bpm"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use)
+    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use, should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Noise Discipline's normalized breakdown is correct.")
@@ -360,6 +373,14 @@ def run_tests():
     else:
         fail_val("Noise Discipline's normalized breakdown is incorrect.", correct_normalized_breakdown,
                  normalized_breakdown)
+        failed += 1
+
+    if should_normalize == RunDensity.Run_20:
+        good("Noise Discipline is correctly normalizing to 20ths.")
+        passed += 1
+    else:
+        fail_val("Noise Discipline is not being normalized.", RunDensity.Run_20,
+                 should_normalize)
         failed += 1
 
     if failed > 0:
