@@ -1,6 +1,6 @@
 from common import DBManager as dbm
 from common import Normalize as normalizer
-from scan import RunDensity
+from scan import *
 import sys
 
 DATABASE_FILE = "./tests/db.json"

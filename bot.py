@@ -150,12 +150,42 @@ def is_prefix_for_server(id, prefix):
         else:
             return False
 
+# Allows SS to see members in other servers
+intents = discord.Intents.default()
+intents.members = True
 
 # Loads the bot's prefixes using the get_prefixes function above
-bot = commands.Bot(command_prefix=get_prefixes())
+bot = commands.Bot(command_prefix=get_prefixes(), intents=intents)
 
 bot.remove_command("help")  # Needed in order to replace existing help command with our own
 
+async def fof_check(ctx, pack):
+
+    dch_id = APPROVED_SERVERS[1]
+
+    # The pack is fof only, do the fof check
+    if pack == "fof":
+
+        # Get the DCH guild
+        for guild in ctx.bot.guilds:
+            if guild.id == dch_id:
+                # Get the "Heroes" role
+                role = discord.utils.find(lambda r: r.name == "fof", guild.roles)
+
+                members = await guild.fetch_members(limit=None).flatten()
+
+                # Match the member in current channel to DCH
+                for member in members:
+                    if member.id == ctx.message.author.id:
+                        # We have a match
+                        # We can now look for the member's roles, even in a completely different server
+                        if role in member.roles:
+                            return True
+                        else:
+                            return False
+    else:
+        # Even if chart exists in other SRPG packs, we'll let the user look it up
+        return True
 
 def get_mono_desc(mono):
     """Helper function to return pre-formatted text used in mono pattern analysis."""
@@ -416,8 +446,17 @@ async def search_song(ctx, *, song_name: str):
             data = results[0]
             
             embed, file = create_embed(data, ctx)
-            
-            await ctx.send(file=file, embed=embed)
+
+            if data["pack"] == "fof":
+                can_view = await fof_check(ctx, data["pack"])
+                if can_view:
+                    await ctx.author.send(file=file, embed=embed)
+                    await ctx.send("You are worthy. Check your DMs.")
+                else:
+                    await ctx.send("Trying to lookup a fof exclusive? Get good scrub.")
+            else:
+                await ctx.send(file=file, embed=embed)
+
         elif len(results) > 1:
             data = results
             
@@ -479,7 +518,16 @@ async def search_song(ctx, *, song_name: str):
                     embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
                 finally:
                     if embed:
-                        await ctx.send(file=file, embed=embed)
+
+                        if data[index]["pack"] == "fof":
+                            can_view = await fof_check(ctx, data[index]["pack"])
+                            if can_view:
+                                await ctx.author.send(file=file, embed=embed)
+                                await ctx.send("You are worthy. Check your DMs.")
+                            else:
+                                await ctx.send("Trying to lookup a fof exclusive? Get good scrub.")
+                        else:
+                            await ctx.send(file=file, embed=embed)
 
 
 @bot.command(name="sv")
@@ -965,7 +1013,12 @@ async def on_message(message):
     if prefix:  # if prefix is not null, this sometimes happens if a user/another bot sends an embedded message
         prefix = prefix[0]  # retrieves the first character
 
-    server_id = message.guild.id  # ID for the Discord server the user is in
+
+    server_id = None
+
+    # Needed so the bot doesn't spam error messages when DM'ing a user
+    if message.guild:
+        server_id = message.guild.id  # ID for the Discord server the user is in
 
     if is_prefix_for_server(server_id, prefix):
         await bot.process_commands(message)
