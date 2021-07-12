@@ -8,3 +8,4 @@ tests/songs/*/*.png
 Thumbs.db
 server_settings.json
 user_settings.json
+charts.csv

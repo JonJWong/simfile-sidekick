@@ -36,8 +36,8 @@ import string
 import sys
 
 # Flag constants. These are the available command line arguments you can use when running this application.
-SHORT_OPTIONS = "rvd:mlu"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log", "unittest"]
+SHORT_OPTIONS = "rvd:mluc"
+LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log", "unittest", "csv"]
 
 # Regex constants. Used mainly in the pattern recognition section.
 L_REG = "[124]+000"                     # Left arrow (1000)
@@ -56,6 +56,7 @@ LOG_TIMESTAMP = "%Y-%m-%d %I:%M:%S %p"
 UNITTEST_FOLDER = "tests"               # The folder the unit test songs are located
 DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
 LOGFILE_NAME = "scan.log"               # Name of the log file that will be created if enabled
+CSV_FILENAME = "charts.csv"             # Name of the .csv that will be created if enabled
 
 
 class RunDensity(enum.Enum):
@@ -112,6 +113,21 @@ def load_md5s_into_cache(db, cache):
     for chart in charts:
         cache.insert({"md5": chart["md5"]})
     return cache
+
+
+def database_to_csv(db):
+    """Gets every row of the database and saves relevant info to a .csv"""
+    charts = db.all()
+    with open(CSV_FILENAME, 'w') as f:
+        f.write("title,subtitle,artist,pack\n")
+        for chart in charts:
+            f.write(
+                chart["title"] + "," +
+                chart["subtitle"] + "," +
+                chart["artist"] + "," +
+                chart["pack"] + "\n"
+            )
+    return
 
 
 def add_to_database(chartinfo, db, analysis, cache):
@@ -912,6 +928,7 @@ def main(argv):
     media_remove = False
     unittest = False
     log = None
+    csv = False
 
     for arg, val in arguments:
         if arg in ("-r", "--rebuild") and os.path.isfile(DATABASE_NAME):
@@ -927,6 +944,8 @@ def main(argv):
             log = open(LOGFILE_NAME, "a")
         elif arg in ("-u", "--unittest"):
             unittest = True
+        elif arg in ("-c", "--csv"):
+            csv = True
 
     if unittest:
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
@@ -962,6 +981,11 @@ def main(argv):
                 sys.exit(2)
 
             os.chmod(DATABASE_NAME, 0o777)
+
+            if csv:
+                # read database we just created
+                # for each row, print to CSV
+                database_to_csv(db)
             sys.exit(0)
 
 if __name__ == "__main__":
