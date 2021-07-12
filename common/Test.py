@@ -383,5 +383,17 @@ def run_tests():
                  should_normalize)
         failed += 1
 
+    data = dbm.search("Sa MaRichi", DATABASE_FILE)
+    result = data[0]
+
+    if result["total_candles"] == 49:
+        good("Sa MaRichi's candle count is correct.")
+        passed += 1
+    else:
+        fail_val("Sa MaRichi's candle count is incorrect.", 49, result["total_candles"])
+        failed += 1
+
+
+
     if failed > 0:
         sys.exit("Unit tests did not pass.")

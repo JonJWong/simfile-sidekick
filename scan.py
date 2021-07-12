@@ -307,12 +307,16 @@ def get_pattern_analysis(chart, num_notes):
     """
     # - - - CANDLE ANALYSIS - - -
     # Capture patterns that require one foot to move up to down, or vice versa.
-    pattern = D_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
+    pattern = "(?=("  # Adds lookahead for ULDLU patterns
+    pattern += D_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + R_REG + NL_REG + D_REG
+    pattern += "))"
     left_foot_candles = len(re.findall(re.compile(pattern), chart))
 
-    pattern = D_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
+    pattern = "(?=("  # Adds lookahead for ULDLU patterns
+    pattern += D_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
     pattern += U_REG + NL_REG + L_REG + NL_REG + D_REG
+    pattern += "))"
     right_foot_candles = len(re.findall(re.compile(pattern), chart))
 
     # - - - MONO ANALYSIS - - -
