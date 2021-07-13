@@ -78,6 +78,8 @@ List of all command line options:
 
 `-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout.
 
+`-c` is CSV mode, and will create a .csv after parsing all the songs.
+
 When finished, you should have a new db.json file in the same folder as scan.py.
 
 ### bot.py
@@ -148,7 +150,7 @@ Then install python3-dev:
 - [x] Log songs that couldn't be parsed by scan.py to a logfile
 - [ ] Flag in scan.py to enter in a database name
 - [ ] Create a tool to insert/update/delete from the TinyDB database
-- [ ] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
+- [x] Search by different or multiple parameters (e.g. artist, stepartist, ranking, etc.)
 - [x] Parse manually uploaded .sm files from discord
 - [x] Preferences for users (hide title & artist and other original Breakdown Buddy features)
 - [x] Unit testing and built-in debug options
@@ -156,4 +158,5 @@ Then install python3-dev:
 - [ ] Investigate if switching to msdparser is worthwhile
 - [ ] Review pattern analysis and mono calculation
 - [x] Add option/logic to treat 16ths as break if runs are 24ths/32nds
+- [x] Implement 20th note support
 - [ ] Code cleanup. DBManager files should handle all the json parsing. I currently have it scrambled through the code. I'm sorry.

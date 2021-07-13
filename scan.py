@@ -28,6 +28,7 @@ import getopt
 import glob
 import hashlib
 import json
+import math
 import os
 import plotly.graph_objects as go
 import re
@@ -407,11 +408,7 @@ def get_pattern_analysis(chart, num_notes):
 
     total_candles = left_foot_candles + right_foot_candles
     analysis.total_candles = total_candles
-    # Even though we use 3 notes to detect a candle, we only multiply by 2
-    # since we only want to calculate the actual candle step, not the arrow in-between.
-    # This means a song can be, at max, 66% candles
-    # TODO: Revisit this, as most would assume a chart of all candles would be 100%.
-    analysis.candles_percent = ((total_candles * 2)/num_notes) * 100
+    analysis.candles_percent = (total_candles / math.floor((num_notes - 1) / 2)) * 100
 
     # Multiplied by 8 as there are 8 notes for every instance of mono
     analysis.mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
