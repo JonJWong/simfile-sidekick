@@ -195,11 +195,11 @@ def add_to_database(fileinfo, db, cache):
         # it. This usually happens with ECS or SRPG songs taken from other packs.
         if cache:
             # result is currently set to MemoryStorage, so grab the db entry
-            result = db.search(where("md5") == fileinfo.md5)
+            result = db.search(where("md5") == fileinfo.chartinfo.md5)
         data = json.loads(json.dumps(result[0]))
         pack = data["pack"] + ", " + fileinfo.pack
         Chart = Query()
-        db.update({"pack": pack}, Chart.md5 == fileinfo.md5)
+        db.update({"pack": pack}, Chart.md5 == fileinfo.chartinfo.md5)
 
 
 def adjust_total_break(total_break, measures):
