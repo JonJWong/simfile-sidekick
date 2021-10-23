@@ -126,8 +126,6 @@ def create_breakdown_image(breakdown: str, header: str) -> Image:
             breakdown_arr.append(raw_breakdown.strip())
             break
         else:
-            print(raw_breakdown)
-            print(len(raw_breakdown))
             for i in range(MAX_CHARS_PER_LINE, 0, -1):
                 if raw_breakdown[i] == " ":
                     breakdown_arr.append(raw_breakdown[:i].strip())
