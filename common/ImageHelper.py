@@ -122,10 +122,12 @@ def create_breakdown_image(breakdown: str, header: str) -> Image:
     # fits within the image. We'll need to intelligently split the lines across whitespace.
     breakdown_arr = []
     while len(raw_breakdown) > 0:
-        if len(raw_breakdown) < MAX_CHARS_PER_LINE:
+        if len(raw_breakdown) <= MAX_CHARS_PER_LINE:
             breakdown_arr.append(raw_breakdown.strip())
             break
         else:
+            print(raw_breakdown)
+            print(len(raw_breakdown))
             for i in range(MAX_CHARS_PER_LINE, 0, -1):
                 if raw_breakdown[i] == " ":
                     breakdown_arr.append(raw_breakdown[:i].strip())
