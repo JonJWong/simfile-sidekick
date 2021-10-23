@@ -13,12 +13,11 @@ Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
 
 from common import DBManager as dbm
-from common import Normalize as normalizer
 from common import UserDBManager as udbm
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
-from scan import parse_file, scan_folder, RunDensity
+from scan import parse_file, scan_folder
 from tinydb import Query, TinyDB, where
 from zipfile import BadZipFile, ZipFile
 import asyncio
@@ -52,14 +51,13 @@ server_db = TinyDB(SERVER_SETTINGS)
 # The database that contains user configurations
 user_db = TinyDB(USER_SETTINGS)
 
-DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
-
 # The default prefix for the bot
 DEFAULT_PREFIX = "-"
 
 # Default behavior to automatically delete user's uploaded .sm files
 DEFAULT_AUTODELETE_BEHAVIOR = True
 DEFAULT_NORMALIZE_BEHAVIOR = False
+DEFAULT_COLORIZE_BEHAVIOR = False
 
 # The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
 # set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
@@ -372,51 +370,55 @@ def create_embed(data, ctx):
     
     
     # - - - BREAKDOWNS - - -
-    if data["breakdown"]:
-        # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
-        # larger than this restriction.
-        # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
-        if len(data["breakdown"]) > 1024:
-            embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
-        else:
-            embed.add_field(name="__Detailed Breakdown__", value=data["breakdown"], inline=False)
-        if data["partial_breakdown"] != data["simple_breakdown"]:
-            if len(data["partial_breakdown"]) > 1024:
-                embed.add_field(name="__Partially Simplified__", value="***Too large to display***", inline=False)
+
+    colorize = udbm.get_colorize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_COLORIZE_BEHAVIOR)
+
+    if not colorize:
+        if data["breakdown"]:
+            # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
+            # larger than this restriction.
+            # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
+            if len(data["breakdown"]) > 1024:
+                embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
             else:
-                embed.add_field(name="__Partially Simplified__", value=data["partial_breakdown"], inline=False)
-        if len(data["simple_breakdown"]) > 1024:
-            simple_breakdown = ""
-            simple_breakdown_array = data["simple_breakdown"].split(" ")
-            num_breaks = 1
-            for i in simple_breakdown_array:
-                if (len(simple_breakdown) + len(i)) > 1024:
-                    embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-                    num_breaks += 1
-                    simple_breakdown = ""
-                simple_breakdown += i + " "
-            embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-        else:
-            embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
+                embed.add_field(name="__Detailed Breakdown__", value=data["breakdown"], inline=False)
+            if data["partial_breakdown"] != data["simple_breakdown"]:
+                if len(data["partial_breakdown"]) > 1024:
+                    embed.add_field(name="__Partially Simplified__", value="***Too large to display***", inline=False)
+                else:
+                    embed.add_field(name="__Partially Simplified__", value=data["partial_breakdown"], inline=False)
+            if len(data["simple_breakdown"]) > 1024:
+                simple_breakdown = ""
+                simple_breakdown_array = data["simple_breakdown"].split(" ")
+                num_breaks = 1
+                for i in simple_breakdown_array:
+                    if (len(simple_breakdown) + len(i)) > 1024:
+                        embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+                        num_breaks += 1
+                        simple_breakdown = ""
+                    simple_breakdown += i + " "
+                embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+            else:
+                embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
+        if data["normalized_breakdown"]:
+            text = "*This is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
+            embed.add_field(name="__Normalized Breakdown__", value=text + data["normalized_breakdown"], inline=False)
 
-    normalize = udbm.get_normalize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR)
 
-    if normalize:
-        should_normalize = normalizer.if_should_normalize(data["breakdown"], data["total_stream"])
-        if should_normalize != RunDensity.Run_16:
-            bpm_to_use = normalizer.get_best_bpm_to_use(data["min_bpm"], data["max_bpm"], data["median_nps"], data["display_bpm"])
-            normalized_breakdown = normalizer.normalize(data["breakdown"], bpm_to_use, should_normalize)
-            if normalized_breakdown != data["breakdown"]:
-                body = "*This is in beta and may be inaccurate. Songs with variable BPM currently not supported.*\n"
-                body += normalized_breakdown
-                embed.add_field(name="__*Normalized Breakdown*__", value=body, inline=False)
 
     # - - - FOOTER - - -
     footer_text = "Made with love by Artimst for the Dickson City Heroes and Stamina Nation. "
     footer_text += "Icon by Johahn."
     embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
-    
-    file = discord.File(data["graph_location"], filename="density.png")
+
+    if not colorize:
+        file = discord.File(data["graph_location"], filename="density.png")
+    else:
+        text = "*Normalized breakdown is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
+        embed.add_field(name="__Breakdowns__", value=text, inline=False)
+        file = discord.File(data["joined_graph_and_color_bd"], filename="density.png")
+
+
     embed.set_image(url="attachment://density.png")
     
     return embed, file
@@ -625,18 +627,17 @@ async def settings(ctx, *input: str):
 
         embed.add_field(name=title, value=body, inline=False)
 
-        title = "**Normalize** is "
+        title = "**Colorize** is "
 
-        if udbm.get_normalize_with_default(user_id, USER_SETTINGS, DEFAULT_NORMALIZE_BEHAVIOR):
+        if udbm.get_colorize_with_default(user_id, USER_SETTINGS, DEFAULT_COLORIZE_BEHAVIOR):
             title += "`enabled`"
         else:
             title += "`disabled`"
 
-        body = "This will display an additional field when you search or parse a song, called "
-        body += "\"Normalized Breakdown\". For charts that have 24th or 32nd note runs, it will "
-        body += "treat 16th note runs as breaks, and runs will be measured to their 16th note "
-        body += "equivalent. "
-        body += "Use `-settings normalize Y` to set, or `-settings normalize N` to unset."
+        body = "This will remove copy/paste text breakdown fields, and instead replace them "
+        body += "with a new color coded notation. Green = 16th notes, Cyan = 20th notes, "
+        body += "Purple = 24th notes, and Yellow = 32nd notes. Use `-settings colorize Y` to set, "
+        body += "or `-settings colorize N` to unset."
 
         embed.add_field(name=title, value=body, inline=False)
 
@@ -669,9 +670,9 @@ async def settings(ctx, *input: str):
             await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
         return
 
-    if input[0] == "normalize":
+    if input[0] == "colorize":
         if len(input) <= 1:
-            result = udbm.get_normalize(user_id, USER_SETTINGS)
+            result = udbm.get_colorize(user_id, USER_SETTINGS)
             if result is None:
                 message = "{}, it looks like you don't have this preference set. ".format(ctx.author.mention)
                 message += "The default behavior is: "
@@ -686,11 +687,11 @@ async def settings(ctx, *input: str):
                 await ctx.send("{}. I'm hiding normalized outputs for your searches.".format(ctx.author.mention))
             return
         if input[1].upper() == "Y" or input[1].upper() == "T":
-            udbm.set_normalize(user_id, True, USER_SETTINGS)
-            await ctx.send("{}, I will now show normalized outputs for your searches.".format(ctx.author.mention))
+            udbm.set_colorize(user_id, True, USER_SETTINGS)
+            await ctx.send("{}, I will now show colorized outputs for your searches.".format(ctx.author.mention))
         elif input[1].upper() == "N" or input[1].upper() == "F":
-            udbm.set_normalize(user_id, False, USER_SETTINGS)
-            await ctx.send("{}, I will no longer show normalized outputs for your searches.".format(ctx.author.mention))
+            udbm.set_colorize(user_id, False, USER_SETTINGS)
+            await ctx.send("{}, I will no longer show colorized outputs for your searches.".format(ctx.author.mention))
         else:
             await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
         return
@@ -778,7 +779,8 @@ async def parse(ctx):
         await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
-    parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
+    # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
+    parse_file(db, usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", hide_artist_info, None)
 
     # Get results from temporary database
     results = [result for result in db]
@@ -789,6 +791,11 @@ async def parse(ctx):
         await ctx.send(file=file, embed=embed)
         # Removes density graph image for this difficulty
         os.remove(result["graph_location"])
+        os.remove(result["color_breakdown"])
+        os.remove(result["color_partial_breakdown"])
+        os.remove(result["color_simple_breakdown"])
+        os.remove(result["color_normalized_breakdown"])
+        os.remove(result["joined_graph_and_color_bd"])
 
     # Deletes the previous "currently processing" message
     await process_msg.delete()

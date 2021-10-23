@@ -1,6 +1,6 @@
+from common.enums.RunDensity import RunDensity
 from common import DBManager as dbm
 from common import Normalize as normalizer
-from scan import *
 import sys
 
 DATABASE_FILE = "./tests/db.json"
@@ -32,7 +32,7 @@ def run_tests():
 
     f = open("tests/scan.log")
     log_contents = f.read()
-    result = log_contents.find("scan.py finished at: ")
+    result = log_contents.find("Scanning complete.")
 
     if result != -1:
         good("scan.py parsed all songs.")
@@ -400,7 +400,8 @@ def run_tests():
         fail_val("Sa MaRichi's candle percent is incorrect.", 55.68181818181818, result["candles_percent"])
         failed += 1
 
-
-
     if failed > 0:
         sys.exit("Unit tests did not pass.")
+    else:
+        print("Unit tests passed!")
+        sys.exit(0)

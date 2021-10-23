@@ -4,7 +4,8 @@
 24ths, 20ths, etc.
 """
 
-from scan import RunDensity, remove_breakdown_characters
+from common.BreakdownHelper import remove_all_breakdown_chars
+from common.enums.RunDensity import RunDensity
 import math
 
 # Percent of the song that meets normalization criteria. If, for example, the song has over 50%
@@ -98,13 +99,13 @@ def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
         # normalization.
 
         if b.find(breakdown_icon) != -1:
-            b = remove_breakdown_characters(b)
+            b = remove_all_breakdown_chars(b)
             # Use floor since we only want to multiply full measure runs
             b = str(math.floor(int(b) * multiplier))
             normalized_breakdown.append(b)
         else:
             # Treat everything slower* (see above) than selected density as break
-            b = remove_breakdown_characters(b)
+            b = remove_all_breakdown_chars(b)
             # Use floor since we only want to multiply full measure runs
             b = str(math.floor(int(b) * multiplier))
             normalized_breakdown.append("(" + b + ")")
@@ -117,8 +118,8 @@ def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
 
         if normalized_breakdown[i-1].find("(") != -1 and b.find("(") != -1:
             # Previous measure and this measure are both breaks, so combine them
-            prev_break = int(remove_breakdown_characters(normalized_breakdown[i-1]))
-            this_break = int(remove_breakdown_characters(b))
+            prev_break = int(remove_all_breakdown_chars(normalized_breakdown[i-1]))
+            this_break = int(remove_all_breakdown_chars(b))
             new_break = str(prev_break + this_break + 1)
 
             # Remove previous element (will be cleaned up with strip()) and add new break

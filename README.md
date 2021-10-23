@@ -70,11 +70,15 @@ List of all command line options:
 
 `-d` is directory, and a mandatory option. It is the directory where all your song packs are located.
 
-`-l` is log. It will generate a log file and output errors to it. At a later date I will add a parameter to this that will filter out different log levels. They are:
+`-l` is log. It will generate a log file and output errors to it. You need to provide a parameter:
 
-- INFO: Generic parsing messages for songs.
-- WARN: Something is wrong in the file but scan.py was able to handle and proceed with processing.
-- ERROR: A file was skipped due to an unhandled exception or error.
+- DEBUG: Debug statements, usually exist in code entering/exiting functions
+- INFO: Confirmation that things are working as expected
+- WARNING: Something is abnormal in the simfile, but was handled
+- ERROR: Software wasn't able to perform a function, or a song unexpectedly skipped
+- CRITICAL: Serious error, program may not continue running
+
+Note that if this argument is disabled, log statements warning or higher will be output to standard output.
 
 `-u` will execute the unit tests. It supercedes every other flag, and will generate its own db.json and log file in the tests directory. Results will be sent to stdout.
 

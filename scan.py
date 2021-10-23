@@ -14,31 +14,41 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
 
-from common import ChartInfo as ci
-from common import PatternAnalysis as pa
+from common import BreakdownHelper as bh
+from common import GeneralHelper as gh
+from common import Normalize as normalizer
+from common import ImageHelper as ih
+from common.objects import NotesInfo as ni, ChartInfo as ci, FileInfo as fi, PatternInfo as pi
 from common import Test as test
 from common import VerboseHelper as vh
+from common.enums.RunDensity import RunDensity
 from pathlib import Path
 from tinydb import Query, TinyDB, where
 from tinydb.storages import JSONStorage, MemoryStorage
 from tinydb.middlewares import CachingMiddleware
-import datetime
-import enum
 import getopt
 import glob
-import hashlib
 import json
+import logging
 import math
 import os
-import plotly.graph_objects as go
 import re
 import statistics
 import string
 import sys
 
 # Flag constants. These are the available command line arguments you can use when running this application.
-SHORT_OPTIONS = "rvd:mluc"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log", "unittest", "csv"]
+SHORT_OPTIONS = "rvd:ml:uc"
+LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log=", "unittest", "csv"]
+
+# Positions in args array.
+REBUILD = 0
+VERBOSE = 1
+DIRECTORY = 2
+MEDIA_REMOVE = 3
+LOG = 4
+UNIT_TEST = 5
+CSV = 6
 
 # Regex constants. Used mainly in the pattern recognition section.
 L_REG = "[124]+000"                     # Left arrow (1000)
@@ -51,30 +61,14 @@ NO_NOTES_REG = "[03M][03M][03M][03M]"   # Matches a line containing no notes (00
 ANY_NOTES_REG = "(.*)[124]+(.*)"        # Matches a line containing at least 1 note
 
 # Other constants.
-LOG_TIMESTAMP = "%Y-%m-%d %I:%M:%S %p"
+LOG_TIMESTAMP = "%Y-%m-%d %H:%M:%S"
+LOG_FORMAT = "%(asctime)s %(levelname)s - %(message)s"
 
 # File name and folder constants. Change these if you want to use a different name or folder.
 UNITTEST_FOLDER = "tests"               # The folder the unit test songs are located
 DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
 LOGFILE_NAME = "scan.log"               # Name of the log file that will be created if enabled
 CSV_FILENAME = "charts.csv"             # Name of the .csv that will be created if enabled
-
-
-class RunDensity(enum.Enum):
-    """Represents the different types of stream in a series of measures.
-
-    This enum is used when calculating the measure breakdown of a song.
-    """
-    Break = 0                           # Denotes a break (measure with less than 16 notes)
-    Run_16 = 1                          # Denotes a full measure of 16th notes
-    Run_20 = 2                          # Denotes a full measure of 20th notes
-    Run_24 = 3                          # Denotes a full measure of 24th notes
-    Run_32 = 4                          # Denotes a full measure of 32nd notes
-
-
-def remove_comments(chart):
-    """Removes lines in .sm file that begin with //."""
-    return re.sub("//(.*)", "", chart)
 
 
 def findall_with_regex_dotall(data, regex):
@@ -131,7 +125,7 @@ def database_to_csv(db):
     return
 
 
-def add_to_database(chartinfo, db, analysis, cache):
+def add_to_database(fileinfo, db, cache):
     """Adds the chart information and pattern analysis to the TinyDB database."""
 
     result = None
@@ -139,86 +133,73 @@ def add_to_database(chartinfo, db, analysis, cache):
     # Search if the chart already exists in our database.
     if cache is not None:
         # We are using the MD5 MemoryStorage. Check if the MD5 exists there
-        result = cache.search(where("md5") == chartinfo.md5)
-        cache.insert({"md5": chartinfo.md5})
+        result = cache.search(where("md5") == fileinfo.chartinfo.md5)
+        cache.insert({"md5": fileinfo.chartinfo.md5})
     else:
         # We weren't provided a MD5 MemoryStorage, so we have to query the database.
-        result = db.search(where("md5") == chartinfo.md5)
+        result = db.search(where("md5") == fileinfo.chartinfo.md5)
 
     if not result:
         # If the chart doesn't exist, add a new entry.
         db.insert({
-            "title": chartinfo.title,
-            "subtitle": chartinfo.subtitle,
-            "artist": chartinfo.artist,
-            "pack": chartinfo.pack,
-            "length": chartinfo.length,
-            "notes": chartinfo.notes,
-            "jumps": chartinfo.jumps,
-            "holds": chartinfo.holds,
-            "mines": chartinfo.mines,
-            "hands": chartinfo.hands,
-            "rolls": chartinfo.rolls,
-            "total_stream": chartinfo.total_stream,
-            "total_break": chartinfo.total_break,
-            "stepartist": chartinfo.stepartist,
-            "difficulty": chartinfo.difficulty,
-            "rating": chartinfo.rating,
-            "breakdown": chartinfo.breakdown,
-            "partial_breakdown": chartinfo.partial_breakdown,
-            "simple_breakdown": chartinfo.simple_breakdown,
-            "left_foot_candles": analysis.left_foot_candles,
-            "right_foot_candles": analysis.right_foot_candles,
-            "total_candles": analysis.total_candles,
-            "candles_percent": analysis.candles_percent,
-            "mono_percent": analysis.mono_percent,
-            "lr_boxes": analysis.lr_boxes,
-            "ud_boxes": analysis.ud_boxes,
-            "corner_ld_boxes": analysis.corner_ld_boxes,
-            "corner_lu_boxes": analysis.corner_lu_boxes,
-            "corner_rd_boxes": analysis.corner_rd_boxes,
-            "corner_ru_boxes": analysis.corner_ru_boxes,
-            "anchor_left": analysis.anchor_left,
-            "anchor_down": analysis.anchor_down,
-            "anchor_up": analysis.anchor_up,
-            "anchor_right": analysis.anchor_right,
-            "display_bpm": chartinfo.displaybpm,
-            "max_bpm": chartinfo.max_bpm,
-            "min_bpm": chartinfo.min_bpm,
-            "max_nps": chartinfo.max_nps,
-            "median_nps": chartinfo.median_nps,
-            "graph_location": chartinfo.graph_location,
-            "md5": chartinfo.md5
+            "title": fileinfo.title,
+            "subtitle": fileinfo.subtitle,
+            "artist": fileinfo.artist,
+            "pack": fileinfo.pack,
+            "length": fileinfo.chartinfo.length,
+            "notes": fileinfo.chartinfo.notesinfo.notes,
+            "jumps": fileinfo.chartinfo.notesinfo.jumps,
+            "holds": fileinfo.chartinfo.notesinfo.holds,
+            "mines": fileinfo.chartinfo.notesinfo.mines,
+            "hands": fileinfo.chartinfo.notesinfo.hands,
+            "rolls": fileinfo.chartinfo.notesinfo.rolls,
+            "total_stream": fileinfo.chartinfo.total_stream,
+            "total_break": fileinfo.chartinfo.total_break,
+            "stepartist": fileinfo.chartinfo.stepartist,
+            "difficulty": fileinfo.chartinfo.difficulty,
+            "rating": fileinfo.chartinfo.rating,
+            "breakdown": fileinfo.chartinfo.breakdown,
+            "partial_breakdown": fileinfo.chartinfo.partial_breakdown,
+            "simple_breakdown": fileinfo.chartinfo.simple_breakdown,
+            "color_breakdown": fileinfo.chartinfo.color_breakdown_location,
+            "color_partial_breakdown": fileinfo.chartinfo.color_partial_breakdown_location,
+            "color_simple_breakdown": fileinfo.chartinfo.color_simple_breakdown_location,
+            "color_normalized_breakdown": fileinfo.chartinfo.color_normalized_breakdown_location,
+            "normalized_breakdown": fileinfo.chartinfo.normalized_breakdown,
+            "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
+            "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
+            "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
+            "candles_percent": fileinfo.chartinfo.patterninfo.candles_percent,
+            "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
+            "lr_boxes": fileinfo.chartinfo.patterninfo.lr_boxes,
+            "ud_boxes": fileinfo.chartinfo.patterninfo.ud_boxes,
+            "corner_ld_boxes": fileinfo.chartinfo.patterninfo.corner_ld_boxes,
+            "corner_lu_boxes": fileinfo.chartinfo.patterninfo.corner_lu_boxes,
+            "corner_rd_boxes": fileinfo.chartinfo.patterninfo.corner_rd_boxes,
+            "corner_ru_boxes": fileinfo.chartinfo.patterninfo.corner_ru_boxes,
+            "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
+            "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
+            "anchor_up": fileinfo.chartinfo.patterninfo.anchor_up,
+            "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
+            "display_bpm": fileinfo.displaybpm,
+            "max_bpm": fileinfo.max_bpm,
+            "min_bpm": fileinfo.min_bpm,
+            "max_nps": fileinfo.chartinfo.max_nps,
+            "median_nps": fileinfo.chartinfo.median_nps,
+            "graph_location": fileinfo.chartinfo.graph_location,
+            "joined_graph_and_color_bd": fileinfo.chartinfo.joined_graph_and_color_bd,
+            "md5": fileinfo.chartinfo.md5
         })
     else:
         # If the chart already exists (i.e. we have a matching MD5), we want to update the entry and append the pack to
         # it. This usually happens with ECS or SRPG songs taken from other packs.
         if cache:
             # result is currently set to MemoryStorage, so grab the db entry
-            result = db.search(where("md5") == chartinfo.md5)
+            result = db.search(where("md5") == fileinfo.md5)
         data = json.loads(json.dumps(result[0]))
-        pack = data["pack"] + ", " + chartinfo.pack
+        pack = data["pack"] + ", " + fileinfo.pack
         Chart = Query()
-        db.update({"pack": pack}, Chart.md5 == chartinfo.md5)
-
-
-def generate_md5(data):
-    """Creates an MD5 hash using the songs chart and BPM data as the input, removing all whitespace before hashing."""
-    return hashlib.md5(
-        "".join(data).strip().replace(" ", "").replace("\n", "").replace("\r", "").encode("UTF-8")
-    ).hexdigest()
-
-
-def get_separator(length):
-    """Returns the separator used in the simplified breakdowns."""
-    if length <= 1:
-        return " "
-    elif length > 1 and length <= 4:
-        return "-"
-    elif length > 4 and length <= 32:
-        return "/"
-    else:
-        return "|"
+        db.update({"pack": pack}, Chart.md5 == fileinfo.md5)
 
 
 def adjust_total_break(total_break, measures):
@@ -242,78 +223,11 @@ def adjust_total_break(total_break, measures):
     return total_break
 
 
-def remove_breakdown_characters(data):
-    """Removes the breakdown separators.
-
-    This removes the breakdown separators (i.e. parenthesis, asterisks, equal signs, and backslashes). Used when
-    simplifying the partially simplified breakdown into the simplified breakdown."""
-    data = data.replace("(", "").replace(")", "")
-    data = data.replace("*", "")
-    data = data.replace("=", "").replace("\\", "").replace("~", "")
-    return data
-
-
-def find_max_bpm(bpms):
-    """Finds largest BPM in an array of BPMs."""
-    max_bpm = 0
-    for bpm in bpms:
-        if float(bpm[1]) > float(max_bpm):
-            max_bpm = bpm[1]
-    return max_bpm
-
-
-def find_min_bpm(bpms):
-    """Finds smallest BPM in an array of BPMs."""
-    min_bpm = sys.maxsize
-    for bpm in bpms:
-        if float(bpm[1]) < float(min_bpm):
-            min_bpm = bpm[1]
-    return min_bpm
-
-
-def find_max(data):
-    """Finds largest number in an array of numbers."""
-    max_data = 0
-    for d in data:
-        if d > max_data:
-            max_data = d
-    return max_data
-
-
 def find_current_bpm(measure, bpms):
     """Finds the current BPM in a given measure of a song."""
     for bpm in bpms:
         if float(bpm[0]) <= measure:
             return bpm[1]
-
-
-def create_density_graph(x, y, folder, difficulty, rating):
-    """Creates the density graph.
-
-    Parameters
-    -----------
-    x:
-        An array containing the measure numbers.
-    y:
-        An array containing the density of each measure.
-    folder:
-        The folder to write the density graph to.
-    difficulty:
-        The difficulty of the chart. Used in the file creation of the image.
-    rating:
-        The rating of the chart. Used in the file creation of the image.
-    """
-    fig = go.Figure(go.Scatter(
-        x=x, y=y, fill="tozeroy", fillcolor="yellow", line_color="orange", line=dict(width=0.5)
-    ))
-    fig.update_layout(
-        plot_bgcolor="rgba(52,54,61,255)", paper_bgcolor="rgba(52,54,61,255)",
-        margin=dict(l=10, r=10, b=10, t=10, pad=10),
-        autosize=False, width=1000, height=400
-    )
-    fig.update_yaxes(visible=False)
-    fig.update_xaxes(visible=False)
-    fig.write_image(folder + difficulty + rating + "density.png")
 
 
 def get_pattern_analysis(chart, num_notes):
@@ -401,28 +315,16 @@ def get_pattern_analysis(chart, num_notes):
     pattern = R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG
     anchor_right = len(re.findall(re.compile(pattern), chart))
 
-    # Begin to populate PatternAnalysis object
-    analysis = pa.PatternAnalysis()
-    analysis.left_foot_candles = left_foot_candles
-    analysis.right_foot_candles = right_foot_candles
 
     total_candles = left_foot_candles + right_foot_candles
-    analysis.total_candles = total_candles
-    analysis.candles_percent = (total_candles / math.floor((num_notes - 1) / 2)) * 100
+    candles_percent = (total_candles / math.floor((num_notes - 1) / 2)) * 100
 
     # Multiplied by 8 as there are 8 notes for every instance of mono
-    analysis.mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
+    mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
 
-    analysis.lr_boxes = lr_boxes
-    analysis.ud_boxes = ud_boxes
-    analysis.corner_ld_boxes = corner_ld_boxes
-    analysis.corner_lu_boxes = corner_lu_boxes
-    analysis.corner_rd_boxes = corner_rd_boxes
-    analysis.corner_ru_boxes = corner_ru_boxes
-    analysis.anchor_left = anchor_left
-    analysis.anchor_down = anchor_down
-    analysis.anchor_up = anchor_up
-    analysis.anchor_right = anchor_right
+    analysis = pi.PatternInfo(left_foot_candles, right_foot_candles, total_candles, candles_percent, mono_percent,
+                              lr_boxes, ud_boxes, corner_ld_boxes, corner_lu_boxes, corner_rd_boxes, corner_ru_boxes,
+                              anchor_left, anchor_down, anchor_up, anchor_right)
 
     return analysis
 
@@ -462,26 +364,27 @@ def get_simplified(breakdown, partially):
         elif re.search(r"[()]", b):
             if partially:
                 current_measure = RunDensity.Break
-                b = get_separator(int(remove_breakdown_characters(simplified[i])))
+                b = bh.get_separator(int(bh.remove_all_breakdown_chars(simplified[i])))
             else:
-                if int(remove_breakdown_characters(b)) <= 4:
-                    b = remove_breakdown_characters(b)
+                if int(bh.remove_all_breakdown_chars(b)) <= 4:
+                    b = bh.remove_all_breakdown_chars(b)
                     small_break = True
                 else:
-                    b = get_separator(int(remove_breakdown_characters(simplified[i])))
+                    b = bh.get_separator(int(bh.remove_all_breakdown_chars(simplified[i])))
                     current_measure = RunDensity.Break
         else:
             current_measure = RunDensity.Run_16
 
         if current_measure == previous_measure and i > 0:
-            previous_value = remove_breakdown_characters(simplified[i - 1])
-            b = remove_breakdown_characters(b)
+            previous_value = bh.remove_all_breakdown_chars(simplified[i - 1])
+            b = bh.remove_all_breakdown_chars(b)
             simplified[i - 1] = ""
             if small_break and simplified:
                 if current_measure == RunDensity.Run_32:
                     simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\*"
+                    # Needs to be double escaped, as Discord will parse "\*" as just "*"
+                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\\\*"
                 elif current_measure == RunDensity.Run_20:
                     simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
                 else:
@@ -492,8 +395,9 @@ def get_simplified(breakdown, partially):
                     simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
                     simplified[i] = "=" + str(int(previous_value) + int(b) + 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\*"
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) + 1) + "\\*"
+                    # Needs to be double escaped, as Discord will parse "\*" as just "*"
+                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\\\*"
+                    simplified[i] = "\\" + str(int(previous_value) + int(b) + 1) + "\\\\*"
                 elif current_measure == RunDensity.Run_20:
                     simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
                     simplified[i] = "~" + str(int(previous_value) + int(b) + 1) + "~*"
@@ -508,7 +412,7 @@ def get_simplified(breakdown, partially):
     return " ".join(filter(None, simplified))
 
 
-def get_density_and_breakdown(measures, bpms):
+def get_density_and_breakdown(chartinfo, measures, bpms):
     """Retrieves generic chart info, and generates the detailed breakdown and density.
 
     Generates the number of notes, holds, jumps, etc. in a chart, and generates the detailed breakdown. The density
@@ -660,7 +564,8 @@ def get_density_and_breakdown(measures, bpms):
     elif measures_of_run[RunDensity.Run_16.value] > 0:
         breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
 
-    analysis = get_pattern_analysis(chart_runs_only, notes)
+    chartinfo.patterninfo = get_pattern_analysis(chart_runs_only, notes)
+
     del chart_runs_only
 
     minutes = length // 60
@@ -669,93 +574,128 @@ def get_density_and_breakdown(measures, bpms):
 
     total_break = adjust_total_break(total_break, measures)
 
-    chartinfo = ci.ChartInfo(length, notes, jumps, holds, mines, hands, rolls, total_stream, total_break)
+    notesinfo = ni.NotesInfo(notes, jumps, holds, mines, hands, rolls)
+    chartinfo.notesinfo = notesinfo
+    chartinfo.length = length
+    chartinfo.total_stream = total_stream
+    chartinfo.total_break = total_break
 
-    return density, breakdown.strip(), chartinfo, analysis
+    return density, breakdown.strip(), chartinfo
 
 
-def parse_chart(chart, title, subtitle, artist, pack, bpms, displaybpm, folder, db, log, cache):
+def parse_chart(chart, fileinfo, db, cache=None):
     """Retrieves and sets chart information.
 
     Grabs the charts step artist, difficulty, rating, and actual chart data. Calls most other functions in this file to
     handle pattern recognition and density breakdown. Calls the function to generate the density graph, and finally
     calls the function to save the chart info to the database.
     """
+
     metadata = chart.split(":")
 
-    type = metadata[0].strip().replace(":", "")  # dance-single, etc.
+    charttype = metadata[0].strip().replace(":", "")  # dance-single, etc.
     stepartist = metadata[1].strip().replace(":", "")
     difficulty = metadata[2].strip().replace(":", "")
     rating = metadata[3].strip().replace(":", "")
-    chart = remove_comments(metadata[5])
+    chart = gh.remove_comments(metadata[5])
 
     del metadata
 
-    if type != "dance-single":
+    if charttype != "dance-single":
         return                          # we only want single charts
 
     if chart.strip() == ";":
-        if log:
-            log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
-            log.flush()
+        logging.info("The {} {} chart for {} is empty. Skipping.".format(difficulty, rating, fileinfo.title))
         return                          # empty chart
 
     if not findall_with_regex(chart, ANY_NOTES_REG):
-        if log:
-            log.write("INFO: The " + difficulty + " " + rating + " chart for " + title + " is empty. Skipping\n")
-            log.flush()
+        logging.info("The {} {} chart for {} is empty. Skipping.".format(difficulty, rating, fileinfo.title))
         return                          # chart only contains 0's
 
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
 
-    # bpms need to be part of MD5 for most of the for business/for pleasure charts
-    bpm_string = ""
-    for bpm in bpms:
-        # parsed to int, as we want to match 215.0000 with 215.0
-        # only need a rough estimate for our purpose here
-        bpm_string += str(int(float(bpm[0]))) + str(int(float(bpm[1])))
+    chartinfo = ci.ChartInfo(fileinfo, stepartist, difficulty, rating, measures)
 
-    md5 = generate_md5("".join(measures) + bpm_string)
+
 
     if measures == -1:
-        if log:
-            log.write("WARN: Unable to parse the " + difficulty + " " + rating + " chart for " + title + ". Skipping\n")
-            log.flush()
+        logging.warning("Unable to parse the {} {} chart for {}. Skipping.".format(difficulty, rating, fileinfo.title))
         return
 
-    density, breakdown, chartinfo, analysis = get_density_and_breakdown(measures, bpms)
+    density, breakdown, chartinfo = get_density_and_breakdown(chartinfo, measures, fileinfo.bpms)
     partially_simplified = get_simplified(breakdown, True)
     simplified = get_simplified(breakdown, False)
 
-    max_bpm = float(find_max_bpm(bpms))
-    min_bpm = float(find_min_bpm(bpms))
-    max_nps = find_max(density)
-    median_nps = statistics.median(density)
+    normalized_img = None
 
-    create_density_graph(list(range(0, len(measures))), density, folder, difficulty, rating)
+    if chartinfo.total_stream:
+        should_normalize = normalizer.if_should_normalize(breakdown, chartinfo.total_stream)
+        if should_normalize != RunDensity.Run_16:
+            bpm_to_use = normalizer.get_best_bpm_to_use(fileinfo.min_bpm, fileinfo.max_bpm, chartinfo.median_nps,
+                                                        fileinfo.displaybpm)
+            normalized_breakdown = normalizer.normalize(breakdown, bpm_to_use, should_normalize)
+            if normalized_breakdown != breakdown:
+                chartinfo.normalized_breakdown = normalized_breakdown
+                if normalized_breakdown:
+                    normalized_img = ih.create_breakdown_image(normalized_breakdown, "Normalized Breakdown")
+                    ih.save_image(normalized_img, chartinfo.color_normalized_breakdown_location)
 
-    chartinfo.title = title
-    chartinfo.subtitle = subtitle
-    chartinfo.artist = artist
-    chartinfo.pack = pack
-    chartinfo.stepartist = stepartist
-    chartinfo.difficulty = difficulty
-    chartinfo.displaybpm = displaybpm
-    chartinfo.rating = rating
+
     chartinfo.breakdown = breakdown
     chartinfo.partial_breakdown = partially_simplified
     chartinfo.simple_breakdown = simplified
-    chartinfo.max_bpm = max_bpm
-    chartinfo.min_bpm = min_bpm
-    chartinfo.max_nps = max_nps
-    chartinfo.median_nps = median_nps
-    chartinfo.graph_location = folder + difficulty + rating + "density.png"
-    chartinfo.md5 = md5
 
-    add_to_database(chartinfo, db, analysis, cache)
+    # create color breakdown images
+
+    detailed_breakdown_img = ih.create_breakdown_image(breakdown, "Detailed Breakdown")
+    ih.save_image(detailed_breakdown_img, chartinfo.color_breakdown_location)
+
+    partially_simplified_bd_img = ih.create_breakdown_image(partially_simplified, "Partially Simplified")
+    ih.save_image(partially_simplified_bd_img, chartinfo.color_partial_breakdown_location)
+
+    simplified_bd_img = ih.create_breakdown_image(simplified, "Simplified Breakdown")
+    ih.save_image(simplified_bd_img, chartinfo.color_simple_breakdown_location)
+
+    chartinfo.max_nps = max(density)
+    chartinfo.median_nps = statistics.median(density)
+
+    fileinfo.chartinfo = chartinfo
+
+    ih.create_and_save_density_graph(list(range(0, len(measures))), density, fileinfo.chartinfo.graph_location)
+
+    # Join the color breakdown images with the density graph. Don't join images that have the same breakdowns.
+
+    graph_img = ih.load_image(fileinfo.chartinfo.graph_location)
+    temp_merged_img = None
+
+    if fileinfo.chartinfo.breakdown:
+        if fileinfo.chartinfo.breakdown == fileinfo.chartinfo.partial_breakdown:
+            # Only show detailed breakdown
+            temp_merged_img = detailed_breakdown_img
+        elif fileinfo.chartinfo.partial_breakdown == fileinfo.chartinfo.simple_breakdown:
+            # Show detailed and partial breakdowns
+            temp_merged_img = ih.merge_images_vertically(detailed_breakdown_img, partially_simplified_bd_img)
+        else:
+            # Show all 3 breakdowns
+            temp_merged_img = ih.merge_images_vertically(detailed_breakdown_img, partially_simplified_bd_img)
+            temp_merged_img = ih.merge_images_vertically(temp_merged_img, simplified_bd_img)
+        if fileinfo.chartinfo.normalized_breakdown:
+            # Add normalized breakdown to end
+            temp_merged_img = ih.merge_images_vertically(temp_merged_img, normalized_img)
+
+    if temp_merged_img:
+        # Merge graph then save
+        temp_merged_img = ih.merge_images_vertically(temp_merged_img, graph_img)
+    else:
+        # Only show graph in merged image
+        temp_merged_img = graph_img
+
+    ih.save_image(temp_merged_img, fileinfo.chartinfo.joined_graph_and_color_bd)
+
+    add_to_database(fileinfo, db, cache)
 
 
-def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
+def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
     """Parses through a .sm file and separates charts."""
     file = open(filename, "r", errors="ignore")
     data = file.read()
@@ -771,9 +711,7 @@ def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
 
     bpms = find_with_regex_dotall(data, r"#BPMS:(.*?)[;]+?")
     if bpms == -1:
-        if log:
-            log.write("ERROR: BPM for file \"" + filename + "\" is not readable. Skipping.\n")
-            log.flush()
+        logging.warning("BPM for file \"{}\" is not readable. Skipping.".format(filename))
         return
     else:
         bpms = bpms.split(",")
@@ -782,16 +720,13 @@ def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
             if "#" in bpm:
                 # Some BPMs are missing a trailing ; (30MIN HARDER in Cirque du Beast)
                 bpm = bpm.split("#", 1)[0]
-                if log:
-                    log.write("WARN: BPM for file \"" + filename + "\" is missing semicolon. Handled and continuing.\n")
-                    log.flush()
+                logging.warning("BPM for file \"{}\" is missing semicolon. Handled and continuing.".format(filename))
             # Quick way to remove non-printable characters that, for whatever reason,
             # exist in a few .sm files (Oceanlab Megamix)
             old_bpm = bpm
             bpm = "".join(filter(lambda c: c in string.printable, bpm))
-            if log and old_bpm != bpm:
-                log.write("WARN: BPM for file \"" + filename + "\" contains non-printable characters. Handled and continuing.\n")
-                log.flush()
+            if old_bpm != bpm:
+                logging.warning("BPM for file \"{}\" contains non-printable characters. Handled and continuing.".format(filename))
             bpm = bpm.strip().split("=")
             temp.insert(0, bpm)
         bpms = temp
@@ -799,17 +734,13 @@ def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
     charts = findall_with_regex_dotall(data, r"#NOTES:(.*?);")
 
     if charts == -1:
-        if log:
-            log.write("ERROR: Unable to parse chart(s) data for \"" + filename + "\". Skipping.\n")
-            log.flush()
+        logging.warning("Unable to parse chart(s) data for \"{}\". Skipping.".format(filename))
         return
     else:
         for i, chart in enumerate(charts):
             sanity_check = chart.split("\n", 6)
             if len(sanity_check) != 7:
-                if log:
-                    log.write("WARN: Unable to parse chart(s) data for \"" + filename + "\". Attempting to handle...\n")
-                    log.flush()
+                logging.warning("Unable to parse chart(s) data for \"{}\". Attempting to handle...".format(filename))
                 # There's something in this file that is causing the regex to not parse properly.
                 # Usually a misplaced ; instead of a :
                 # This is a quick and dirty attempt to salvage it.
@@ -836,38 +767,38 @@ def parse_file(filename, folder, pack, db, log, hide_artist_info, cache=None):
                     # a few files manually.
                 else:
                     # Our guess was incorrect
-                    if log:
-                        log.write("ERROR: Unable to parse \"" + filename + "\" correctly. Skipping.\n")
-                        log.flush()
+                    logging.warning("Unable to parse \"{}\" correctly. Skipping.".format(filename))
                     return
-            parse_chart(chart + ";", title, subtitle, artist, pack, bpms, displaybpm, folder, db, log, cache)
+
+            fileinfo = fi.FileInfo(title, subtitle, artist, pack, bpms, displaybpm, folder)
+            parse_chart(chart + ";", fileinfo, db, cache)
 
 
-def scan_folder(dir, verbose, media_remove, db, log, cache=None):
+def scan_folder(args, db, cache=None):
+    logging.info("Scanning started.")
+
     # First fetch total number of found .sm files
     total = 0
-    for root, dirs, files in os.walk(dir):
+    for root, dirs, files in os.walk(args[DIRECTORY]):
         for file in files:
             if file.lower().endswith(".sm"):
                 total += 1
+    logging.debug("{} .sm file(s) detected in initial count.".format(total))
 
     if total <= 0:
-        return # no .sm files found
+        logging.debug("Exiting scan_folder function; no .sm files found in directory \"{}\".".format(args[DIRECTORY]))
+        return
 
-    i = 0 # Current file
-    for root, dirs, files in os.walk(dir):
+    i = 0  # Current file
+    for root, dirs, files in os.walk(args[DIRECTORY]):
 
         sm_counter = len(glob.glob1(root, "*.[sS][mM]"))
 
         if sm_counter <= 0:
-            if log:
-                log.write("INFO: There are no .sm file(s) in folder \"" + root + "\". Skipping folder.\n")
-                log.flush()
-            continue  # no .sm files in current directory, continue to next folder
+            logging.info("There are no .sm file(s) in folder \"{}\". Skipping folder/scanning children.".format(root))
+            continue
         elif sm_counter >= 2:
-            if log:
-                log.write("ERROR: There are more than 1 .sm file in folder \"" + root + "\". Skipping folder.\n")
-                log.flush()
+            logging.warning("Found more than 1 .sm files in folder \"{}\". Skipping folder.".format(root))
             i += sm_counter
             continue
 
@@ -877,7 +808,7 @@ def scan_folder(dir, verbose, media_remove, db, log, cache=None):
                 i += 1
                 folder = root + "/"
                 pack = os.path.basename(Path(folder).parent)
-                if verbose:
+                if args[VERBOSE]:
                     output_i, output_total = vh.normalize_num(i, total)
                     output = "[" + output_i + "/" + output_total + "] "
                     output_percent = "[" + vh.get_percent(i, total) + "]"
@@ -885,21 +816,15 @@ def scan_folder(dir, verbose, media_remove, db, log, cache=None):
                     output += vh.normalize_string(pack, 30) + " File: "
                     output += vh.normalize_string(file, 30)
                     print(output, end="\r")
-                if log:
-                    log.write("INFO: Preparing to parse \"" + filename + "\".\n")
-                    log.flush()
-                parse_file(filename, folder, pack, db, log, False, cache)
-                if log:
-                    log.write("INFO: Completed parsing \"" + filename + "\".\n")
-                    log.flush()
-            if media_remove:
+                logging.info("Preparing to parse \"{}\".".format(filename))
+                parse_file(db, filename, folder, pack, False, cache)
+                logging.info("Completed parsing \"{}\".".format(filename))
+            if args[MEDIA_REMOVE]:
                 if file.lower().endswith(".ogg") or file.lower().endswith(".mpg") or file.lower().endswith(".avi"):
                     os.remove(root + "/" + file)
-                    if log:
-                        log.write("INFO: Removed \"" + filename + "\".\n")
-                        log.flush()
+                    logging.info("Removed \"{}\" from \"{}\".".format(filename, root))
 
-    if verbose:
+    if args[VERBOSE]:
         output_i, output_total = vh.normalize_num(i, total)
         output = "[" + output_i + "/" + output_total + "] "
         output_percent = "[" + vh.get_percent(i, total) + "] "
@@ -907,83 +832,93 @@ def scan_folder(dir, verbose, media_remove, db, log, cache=None):
         output += vh.normalize_string("Complete!", 75)
         print(output)
 
-    if log:
-        ct = datetime.datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-        log.write("scan.py finished at: " + ct)
-        log.write("\n")
-        log.flush()
+    logging.info("Scanning complete.")
 
-def main(argv):
+
+# noinspection PyTypeChecker
+# PyCharm assumes args will remain a strict type boolean array, so we disable PyTypeChecker to ignore these warnings.
+def main(argv: list):
     try:
         arguments, values = getopt.getopt(argv[1:], SHORT_OPTIONS, LONG_OPTIONS)
     except getopt.error as err:
-        print(str(err))
+        print("An unexpected error occurred with getopt. Error message:\n" + str(err) + "\nExiting.")
         sys.exit(2)
 
-    rebuild = False
-    verbose = False
-    media_remove = False
-    unittest = False
-    log = None
-    csv = False
+    # An array that will contains the passed in arguments. Positions of elements are declared as
+    # final variables at top of script.
+    args = [False for i in range(len(LONG_OPTIONS))]
 
     for arg, val in arguments:
-        if arg in ("-r", "--rebuild") and os.path.isfile(DATABASE_NAME):
+        if arg in ("-u", "--unittest"):
+            args[UNIT_TEST] = True
+        elif arg in ("-r", "--rebuild") and os.path.isfile(DATABASE_NAME):
+            args[REBUILD] = True
             os.remove(DATABASE_NAME)
-            rebuild = True
         elif arg in ("-v", "--verbose"):
-            verbose = True
+            args[VERBOSE] = True
         elif arg in ("-d", "--directory"):
-            dir = val
+            args[DIRECTORY] = val
         elif arg in ("-m", "--mediaremove"):
-            media_remove = True
+            args[MEDIA_REMOVE] = True
         elif arg in ("-l", "--log"):
-            log = open(LOGFILE_NAME, "a")
-        elif arg in ("-u", "--unittest"):
-            unittest = True
+            try:
+                numeric_level = getattr(logging, val.upper())
+                logging.basicConfig(filename=LOGFILE_NAME, level=numeric_level, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+            except AttributeError:
+                logging.basicConfig(filename=LOGFILE_NAME, level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                print("Log level \"{}\" is not a valid log level. Defaulting to ERROR.".format(val))
+                print("Valid log levels are: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+            logging.info("Logfile initialized.")
         elif arg in ("-c", "--csv"):
-            csv = True
+            args[CSV] = True
 
-    if unittest:
+    if not logging.getLogger().hasHandlers():
+        # Logging argument wasn't passed in. Default to logging level ERROR and output to stdout.
+        logging.basicConfig(level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+
+    if not args[DIRECTORY] and not args[UNIT_TEST]:
+        message = "The directory is a required parameter. Exiting."
+        print(message)
+        logging.critical(message)
+        sys.exit(2)
+
+    if args[UNIT_TEST]:
+        args[DIRECTORY] = UNITTEST_FOLDER + "/" + "songs"
         database = UNITTEST_FOLDER + "/" + DATABASE_NAME
-        songs = UNITTEST_FOLDER + "/" + "songs"
         log_location = UNITTEST_FOLDER + "/" + LOGFILE_NAME
         if os.path.isfile(log_location):
             os.remove(log_location)
         if os.path.isfile(database):
             os.remove(database)
-        log = open(log_location, "a")
+        logging.getLogger().handlers = []
+        logging.basicConfig(filename=log_location, level=logging.INFO, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
         with TinyDB(database) as db:
-            scan_folder(songs, verbose, media_remove, db, log)
+            scan_folder(args, db)
             test.run_tests()
-            sys.exit(0)
     else:
+
         with TinyDB(DATABASE_NAME, storage=CachingMiddleware(JSONStorage)) as db, \
                 TinyDB(storage=MemoryStorage) as cache:
 
-            # No need to populate cache if db is being rebuilt
-            if not rebuild:
+            # Generate a cache of existing song MD5 values for quick comparisons later. No need
+            # to populate this cache if database is being rebuilt.
+            if not args[REBUILD]:
                 load_md5s_into_cache(db, cache)
 
-            if log:
-                ct = datetime.datetime.now().strftime(LOG_TIMESTAMP)
-                log.write("scan.py started at: " + ct)
-                log.write("\n")
-                log.flush()
-
-            if os.path.isdir(dir):
-                scan_folder(dir, verbose, media_remove, db, log, cache)
+            if os.path.isdir(args[DIRECTORY]):
+                scan_folder(args, db, cache)
             else:
-                print("\"" + dir + "\" is not a valid directory. Exiting.")
+                print("\"" + args[DIRECTORY] + "\" is not a valid directory. Exiting.")
                 sys.exit(2)
 
             os.chmod(DATABASE_NAME, 0o777)
 
-            if csv:
+            if args[CSV]:
                 # read database we just created
                 # for each row, print to CSV
                 database_to_csv(db)
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main(sys.argv)

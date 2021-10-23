@@ -28,13 +28,13 @@ def get_autodelete_with_default(id, db, default):
     else:
         return result
 
-def set_normalize(id, flag, db):
+def set_colorize(id, flag, db):
     user_db = TinyDB(db)
     UserDBQuery = Query()
-    user_db.upsert({"id": id, "normalize": flag}, UserDBQuery.id == id)
+    user_db.upsert({"id": id, "colorize": flag}, UserDBQuery.id == id)
     user_db.close()
 
-def get_normalize(id, db):
+def get_colorize(id, db):
     user_db = TinyDB(db)
     UserDBQuery = Query()
     results = user_db.search(UserDBQuery.id == id)
@@ -42,14 +42,14 @@ def get_normalize(id, db):
         result = json.loads(json.dumps(results[0]))
         user_db.close()
         try:
-            return result["normalize"]
+            return result["colorize"]
         except KeyError:
             return None
     else:
         return None
 
-def get_normalize_with_default(id, db, default):
-    result = get_normalize(id, db)
+def get_colorize_with_default(id, db, default):
+    result = get_colorize(id, db)
     if result is None:
         return default
     else:
