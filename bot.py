@@ -790,12 +790,18 @@ async def parse(ctx):
         embed, file = create_embed(result, ctx)
         await ctx.send(file=file, embed=embed)
         # Removes density graph image for this difficulty
-        os.remove(result["graph_location"])
-        os.remove(result["color_breakdown"])
-        os.remove(result["color_partial_breakdown"])
-        os.remove(result["color_simple_breakdown"])
-        os.remove(result["color_normalized_breakdown"])
-        os.remove(result["joined_graph_and_color_bd"])
+        if os.path.exists(result["graph_location"]):
+            os.remove(result["graph_location"])
+        if os.path.exists(result["color_breakdown"]):
+            os.remove(result["color_breakdown"])
+        if os.path.exists(result["color_partial_breakdown"]):
+            os.remove(result["color_partial_breakdown"])
+        if os.path.exists(result["color_simple_breakdown"]):
+            os.remove(result["color_simple_breakdown"])
+        if os.path.exists(result["color_normalized_breakdown"]):
+            os.remove(result["color_normalized_breakdown"])
+        if os.path.exists(result["joined_graph_and_color_bd"]):
+            os.remove(result["joined_graph_and_color_bd"])
 
     # Deletes the previous "currently processing" message
     await process_msg.delete()
