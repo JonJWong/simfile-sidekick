@@ -181,67 +181,85 @@ def normalize_float(num):
 def get_footer_image(level):
     """Helper function that returns a fancy image for the difficulty of a chart."""
     if level == 1:
-        return "<:1footer:772954101960015923>"
+        return "<:1footer:1163200171891495012>"
     elif level == 2:
-        return "<:2footer:772954139411087421>"
+        return "<:2footer:1163200173405655221>"
     elif level == 3:
-        return "<:3footer:772954170776617021>"
+        return "<:3footer:1163200174148042893>"
     elif level == 4:
-        return "<:4footer:772954196193443842>"
+        return "<:4footer:1163200180842139768>"
     elif level == 5:
-        return "<:5footer:772954224836870215>"
+        return "<:5footer:1163200183589404793>"
     elif level == 6:
-        return "<:6footer:772954252740919317>"
+        return "<:6footer:1163200184336007188>"
     elif level == 7:
-        return "<:7footer:772954279123484723>"
+        return "<:7footer:1163200185376194732>"
     elif level == 8:
-        return "<:8footer:772954309302288384>"
+        return "<:8footer:1163200187020349611>"
     elif level == 9:
-        return "<:9footer:772954334736023582>"
+        return "<:9footer:1163200189297856583>"
     elif level == 10:
-        return "<:10footer:772954360089935882>"
+        return "<:10footer:1163200191894138980>"
     elif level == 11:
-        return "<:11footer:772954385890148353>"
+        return "<:11footer:1163200192695255090>"
     elif level == 12:
-        return "<:12footer:772954408714633226>"
+        return "<:12footer:1163200193559269496>"
     elif level == 13:
-        return "<:13footer:772954433826848809>"
+        return "<:13footer:1163200292754559119>"
     elif level == 14:
-        return "<:14footer:772954457965068378>"
+        return "<:14footer:1163200197090885783>"
     elif level == 15:
-        return "<:15footer:772954496644546582>"
+        return "<:15footer:1163200294549721129>"
     elif level == 16:
-        return "<:16footer:772954525610672139>"
+        return "<:16footer:1163200299838754856>"
     elif level == 17:
-        return "<:17footer:772954552429183007>"
+        return "<:17footer:1163200300665020446>"
     elif level == 18:
-        return "<:18footer:772954583751458816>"
+        return "<:18footer:1163200301453549664>"
     elif level == 19:
-        return "<:19footer:772954623010668554>"
+        return "<:19footer:1163200302422425721>"
     elif level == 20:
-        return "<:20footer:772954651637186580>"
+        return "<:20footer:1163200199833944084>"
     elif level == 21:
-        return "<:21footer:772954679272407070>"
+        return "<:21footer:1163200392662880306>"
     elif level == 22:
-        return "<:22footer:772954718489018429>"
+        return "<:22footer:1163200204296683530>"
     elif level == 23:
-        return "<:23footer:772954755126657056>"
+        return "<:23footer:1163200394105733130>"
     elif level == 24:
-        return "<:24footer:772954785518190614>"
+        return "<:24footer:1163200207606005850>"
     elif level == 25:
-        return "<:25footer:772954813197320203>"
+        return "<:25footer:1163200394923618405>"
     elif level == 26:
-        return "<:26footer:772954849054163014>"
+        return "<:26footer:1163200395703767050>"
     elif level == 27:
-        return "<:27footer:772954877470048286>"
+        return "<:27footer:1163200396341301410>"
     elif level == 28:
-        return "<:28footer:772954909410721813>"
+        return "<:28footer:1163200211221499967>"
     elif level == 29:
-        return "<:29footer:772954946521137173>"
+        return "<:29footer:1163200211221499967>"
     elif level == 30:
-        return "<:30footer:772954974266982430>"
+        return "<:30footer:1163200398836891689>"
+    elif level == 31:
+        return "<:31footer:1163200399679946783>"
+    elif level == 32:
+        return "<:32footer:1163200475622027335>"
+    elif level == 33:
+        return "<:33footer:1163200477425573999>"
+    elif level == 34:
+        return "<:34footer:1163200214027477042>"
+    elif level == 35:
+        return "<:35footer:1163200478839054416>"
+    elif level == 36:
+        return "<:36footer:1163200218175643658>"
+    elif level == 37:
+        return "<:37footer:1163200479615004742>"
+    elif level == 38:
+        return "<:38footer:1163201160463781888>"
+    elif level == 39:
+        return "<:39footer:1163201161252319352>"
     else:
-        return "<:uhhfooter:772955010522808353>"
+        return "<:wun:1163199650916999228>"
 
 
 def create_embed(data, ctx):
