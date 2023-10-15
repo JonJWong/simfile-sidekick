@@ -30,7 +30,7 @@ import shutil
 import sys
 import urllib.request
 
-DLPACK_ON_SELECTED_SERVERS_ONLY = True
+DLPACK_ON_SELECTED_SERVERS_ONLY = False
 
 # The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
 APPROVED_SERVERS = [
@@ -68,8 +68,8 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:  # if the DISCORD_TOKEN is blank in the .env file, or if the .env file doesn't exist
-    print("It looks like you don't have an \".env\" file, or it's not setup correctly.")
-    print("Please make sure you have an \".env\" file in the same directory as this file.")
+    print("It looks like you don't have an \".env\" file, or it's not set up correctly.")
+    print("Please make sure you have a \".env\" file in the same directory as this file.")
     print("The \".env\" file should contain one line:")
     print("DISCORD_TOKEN=YourBotsDiscordTokenHere")
     sys.exit(1)
@@ -84,30 +84,32 @@ HELP_MESSAGE = """ \
 Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
 Breakdown Buddy.
 
-I can currently parse .sm files using a library of popular packs. Use
-`-search` followed by the song name.
+If you want to search for a song stored locally in the owner's database, use
+`-search` followed by the song name. Once the results appear, enter the number
+of the result that matches your desired search result.
 
-If you want me to parse a .sm file, attach the .sm file to your message and
-type `-parse`. If I get stuck parsing a file, you can try and run `-fix` and
-I'll do my best to cleanup in order to parse files again for you.
+If you want me to parse an .sm file, attach the .sm file to your message and
+type `-parse`. If I get stuck parsing a file, try `-fix` and
+I'll do my best to clean up so I can parse files again.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
 
 I can also search by tags. The syntax is `-[tag]:[value]`
-Currently supported tags are `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
+Currently supported tags are: `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
 Song title must come before the tags.
 
 Example: `-search -bpm:160`
 `-search sigatrev -rating:20`
 
-Admins can change the prefix using `-prefix` followed by the prefix they
-want to use, e.g. `-prefix !`. Admins can add packs to the database
-by using `-dlpack URL`. Admins can delete packs from the database by using
-`-delpack packName`.
+Admins can:
+Change the prefix using `-prefix` followed by the prefix they
+want to use, e.g. `-prefix !`.
+Add packs to the database by using `-dlpack URL`.
+Delete packs from the database by using `-delpack packName`.
 
 I also have built in stream visualizer functionality. Use `-sv` followed
-by the characters `L`, `U`, `D`, or `R` to represent arrows. You can put
+by the characters `L`, `D`, `U`, or `R` to represent arrows. You can put
 brackets around arrows to denote jumps, e.g. `[LR]`
 """
 
@@ -149,7 +151,7 @@ def is_prefix_for_server(id, prefix):
             return False
 
 # Allows SS to see members in other servers
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 
 # Loads the bot's prefixes using the get_prefixes function above
@@ -157,46 +159,18 @@ bot = commands.Bot(command_prefix=get_prefixes(), intents=intents)
 
 bot.remove_command("help")  # Needed in order to replace existing help command with our own
 
-async def fof_check(ctx, pack):
-
-    dch_id = APPROVED_SERVERS[1]
-
-    # The pack is fof only, do the fof check
-    if pack == "fof":
-
-        # Get the DCH guild
-        for guild in ctx.bot.guilds:
-            if guild.id == dch_id:
-                # Get the "Heroes" role
-                role = discord.utils.find(lambda r: r.name == "fof", guild.roles)
-
-                members = await guild.fetch_members(limit=None).flatten()
-
-                # Match the member in current channel to DCH
-                for member in members:
-                    if member.id == ctx.message.author.id:
-                        # We have a match
-                        # We can now look for the member's roles, even in a completely different server
-                        if role in member.roles:
-                            return True
-                        else:
-                            return False
-    else:
-        # Even if chart exists in other SRPG packs, we'll let the user look it up
-        return True
-
 def get_mono_desc(mono):
     """Helper function to return pre-formatted text used in mono pattern analysis."""
     if mono == 0:
         return "*None*"
     if mono > 0 and mono < 10:
-        return "*Sparse*"
+        return "*Low*"
     elif mono >= 10 and mono < 30:
-        return "Infrequent"
+        return "Kinda"
     elif mono >= 30 and mono < 50:
-        return "**Moderate**"
+        return "**Quite Mono**"
     elif mono > 50:
-        return "__**Repetitive**__"
+        return "__**WTF**__"
 
 
 def normalize_float(num):
@@ -448,16 +422,7 @@ async def search_song(ctx, *, song_name: str):
             data = results[0]
             
             embed, file = create_embed(data, ctx)
-
-            if data["pack"] == "fof":
-                can_view = await fof_check(ctx, data["pack"])
-                if can_view:
-                    await ctx.author.send(file=file, embed=embed)
-                    await ctx.send("You are worthy. Check your DMs.")
-                else:
-                    await ctx.send("Trying to lookup a fof exclusive? Get good scrub.")
-            else:
-                await ctx.send(file=file, embed=embed)
+            await ctx.send(file=file, embed=embed)
 
         elif len(results) > 1:
             data = results
@@ -520,16 +485,7 @@ async def search_song(ctx, *, song_name: str):
                     embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
                 finally:
                     if embed:
-
-                        if data[index]["pack"] == "fof":
-                            can_view = await fof_check(ctx, data[index]["pack"])
-                            if can_view:
-                                await ctx.author.send(file=file, embed=embed)
-                                await ctx.send("You are worthy. Check your DMs.")
-                            else:
-                                await ctx.send("Trying to lookup a fof exclusive? Get good scrub.")
-                        else:
-                            await ctx.send(file=file, embed=embed)
+                        await ctx.send(file=file, embed=embed)
 
 
 @bot.command(name="sv")
@@ -568,41 +524,41 @@ async def stream_visualiser(ctx, input: str):
                     # Whole note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:red_L:772541312619642900>"
+                            message += "<:red_L:1163182809536532581>"
                         elif j == 1:
-                            message += "<:red_D:772541311973589024>"
+                            message += "<:red_D:1163182816230637628>"
                         elif j == 2:
-                            message += "<:red_U:772541312259719189>"
+                            message += "<:red_U:1163182822752800858>"
                         elif j == 3:
-                            message += "<:red_R:772541312418840586>"
+                            message += "<:red_R:1163182828201197729>"
                     else:
-                        message += "<:bg:772541312229703710>"
+                        message += "<:bg:1163182776078581791>"
                 elif i % 2 == 0:
                     # Half note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:blue_L:772541311235915827>"
+                            message += "<:blue_L:1163182833045622906>"
                         elif j == 1:
-                            message += "<:blue_D:772541311877906452>"
+                            message += "<:blue_D:1163182838225576096>"
                         elif j == 2:
-                            message += "<:blue_U:772541311575130154>"
+                            message += "<:blue_U:1163182842130477115>"
                         elif j == 3:
-                            message += "<:blue_R:772541311579979847>"
+                            message += "<:blue_R:1163182847394324600>"
                     else:
-                        message += "<:bg:772541312229703710>"
+                        message += "<:bg:1163182776078581791>"
                 elif i % 1 == 0 or i % 3 == 0:
                     # Quarter note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:green_L:772541312154992670>"
+                            message += "<:green_L:1163182853652234270>"
                         elif j == 1:
-                            message += "<:green_D:772541312163250196>"
+                            message += "<:green_D:1163182857838137405>"
                         elif j == 2:
-                            message += "<:green_U:772541312213843979>"
+                            message += "<:green_U:1163182863215243364>"
                         elif j == 3:
-                            message += "<:green_R:772541312163512352>"
+                            message += "<:green_R:1163182868269387927>"
                     else:
-                        message += "<:bg:772541312229703710>"
+                        message += "<:bg:1163182776078581791>"
             message += "\n"
         await ctx.send(message)
 
@@ -731,7 +687,19 @@ async def parse(ctx):
 
     attachment = ctx.message.attachments[0]
 
-    if not attachment.url.endswith(".sm"):
+    """
+        Discord implemented changes to their CDN where attachments now have tokens to make files
+        expire after inactivity, presumably to save space and disallow people from using their
+        databases as cloud storage.
+
+        Because of this change, the URL now has to be split on it's query separator ("?"),
+        where the first half of the URL is formatted like it was before, and the latter half
+        is the authentication token.
+    """
+    
+    url_token_split = attachment.url.split("?")
+    new_url_because_discord_sucks = url_token_split[0]
+    if not new_url_because_discord_sucks.endswith(".sm"):
         message = "Sorry {}, I can only parse .sm files.".format(ctx.author.mention)
         await ctx.send(message)
         return
@@ -817,7 +785,7 @@ async def parse(ctx):
 async def delpack(ctx, input: str):
     server_id = ctx.message.guild.id
     if DLPACK_ON_SELECTED_SERVERS_ONLY and server_id not in APPROVED_SERVERS:
-        await ctx.send("Sorry, but this command can currently only be used by admins in the DCH or SN servers.")
+        await ctx.send("This command is currently disabled.")
         return
 
     try:
@@ -873,7 +841,7 @@ async def dlpack(ctx, input: str):
 
     server_id = ctx.message.guild.id
     if DLPACK_ON_SELECTED_SERVERS_ONLY and server_id not in APPROVED_SERVERS:
-        await ctx.send("Sorry, but this command can currently only be used by admins in the DCH or SN servers.")
+        await ctx.send("This command is currently disabled.")
         return
     # Adding per-server databases is outside the scope of this program and too much for my tiny server to handle.
 

@@ -6,9 +6,8 @@ A discord bot to scan and parse StepMania simfiles. Inspired by Nav's Breakdown 
 
 ## About this guide
 
-This guide was tailored for linux users, however I've gotten everything to work locally on macOS using the same steps (minus the systemd section, of course).
-
-I don't have any advice for Windows users unfortunately, as I haven't coded on a non-UNIX system in awhile. Feel free to update this readme if there are any hiccups running this on Windows. That being said, I would be surprised if there were any additional issues given how small this application is.
+This was originally written by artimst, and now hosted by JonJWong.
+Original repo: https://gitlab.com/artimst/simfile-sidekick
 
 ## How to use
 

@@ -26,7 +26,9 @@ FONT = ImageFont.truetype("./resources/font/DejaVuSansMono.ttf", FONT_SIZE)
 FONT_BOLD = ImageFont.truetype("./resources/font/DejaVuSansMono-Bold.ttf", FONT_SIZE)
 
 # Since the font is monospaced, this gives us the width and height of a single character
-CHAR_WIDTH, CHAR_HEIGHT = FONT.getsize("A")
+CHAR_LEFT, CHAR_TOP, CHAR_RIGHT, CHAR_BOTTOM = FONT.getbbox("A")
+CHAR_WIDTH = CHAR_RIGHT - CHAR_LEFT
+CHAR_HEIGHT = CHAR_BOTTOM - CHAR_TOP
 FONT_LINE_SPACING = math.floor(CHAR_HEIGHT * 1.2)  # Add a small space between lines for readability
 MAX_CHARS_PER_LINE = math.floor(IMAGE_WIDTH / CHAR_WIDTH)
 
