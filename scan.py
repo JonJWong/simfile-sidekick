@@ -161,10 +161,6 @@ def add_to_database(fileinfo, db, cache):
             "breakdown": fileinfo.chartinfo.breakdown,
             "partial_breakdown": fileinfo.chartinfo.partial_breakdown,
             "simple_breakdown": fileinfo.chartinfo.simple_breakdown,
-            "color_breakdown": fileinfo.chartinfo.color_breakdown_location,
-            "color_partial_breakdown": fileinfo.chartinfo.color_partial_breakdown_location,
-            "color_simple_breakdown": fileinfo.chartinfo.color_simple_breakdown_location,
-            "color_normalized_breakdown": fileinfo.chartinfo.color_normalized_breakdown_location,
             "normalized_breakdown": fileinfo.chartinfo.normalized_breakdown,
             "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
             "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
@@ -187,7 +183,6 @@ def add_to_database(fileinfo, db, cache):
             "max_nps": fileinfo.chartinfo.max_nps,
             "median_nps": fileinfo.chartinfo.median_nps,
             "graph_location": fileinfo.chartinfo.graph_location,
-            "joined_graph_and_color_bd": fileinfo.chartinfo.joined_graph_and_color_bd,
             "md5": fileinfo.chartinfo.md5
         })
     else:
@@ -626,8 +621,6 @@ def parse_chart(chart, fileinfo, db, cache=None):
     partially_simplified = get_simplified(breakdown, True)
     simplified = get_simplified(breakdown, False)
 
-    normalized_img = None
-
     if chartinfo.total_stream:
         should_normalize = normalizer.if_should_normalize(breakdown, chartinfo.total_stream)
         if should_normalize != RunDensity.Run_16:
@@ -636,25 +629,10 @@ def parse_chart(chart, fileinfo, db, cache=None):
             normalized_breakdown = normalizer.normalize(breakdown, bpm_to_use, should_normalize)
             if normalized_breakdown != breakdown:
                 chartinfo.normalized_breakdown = normalized_breakdown
-                if normalized_breakdown:
-                    normalized_img = ih.create_breakdown_image(normalized_breakdown, "Normalized Breakdown")
-                    ih.save_image(normalized_img, chartinfo.color_normalized_breakdown_location)
-
 
     chartinfo.breakdown = breakdown
     chartinfo.partial_breakdown = partially_simplified
     chartinfo.simple_breakdown = simplified
-
-    # create color breakdown images
-
-    detailed_breakdown_img = ih.create_breakdown_image(breakdown, "Detailed Breakdown")
-    ih.save_image(detailed_breakdown_img, chartinfo.color_breakdown_location)
-
-    partially_simplified_bd_img = ih.create_breakdown_image(partially_simplified, "Partially Simplified")
-    ih.save_image(partially_simplified_bd_img, chartinfo.color_partial_breakdown_location)
-
-    simplified_bd_img = ih.create_breakdown_image(simplified, "Simplified Breakdown")
-    ih.save_image(simplified_bd_img, chartinfo.color_simple_breakdown_location)
 
     chartinfo.max_nps = max(density)
     chartinfo.median_nps = statistics.median(density)
@@ -662,36 +640,6 @@ def parse_chart(chart, fileinfo, db, cache=None):
     fileinfo.chartinfo = chartinfo
 
     ih.create_and_save_density_graph(list(range(0, len(measures))), density, fileinfo.chartinfo.graph_location)
-
-    # Join the color breakdown images with the density graph. Don't join images that have the same breakdowns.
-
-    graph_img = ih.load_image(fileinfo.chartinfo.graph_location)
-    temp_merged_img = None
-
-    if fileinfo.chartinfo.breakdown:
-        if fileinfo.chartinfo.breakdown == fileinfo.chartinfo.partial_breakdown:
-            # Only show detailed breakdown
-            temp_merged_img = detailed_breakdown_img
-        elif fileinfo.chartinfo.partial_breakdown == fileinfo.chartinfo.simple_breakdown:
-            # Show detailed and partial breakdowns
-            temp_merged_img = ih.merge_images_vertically(detailed_breakdown_img, partially_simplified_bd_img)
-        else:
-            # Show all 3 breakdowns
-            temp_merged_img = ih.merge_images_vertically(detailed_breakdown_img, partially_simplified_bd_img)
-            temp_merged_img = ih.merge_images_vertically(temp_merged_img, simplified_bd_img)
-        if fileinfo.chartinfo.normalized_breakdown:
-            # Add normalized breakdown to end
-            temp_merged_img = ih.merge_images_vertically(temp_merged_img, normalized_img)
-
-    if temp_merged_img:
-        # Merge graph then save
-        temp_merged_img = ih.merge_images_vertically(temp_merged_img, graph_img)
-    else:
-        # Only show graph in merged image
-        temp_merged_img = graph_img
-
-    ih.save_image(temp_merged_img, fileinfo.chartinfo.joined_graph_and_color_bd)
-
     add_to_database(fileinfo, db, cache)
 
 

@@ -34,9 +34,9 @@ DLPACK_ON_SELECTED_SERVERS_ONLY = False
 
 # The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
 APPROVED_SERVERS = [
-    772539884019253248, # Simfile Sidekick Support
-    766773423593881620, # Dickson City Heroes
-    165133532199387136 # Stamina Nation
+    317212788520910848, # Big Ass Forehead
+    1163182650241069066, # BOT EMOJIS
+    1163200677409988668, # BOT EMOJIS 2
 ]
 
 # File name and folder constants. Change these if you want to use a different name or folder.
@@ -57,7 +57,6 @@ DEFAULT_PREFIX = "-"
 # Default behavior to automatically delete user's uploaded .sm files
 DEFAULT_AUTODELETE_BEHAVIOR = True
 DEFAULT_NORMALIZE_BEHAVIOR = False
-DEFAULT_COLORIZE_BEHAVIOR = False
 
 # The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
 # set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
@@ -180,84 +179,50 @@ def normalize_float(num):
 
 def get_footer_image(level):
     """Helper function that returns a fancy image for the difficulty of a chart."""
-    if level == 1:
-        return "<:1footer:1163200171891495012>"
-    elif level == 2:
-        return "<:2footer:1163200173405655221>"
-    elif level == 3:
-        return "<:3footer:1163200174148042893>"
-    elif level == 4:
-        return "<:4footer:1163200180842139768>"
-    elif level == 5:
-        return "<:5footer:1163200183589404793>"
-    elif level == 6:
-        return "<:6footer:1163200184336007188>"
-    elif level == 7:
-        return "<:7footer:1163200185376194732>"
-    elif level == 8:
-        return "<:8footer:1163200187020349611>"
-    elif level == 9:
-        return "<:9footer:1163200189297856583>"
-    elif level == 10:
-        return "<:10footer:1163200191894138980>"
-    elif level == 11:
-        return "<:11footer:1163200192695255090>"
-    elif level == 12:
-        return "<:12footer:1163200193559269496>"
-    elif level == 13:
-        return "<:13footer:1163200292754559119>"
-    elif level == 14:
-        return "<:14footer:1163200197090885783>"
-    elif level == 15:
-        return "<:15footer:1163200294549721129>"
-    elif level == 16:
-        return "<:16footer:1163200299838754856>"
-    elif level == 17:
-        return "<:17footer:1163200300665020446>"
-    elif level == 18:
-        return "<:18footer:1163200301453549664>"
-    elif level == 19:
-        return "<:19footer:1163200302422425721>"
-    elif level == 20:
-        return "<:20footer:1163200199833944084>"
-    elif level == 21:
-        return "<:21footer:1163200392662880306>"
-    elif level == 22:
-        return "<:22footer:1163200204296683530>"
-    elif level == 23:
-        return "<:23footer:1163200394105733130>"
-    elif level == 24:
-        return "<:24footer:1163200207606005850>"
-    elif level == 25:
-        return "<:25footer:1163200394923618405>"
-    elif level == 26:
-        return "<:26footer:1163200395703767050>"
-    elif level == 27:
-        return "<:27footer:1163200396341301410>"
-    elif level == 28:
-        return "<:28footer:1163200211221499967>"
-    elif level == 29:
-        return "<:29footer:1163200211221499967>"
-    elif level == 30:
-        return "<:30footer:1163200398836891689>"
-    elif level == 31:
-        return "<:31footer:1163200399679946783>"
-    elif level == 32:
-        return "<:32footer:1163200475622027335>"
-    elif level == 33:
-        return "<:33footer:1163200477425573999>"
-    elif level == 34:
-        return "<:34footer:1163200214027477042>"
-    elif level == 35:
-        return "<:35footer:1163200478839054416>"
-    elif level == 36:
-        return "<:36footer:1163200218175643658>"
-    elif level == 37:
-        return "<:37footer:1163200479615004742>"
-    elif level == 38:
-        return "<:38footer:1163201160463781888>"
-    elif level == 39:
-        return "<:39footer:1163201161252319352>"
+    LEVEL_TO_EMOJISTRING = {
+        1: "<:1footer:1163200171891495012>",
+        2: "<:2footer:1163200173405655221>",
+        3: "<:3footer:1163200174148042893>",
+        4: "<:4footer:1163200180842139768>",
+        5: "<:5footer:1163200183589404793>",
+        6: "<:6footer:1163200184336007188>",
+        7: "<:7footer:1163200185376194732>",
+        8: "<:8footer:1163200187020349611>",
+        9: "<:9footer:1163200189297856583>",
+        10: "<:10footer:1163200191894138980>",
+        11: "<:11footer:1163200192695255090>",
+        12: "<:12footer:1163200193559269496>",
+        13: "<:13footer:1163200292754559119>",
+        14: "<:14footer:1163200197090885783>",
+        15: "<:15footer:1163200294549721129>",
+        16: "<:16footer:1163200299838754856>",
+        17: "<:17footer:1163200300665020446>",
+        18: "<:18footer:1163200301453549664>",
+        19: "<:19footer:1163200302422425721>",
+        20: "<:20footer:1163200199833944084>",
+        21: "<:21footer:1163200392662880306>",
+        22: "<:22footer:1163200204296683530>",
+        23: "<:23footer:1163200394105733130>",
+        24: "<:24footer:1163200207606005850>",
+        25: "<:25footer:1163200394923618405>",
+        26: "<:26footer:1163200395703767050>",
+        27: "<:27footer:1163200396341301410>",
+        28: "<:28footer:1163200211221499967>",
+        29: "<:29footer:1163200211221499967>",
+        30: "<:30footer:1163200398836891689>",
+        31: "<:31footer:1163200399679946783>",
+        32: "<:32footer:1163200475622027335>",
+        33: "<:33footer:1163200477425573999>",
+        34: "<:34footer:1163200214027477042>",
+        35: "<:35footer:1163200478839054416>",
+        36: "<:36footer:1163200218175643658>",
+        37: "<:37footer:1163200479615004742>",
+        38: "<:38footer:1163201160463781888>",
+        39: "<:39footer:1163201161252319352>"
+    }
+
+    if level in LEVEL_TO_EMOJISTRING:
+        return LEVEL_TO_EMOJISTRING[level]
     else:
         return "<:wun:1163199650916999228>"
 
@@ -363,53 +328,43 @@ def create_embed(data, ctx):
     
     # - - - BREAKDOWNS - - -
 
-    colorize = udbm.get_colorize_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_COLORIZE_BEHAVIOR)
-
-    if not colorize:
-        if data["breakdown"]:
-            # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
-            # larger than this restriction.
-            # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
-            if len(data["breakdown"]) > 1024:
-                embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
+    if data["breakdown"]:
+        # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
+        # larger than this restriction.
+        # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
+        if len(data["breakdown"]) > 1024:
+            embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
+        else:
+            embed.add_field(name="__Detailed Breakdown__", value=data["breakdown"], inline=False)
+        if data["partial_breakdown"] != data["simple_breakdown"]:
+            if len(data["partial_breakdown"]) > 1024:
+                embed.add_field(name="__Partially Simplified__", value="***Too large to display***", inline=False)
             else:
-                embed.add_field(name="__Detailed Breakdown__", value=data["breakdown"], inline=False)
-            if data["partial_breakdown"] != data["simple_breakdown"]:
-                if len(data["partial_breakdown"]) > 1024:
-                    embed.add_field(name="__Partially Simplified__", value="***Too large to display***", inline=False)
-                else:
-                    embed.add_field(name="__Partially Simplified__", value=data["partial_breakdown"], inline=False)
-            if len(data["simple_breakdown"]) > 1024:
-                simple_breakdown = ""
-                simple_breakdown_array = data["simple_breakdown"].split(" ")
-                num_breaks = 1
-                for i in simple_breakdown_array:
-                    if (len(simple_breakdown) + len(i)) > 1024:
-                        embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-                        num_breaks += 1
-                        simple_breakdown = ""
-                    simple_breakdown += i + " "
-                embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-            else:
-                embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
-        if data["normalized_breakdown"]:
-            text = "*This is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
-            embed.add_field(name="__Normalized Breakdown__", value=text + data["normalized_breakdown"], inline=False)
+                embed.add_field(name="__Partially Simplified__", value=data["partial_breakdown"], inline=False)
+        if len(data["simple_breakdown"]) > 1024:
+            simple_breakdown = ""
+            simple_breakdown_array = data["simple_breakdown"].split(" ")
+            num_breaks = 1
+            for i in simple_breakdown_array:
+                if (len(simple_breakdown) + len(i)) > 1024:
+                    embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+                    num_breaks += 1
+                    simple_breakdown = ""
+                simple_breakdown += i + " "
+            embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+        else:
+            embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
+    if data["normalized_breakdown"]:
+        text = "*This is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
+        embed.add_field(name="__Normalized Breakdown__", value=text + data["normalized_breakdown"], inline=False)
 
 
 
     # - - - FOOTER - - -
-    footer_text = "Made with love by Artimst for the Dickson City Heroes and Stamina Nation. "
-    footer_text += "Icon by Johahn."
+    footer_text = "Made by Artimst, maintained by JWong for personal use"
     embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
 
-    if not colorize:
-        file = discord.File(data["graph_location"], filename="density.png")
-    else:
-        text = "*Normalized breakdown is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
-        embed.add_field(name="__Breakdowns__", value=text, inline=False)
-        file = discord.File(data["joined_graph_and_color_bd"], filename="density.png")
-
+    file = discord.File(data["graph_location"], filename="density.png")
 
     embed.set_image(url="attachment://density.png")
     
@@ -601,20 +556,6 @@ async def settings(ctx, *input: str):
 
         embed.add_field(name=title, value=body, inline=False)
 
-        title = "**Colorize** is "
-
-        if udbm.get_colorize_with_default(user_id, USER_SETTINGS, DEFAULT_COLORIZE_BEHAVIOR):
-            title += "`enabled`"
-        else:
-            title += "`disabled`"
-
-        body = "This will remove copy/paste text breakdown fields, and instead replace them "
-        body += "with a new color coded notation. Green = 16th notes, Cyan = 20th notes, "
-        body += "Purple = 24th notes, and Yellow = 32nd notes. Use `-settings colorize Y` to set, "
-        body += "or `-settings colorize N` to unset."
-
-        embed.add_field(name=title, value=body, inline=False)
-
         await ctx.send(embed=embed)
         return
 
@@ -640,32 +581,6 @@ async def settings(ctx, *input: str):
         elif input[1].upper() == "N" or input[1].upper() == "F":
             udbm.set_autodelete(user_id, False, USER_SETTINGS)
             await ctx.send("{}, I will no longer auto-delete your uploaded .sm files.".format(ctx.author.mention))
-        else:
-            await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
-        return
-
-    if input[0] == "colorize":
-        if len(input) <= 1:
-            result = udbm.get_colorize(user_id, USER_SETTINGS)
-            if result is None:
-                message = "{}, it looks like you don't have this preference set. ".format(ctx.author.mention)
-                message += "The default behavior is: "
-                if DEFAULT_NORMALIZE_BEHAVIOR:
-                    message += "I will show normalized output for charts containing 24ths or 32nd notes."
-                else:
-                    message += "I will not show normalized output."
-                await ctx.send(message)
-            elif result:
-                await ctx.send("{}, I'm displaying normalized outputs for your searches.".format(ctx.author.mention))
-            elif not result:
-                await ctx.send("{}. I'm hiding normalized outputs for your searches.".format(ctx.author.mention))
-            return
-        if input[1].upper() == "Y" or input[1].upper() == "T":
-            udbm.set_colorize(user_id, True, USER_SETTINGS)
-            await ctx.send("{}, I will now show colorized outputs for your searches.".format(ctx.author.mention))
-        elif input[1].upper() == "N" or input[1].upper() == "F":
-            udbm.set_colorize(user_id, False, USER_SETTINGS)
-            await ctx.send("{}, I will no longer show colorized outputs for your searches.".format(ctx.author.mention))
         else:
             await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
         return
@@ -778,16 +693,6 @@ async def parse(ctx):
         # Removes density graph image for this difficulty
         if os.path.exists(result["graph_location"]):
             os.remove(result["graph_location"])
-        if os.path.exists(result["color_breakdown"]):
-            os.remove(result["color_breakdown"])
-        if os.path.exists(result["color_partial_breakdown"]):
-            os.remove(result["color_partial_breakdown"])
-        if os.path.exists(result["color_simple_breakdown"]):
-            os.remove(result["color_simple_breakdown"])
-        if os.path.exists(result["color_normalized_breakdown"]):
-            os.remove(result["color_normalized_breakdown"])
-        if os.path.exists(result["joined_graph_and_color_bd"]):
-            os.remove(result["joined_graph_and_color_bd"])
 
     # Deletes the previous "currently processing" message
     await process_msg.delete()
@@ -930,7 +835,7 @@ async def dlpack(ctx, input: str):
     message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
     await process_msg.edit(content=message)
 
-    scan_folder(TMP_DIR + "pack/", False, True, db, False, None)
+    scan_folder(TMP_DIR + "pack/", db)
     db.close()
 
     message = "{}, ".format(ctx.author.mention)
