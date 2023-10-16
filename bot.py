@@ -32,6 +32,8 @@ import urllib.request
 
 DLPACK_ON_SELECTED_SERVERS_ONLY = False
 
+DLPACK_DESTINATION_URL = "D:\\bot_assets\\bot_db"
+
 # The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
 APPROVED_SERVERS = [
     317212788520910848, # Big Ass Forehead
@@ -815,11 +817,17 @@ async def dlpack(ctx, input: str):
         await process_msg.edit(content=message)
         os.remove(output)
         return
+    
+    temp_pack_dir = TMP_DIR + "pack/"
 
-    zipfile.extractall(TMP_DIR + "pack/")
+    # extract files to both the temp dir, and the destination for DB
+    zipfile.extractall(temp_pack_dir)
+    zipfile.extractall(DLPACK_DESTINATION_URL)
 
-    pack = next(os.walk(TMP_DIR + "pack/"))[1]
+    pack = next(os.walk(temp_pack_dir))[1]
     pack = pack[0]
+
+    zipfile.close()
 
     db = TinyDB(DATABASE_NAME)
 
@@ -828,14 +836,15 @@ async def dlpack(ctx, input: str):
         message += "it looks like this pack is already added. :x:"
         await process_msg.edit(content=message)
         os.remove(output)
-        shutil.rmtree(TMP_DIR + "pack/")
+        shutil.rmtree(temp_pack_dir)
         return
 
     message = "{}, ".format(ctx.author.mention)
     message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
     await process_msg.edit(content=message)
 
-    scan_folder(TMP_DIR + "pack/", db)
+    scan_args = [False, False, DLPACK_DESTINATION_URL, True, False, False, False]
+    scan_folder(scan_args, db)
     db.close()
 
     message = "{}, ".format(ctx.author.mention)
@@ -844,7 +853,7 @@ async def dlpack(ctx, input: str):
     await process_msg.edit(content=message)
 
     os.remove(output)
-    shutil.rmtree(TMP_DIR + "pack/")
+    shutil.rmtree(temp_pack_dir)
 
 
 @bot.command(name="prefix")
