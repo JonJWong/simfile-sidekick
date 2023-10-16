@@ -768,7 +768,10 @@ def scan_folder(args, db, cache=None):
                 parse_file(db, filename, folder, pack, False, cache)
                 logging.info("Completed parsing \"{}\".".format(filename))
             if args[MEDIA_REMOVE]:
-                if file.lower().endswith(".ogg") or file.lower().endswith(".mpg") or file.lower().endswith(".avi"):
+                # remove everything that isn't .sm or .ssc
+                if file.lower().endswith(".sm") or file.lower().endswith(".ssc"):
+                    continue
+                else:
                     os.remove(root + "/" + file)
                     logging.info("Removed \"{}\" from \"{}\".".format(filename, root))
 

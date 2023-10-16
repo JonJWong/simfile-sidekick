@@ -824,8 +824,7 @@ async def dlpack(ctx, input: str):
     zipfile.extractall(temp_pack_dir)
     zipfile.extractall(DLPACK_DESTINATION_URL)
 
-    pack = next(os.walk(temp_pack_dir))[1]
-    pack = pack[0]
+    pack = next(os.walk(temp_pack_dir))[1][0]
 
     zipfile.close()
 
@@ -843,6 +842,7 @@ async def dlpack(ctx, input: str):
     message += "I'm done extracting. Now scanning with the parse tool and adding to database. :hourglass:"
     await process_msg.edit(content=message)
 
+    # Args Ordered: Rebuild, Verbose, Directory, Media_remove, Log, Unit_test, CSV
     scan_args = [False, False, DLPACK_DESTINATION_URL, True, False, False, False]
     scan_folder(scan_args, db)
     db.close()
