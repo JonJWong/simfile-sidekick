@@ -301,7 +301,7 @@ def create_embed(data, ctx):
     
     
     # - - - PATTERN ANALYSIS - - -
-    pattern_analysis = "*Analysis does not consider patterns in break segments.*" + "\n"
+    pattern_analysis = "*Analysis does not consider patterns in break segments, or microholds in runs.*" + "\n"
     # Candles
     pattern_analysis += "__Candles__: **" + str(data["total_candles"]) + "** "
     pattern_analysis += "(" + str(data["left_foot_candles"]) + " left, "

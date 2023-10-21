@@ -323,6 +323,180 @@ def get_pattern_analysis(chart, num_notes):
 
     return analysis
 
+"""
+    Takes in a string as a pattern, and returns "L", "R". Always returns
+    whichever comes last in string.
+
+    Input assumes that there is always at least 1 L/R in string.
+"""
+def last_left_right(pattern):
+    last_L = pattern.rfind("L")
+    last_R = pattern.rfind("R")
+
+    return pattern[last_L:] if last_L > last_R else pattern[last_R:]
+
+"""
+    Filters a row in chart to ensure that it only contains arrows. This is to
+    catch edge cases where hold ends and arrows might be on the same row, or
+    even mines and arrows.
+    Necessary because the main pattern analysis function only checks for notes
+    without mines, hold ends, or holds/rolls in the rows.
+"""
+def ensure_only_step(note):
+    chars = note.split()
+
+    for i, char in enumerate(chars):
+        if char != "1" and char != "0":
+            chars[i] = "0"
+
+    return "".join(chars)
+
+"""
+    Refactored pattern analysis. Considering how niche microholds are in runs,
+    I decided to ignore them.
+
+    #TODO: Consider microholds in runs
+    
+    Parameters
+    -----------
+    measure_obj:
+        key: int
+        val: arr
+    
+    Measure_obj contains all the measures of run in a chart, where the key is the
+        measure numbner, and the value is an array containing all the notes.
+        Notes are in string format.
+
+        ex. 1: ['1000', '0100', '0010', '0001']
+"""
+def new_pattern_analysis(measure_obj):
+    STEP_TO_DIR = {
+        "1000": "L",
+        "0100": "D",
+        "0010": "U",
+        "0001": "R",
+    }
+
+    runs = []
+    total_notes = 0
+    total_mono_notes = 0
+
+    curr_run = ""
+    curr_measure = -1
+
+    # we want to get all the runs isolated so we can check each of them for
+    # patterns. We also count the total notes within runs for mono calculation.
+    for measure, notes in measure_obj.items():
+        # if first measure or if next measure, append notes
+        if curr_measure == -1 or measure - 1 == curr_measure:
+            curr_run += "".join([STEP_TO_DIR[note] for note in notes])
+        else:
+            # if there is a gap between prev measure and this one, there was a
+            # break. we want to append the run we had, and set current to this
+            # measure
+            runs.append(curr_run)
+            total_notes += len(curr_run)
+            curr_run = "".join([STEP_TO_DIR[note] for note in notes])
+        curr_measure = measure
+
+   # Define the substrings for each category of pattern
+    LEFT_CANDLES = ["DRU", "UDR"]
+    RIGHT_CANDLES = ["DLU", "ULD"]
+
+    # Initialize counters
+    category_counts = {
+        "Left Candles": 0,
+        "Right Candles": 0,
+        "Left Anchors": 0,
+        "Down Anchors": 0,
+        "Up Anchors": 0,
+        "Right Anchors": 0,
+    }
+
+    # Create a combined regex pattern for all substrings in each category
+    left_candle_pattern = "|".join(map(re.escape, LEFT_CANDLES))
+    right_candle_pattern = "|".join(map(re.escape, RIGHT_CANDLES))
+    left_anchor_pattern = "L[DUR]L[DUR]L"
+    down_anchor_pattern = "D[LUR]D[LUR]D"
+    up_anchor_pattern = "U[LDR]U[LDR]U"
+    right_anchor_pattern = "R[LDU]R[LDU]R"
+    
+    combined_pattern = (
+    f"({left_candle_pattern}|{right_candle_pattern}|"
+    f"{left_anchor_pattern}|{down_anchor_pattern}|"
+    f"{up_anchor_pattern}|{right_anchor_pattern})"
+    )
+
+    for run in runs:
+        # Iterate over runs and count occurrences of all specified patterns
+        # uses regex matching
+        matches = re.findall(combined_pattern, run)
+        for match in matches:
+            if match in LEFT_CANDLES:
+                category_counts["Left Candles"] += 1
+            elif match in RIGHT_CANDLES:
+                category_counts["Right Candles"] += 1
+            elif re.search(left_anchor_pattern, match):
+                category_counts["Left Anchors"] += 1
+            elif re.search(down_anchor_pattern, match):
+                category_counts["Down Anchors"] += 1
+            elif re.search(up_anchor_pattern, match):
+                category_counts["Up Anchors"] += 1
+            elif re.search(right_anchor_pattern, match):
+                category_counts["Right Anchors"] += 1
+
+        # - - - - - MONO CALCULATION - - - - -
+        current_foot = ""
+        currently_facing = ""
+        current_pattern = ""
+
+        for step in run:
+            # switch feet every step during a run
+            total_notes += 1
+            if current_foot == "" and step == "L" or step == "R":
+                current_foot = step
+            else:
+                current_foot = "R" if current_foot == "L" else "L"
+
+            current_pattern += step
+
+            if current_foot == "":
+                continue
+
+            # get what direction is being faced on the current step based on
+            # the most recent direction. Only changes on D/U after a L/R
+            next_direction = currently_facing
+            if current_foot == "L":
+                if step == "D":
+                    next_direction = "R"
+                elif step == "U":
+                    next_direction = "L"
+            elif current_foot == "R":
+                if step == "D":
+                    next_direction = "L"
+                elif step == "U":
+                    next_direction = "R"
+            
+            # check if the direction changes, and if the current pattern is
+            # longer than 5 notes. 6 notes is the minimum length for something
+            # to be considered mono.
+            # increment the total amount of mono notes by the length of the
+            # current pattern.
+            last_U = current_pattern.rfind("U")
+            last_D = current_pattern.rfind("D")
+            lastUD = last_U if last_U > last_D else last_D
+            if currently_facing != next_direction and len(current_pattern[:lastUD-1]) > 5:
+                if (current_pattern[:lastUD-1].endswith("LR") or
+                    current_pattern[:lastUD-1].endswith("RL")):
+                    total_mono_notes += len(current_pattern) - 3
+                else:
+                    total_mono_notes += len(current_pattern) - 2
+
+            # if the direction changes, reset current pattern to start on most
+            # recent left or right note
+            if currently_facing != next_direction:
+                current_pattern = last_left_right(current_pattern)
+                currently_facing = next_direction
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.
@@ -427,7 +601,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     current_measure = RunDensity.Break
     hit_first_run = False
     length = 0
-    notes = 0
+    note_count = 0
     holds = 0
     jumps = 0
     mines = 0
@@ -437,6 +611,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     total_stream = 0
     total_break = 0
     chart_runs_only = ""
+    measures_and_steps = {}
 
     for i, measure in enumerate(measures):
         bpm = find_current_bpm(i * 4, bpms)
@@ -445,7 +620,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
         for line in lines:
             if re.search(r"[124]", line):
                 measure_density += 1
-                notes += 1
+                note_count += 1
             holds += len(re.findall(r"[2]", line))
             mines += len(re.findall(r"[M]", line))
             rolls += len(re.findall(r"[4]", line))
@@ -505,6 +680,10 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
             index = m.rfind("\n")
             m = m[:index]
             chart_runs_only += m
+
+            # REFACTOR BEGIN
+            m = [note for note in m.split("\n") if note != ""]
+            measures_and_steps[i] = m
         else:
             chart_runs_only += "\n"
 
@@ -559,7 +738,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     elif measures_of_run[RunDensity.Run_16.value] > 0:
         breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
 
-    chartinfo.patterninfo = get_pattern_analysis(chart_runs_only, notes)
+    chartinfo.patterninfo = get_pattern_analysis(chart_runs_only, note_count)
 
     del chart_runs_only
 
@@ -569,7 +748,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
 
     total_break = adjust_total_break(total_break, measures)
 
-    notesinfo = ni.NotesInfo(notes, jumps, holds, mines, hands, rolls)
+    notesinfo = ni.NotesInfo(note_count, jumps, holds, mines, hands, rolls)
     chartinfo.notesinfo = notesinfo
     chartinfo.length = length
     chartinfo.total_stream = total_stream
