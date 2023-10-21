@@ -10,7 +10,7 @@ include merging images, saving images, and generating the density graph.
 This is free and unencumbered software released into the public domain. For more information, please refer to the
 LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 from common import BreakdownHelper as bh

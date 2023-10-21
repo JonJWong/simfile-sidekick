@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
 
-"""Searches for .sm files and creates a database of information based off their contents.
+"""
+Searches for .sm files and creates a database of information based on their contents.
 
-This is a tool used to scan StepMania (.sm) files <https://www.stepmania.com>. StepMania is a cross-platform rhythm
-video game and engine. This tool is intended only for "Dance" game files and will only scan "dance-single" charts. This
-tool creates a database of information from the scanned files. The database contains information such as a song's
-length, BPM, density breakdown, and pattern analysis. The purpose of this file is to be used in conjunction with the
-Discord bot.py program, to allow users to search for information from within Discord.
+This is a tool used to scan StepMania (.sm) files
+<https://www.stepmania.com>. StepMania is a cross-platform rhythm video game and engine.
+This tool is intended only for "Dance" game files and will only scan "dance-single"
+charts. It creates a database of information from the scanned files. The database
+contains information such as a song's length, BPM, density breakdown, and pattern
+analysis. The purpose of this file is to be used in conjunction with the Discord bot.py
+program, to allow users to search for information from within Discord.
 
-This is free and unencumbered software released into the public domain. For more information, please refer to the
-LICENSE file or visit <https://unlicense.org>.
+This is free and unencumbered software released into the public domain. For more
+information, please refer to the LICENSE file or visit <https://unlicense.org>.
 
 Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
+
 
 from common import BreakdownHelper as bh
 from common import GeneralHelper as gh
@@ -39,7 +43,8 @@ import sys
 
 # Flag constants. These are the available command line arguments you can use when running this application.
 SHORT_OPTIONS = "rvd:ml:uc"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=", "mediaremove", "log=", "unittest", "csv"]
+LONG_OPTIONS = ["rebuild", "verbose", "directory=",
+                "mediaremove", "log=", "unittest", "csv"]
 
 # Positions in args array.
 REBUILD = 0
@@ -51,24 +56,26 @@ UNIT_TEST = 5
 CSV = 6
 
 # Regex constants. Used mainly in the pattern recognition section.
-L_REG = "[124]+000"                     # Left arrow (1000)
-D_REG = "0[124]+00"                     # Down arrow (0100)
-U_REG = "00[124]+0"                     # Up Arrow (0010)
-R_REG = "000[124]+"                     # Right Arrow (0001)
 NL_REG = "[\s]+"                        # New line
 OR_REG = "|"                            # Regex for "or"
-NO_NOTES_REG = "[03M][03M][03M][03M]"   # Matches a line containing no notes (0000)
-ANY_NOTES_REG = "(.*)[124]+(.*)"        # Matches a line containing at least 1 note
+# Matches a line containing no notes (0000)
+NO_NOTES_REG = "[03M][03M][03M][03M]"
+# Matches a line containing at least 1 note
+ANY_NOTES_REG = "(.*)[124]+(.*)"
 
 # Other constants.
 LOG_TIMESTAMP = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "%(asctime)s %(levelname)s - %(message)s"
 
 # File name and folder constants. Change these if you want to use a different name or folder.
-UNITTEST_FOLDER = "tests"               # The folder the unit test songs are located
-DATABASE_NAME = "db.json"               # Name of the TinyDB database file that contains parsed song information
-LOGFILE_NAME = "scan.log"               # Name of the log file that will be created if enabled
-CSV_FILENAME = "charts.csv"             # Name of the .csv that will be created if enabled
+# The folder the unit test songs are located
+UNITTEST_FOLDER = "tests"
+# Name of the TinyDB database file that contains parsed song information
+DATABASE_NAME = "db.json"
+# Name of the log file that will be created if enabled
+LOGFILE_NAME = "scan.log"
+# Name of the .csv that will be created if enabled
+CSV_FILENAME = "charts.csv"
 
 
 def findall_with_regex_dotall(data, regex):
@@ -167,16 +174,12 @@ def add_to_database(fileinfo, db, cache):
             "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
             "candles_percent": fileinfo.chartinfo.patterninfo.candles_percent,
             "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
-            "lr_boxes": fileinfo.chartinfo.patterninfo.lr_boxes,
-            "ud_boxes": fileinfo.chartinfo.patterninfo.ud_boxes,
-            "corner_ld_boxes": fileinfo.chartinfo.patterninfo.corner_ld_boxes,
-            "corner_lu_boxes": fileinfo.chartinfo.patterninfo.corner_lu_boxes,
-            "corner_rd_boxes": fileinfo.chartinfo.patterninfo.corner_rd_boxes,
-            "corner_ru_boxes": fileinfo.chartinfo.patterninfo.corner_ru_boxes,
             "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
             "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
             "anchor_up": fileinfo.chartinfo.patterninfo.anchor_up,
             "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
+            "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
+            "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -225,104 +228,401 @@ def find_current_bpm(measure, bpms):
             return bpm[1]
 
 
-def get_pattern_analysis(chart, num_notes):
-    """Performs pattern analysis on a chart.
-
-    This function will perform a series of pattern analysis of the chart that is passed in. It uses a series of regex
-    search functions to obtain the data. It will return an analysis object.
+def last_left_right(pattern):
     """
-    # - - - CANDLE ANALYSIS - - -
-    # Capture patterns that require one foot to move up to down, or vice versa.
-    pattern = "(?=("  # Adds lookahead for ULDLU patterns
-    pattern += D_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + R_REG + NL_REG + D_REG
-    pattern += "))"
-    left_foot_candles = len(re.findall(re.compile(pattern), chart))
+        Takes in a string as a pattern, and returns "L", "R". Always returns
+        whichever comes last in string.
 
-    pattern = "(?=("  # Adds lookahead for ULDLU patterns
-    pattern += D_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + L_REG + NL_REG + D_REG
-    pattern += "))"
-    right_foot_candles = len(re.findall(re.compile(pattern), chart))
+        Input assumes that there is always at least 1 L/R in string.
+    """
+    last_L = pattern.rfind("L")
+    last_R = pattern.rfind("R")
 
-    # - - - MONO ANALYSIS - - -
-    # Capture patterns that lock the direction you face. To be considered a mono segment, your feet will be locked to
-    # the 2 same arrows for 4 notes.
-    # TODO: How to properly calculate mono with more than 4 notes per foot?
-
-    # For patterns that lock your left foot to LD and right foot to RU
-    pattern = ""
-    for i in range(4):
-        pattern += "(" + L_REG + OR_REG + D_REG + ")+" + NL_REG
-        pattern += "(" + R_REG + OR_REG + U_REG + ")+"
-        if i != 3:
-            pattern += NL_REG
-    ld_ru_mono = len(re.findall(re.compile(pattern), chart))
-
-    # For patterns that lock your left foot to LU and right foot to RD
-    pattern = ""
-    for i in range(4):
-        pattern += "(" + L_REG + OR_REG + U_REG + ")+" + NL_REG
-        pattern += "(" + R_REG + OR_REG + D_REG + ")+"
-        if i != 3:
-            pattern += NL_REG
-    lu_rd_mono = len(re.findall(re.compile(pattern), chart))
-
-    # - - - BOX ANALYSIS - - -
-    # For patterns that lock both feet to an arrow for 2 notes each
-    # TODO: How to properly calculate boxes with 3 notes?
-    pattern = L_REG + NL_REG + R_REG + NL_REG + L_REG + NL_REG + R_REG + OR_REG
-    pattern += R_REG + NL_REG + L_REG + NL_REG + R_REG + NL_REG + L_REG
-    lr_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = U_REG + NL_REG + D_REG + NL_REG + U_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + U_REG + NL_REG + D_REG + NL_REG + U_REG
-    ud_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = L_REG + NL_REG + D_REG + NL_REG + L_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + L_REG + NL_REG + D_REG + NL_REG + L_REG
-    corner_ld_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = L_REG + NL_REG + U_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + L_REG + NL_REG + U_REG + NL_REG + L_REG
-    corner_lu_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + D_REG + NL_REG + R_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + R_REG + NL_REG + D_REG + NL_REG + R_REG
-    corner_rd_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + U_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + R_REG + NL_REG + U_REG + NL_REG + R_REG
-    corner_ru_boxes = len(re.findall(re.compile(pattern), chart))
-
-    # - - - ANCHOR ANALYSIS - - -
-    # For patterns that lock one foot to an arrow for 3 notes
-    # TODO: How to properly calculate anchors with more than 3 notes?
-    pattern = L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG
-    anchor_left = len(re.findall(re.compile(pattern), chart))
-
-    pattern = D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG
-    anchor_down = len(re.findall(re.compile(pattern), chart))
-
-    pattern = U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG
-    anchor_up = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG
-    anchor_right = len(re.findall(re.compile(pattern), chart))
+    return pattern[last_L:] if last_L > last_R else pattern[last_R:]
 
 
-    total_candles = left_foot_candles + right_foot_candles
-    candles_percent = (total_candles / math.floor((num_notes - 1) / 2)) * 100
+def ensure_only_step(note):
+    """
+        Filters a row in chart to ensure that it only contains arrows. This is to
+        catch edge cases where hold ends and arrows might be on the same row, or
+        even mines and arrows.
+        Necessary because the main pattern analysis function only checks for notes
+        without mines, hold ends, or holds/rolls in the rows.
+    """
+    # If not a note, return no note
+    if len(note) != 4:
+        return "0000"
 
-    # Multiplied by 8 as there are 8 notes for every instance of mono
-    mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
+    # If there is no notes in input, return no note
+    for i, char in enumerate(["0", "1", "2", "3", "4", "M"]):
+        if i == len(note) and char not in note:
+            return "0000"
+        elif char in note:
+            break
 
-    analysis = pi.PatternInfo(left_foot_candles, right_foot_candles, total_candles, candles_percent, mono_percent,
-                              lr_boxes, ud_boxes, corner_ld_boxes, corner_lu_boxes, corner_rd_boxes, corner_ru_boxes,
-                              anchor_left, anchor_down, anchor_up, anchor_right)
+    # put chars of note in a list
+    chars = [step for step in note]
+
+    # if there is a hold end, or a mine, remove it
+    for i, step in enumerate(chars):
+        if step == "3" or step == "M":
+            chars[i] = "0"
+
+    return "".join(chars)
+
+
+def rec_anchor_check(run, arrow_idx, next_idx, count=0):
+    """
+        Recursive function to check for anchors within a run
+        TODO: Implement this in the iterative analysis
+    """
+    # If we've reached the end of the run and there were less than 3 instances
+    # of the arrow in question, return false
+    if next_idx >= len(run) and count < 3:
+        return False
+
+    # if the two input arrows are the same, call the function again for the next
+    # step, otherwise return whether or not the count >= 3
+    if run[arrow_idx] == run[next_idx]:
+        # If the first two match, we need to count as two arrows, but only move
+        # forward by 1 count thereafter.
+        if count == 0:
+            new_count = 2
+        else:
+            new_count += 1
+        return rec_anchor_check(run, next_idx, next_idx + 2, new_count)
+    else:
+        return count >= 3
+
+
+def rec_tower_check(run, arrow_idx, next_idx, count=0):
+    """
+        Recursive function to check for boxes within a run
+        TODO: Implement this in the iterative analysis
+    """
+    # If we've reached the end of the run and there were less than 2 instances
+    # of the arrow in question, return false
+    if next_idx + 1 >= len(run) and count < 2:
+        return False, "None"
+
+    # if the two input arrows are the same, call the function again for the next
+    # step, otherwise return whether or not the count >= 2
+    if run[arrow_idx] == run[next_idx] and run[arrow_idx + 1] == run[next_idx + 1]:
+        # If the first two match, we need to count as two arrows, but only move
+        # forward by 1 count thereafter.
+        if count == 0:
+            new_count = 2
+        else:
+            new_count += 1
+
+        return rec_tower_check(run, next_idx + 1, next_idx + 2, new_count)
+    else:
+        if count == 2:
+            pattern_type = "Box"
+        elif count >= 2:
+            pattern_type = "Tower"
+        else:
+            pattern_type = "None"
+
+        return count >= 2, pattern_type
+
+
+def new_pattern_analysis(measure_obj):
+    """
+        Refactored pattern analysis. Considering how niche microholds are in runs,
+        I decided to ignore them.
+
+        #TODO: Consider microholds in runs
+            Move Anchor and candle calculation into mono calculation iteration
+            Add doublestep, jump detection
+
+        Parameters
+        -----------
+        measure_obj:
+            key: int
+            val: arr
+
+        Measure_obj contains all the measures of run in a chart, where the key is the
+            measure numbner, and the value is an array containing all the notes.
+            Notes are in string format.
+
+            ex. 1: ['1000', '0100', '0010', '0001']
+    """
+    STEP_TO_DIR = {
+        # Steps
+        "1000": "L",
+        "0100": "D",
+        "0010": "U",
+        "0001": "R",
+        # Holds
+        "2000": "L",
+        "0200": "D",
+        "0020": "U",
+        "0002": "R",
+        # Rolls
+        "4000": "L",
+        "0400": "D",
+        "0040": "U",
+        "0004": "R",
+        # None
+        "0000": "",
+        # Jumps
+        "1100": "[LD]",
+        "1010": "[LU]",
+        "1001": "[LR]",
+        "0101": "[DR]",
+        "0011": "[UR]",
+        "0110": "[DU]",
+    }
+
+    # Initialize counters
+    category_counts = {
+        "Left Candles": 0,
+        "Right Candles": 0,
+        "Total Candles": 0,
+        "Candle Percent": 0.0,
+        "Left Anchors": 0,
+        "Down Anchors": 0,
+        "Up Anchors": 0,
+        "Right Anchors": 0,
+        "Mono Notes": 0,
+        "Mono Percent": 0.0,
+        "Double Stairs Count": 0,
+        "Double Stairs Array": [],
+    }
+
+    double_stair_data = {}
+
+    runs = []
+    total_notes_in_runs = 0
+
+    curr_run = ""
+    curr_measure = -1
+    most_recent_starting_measure = -1
+
+
+    def get_double_stair_data(run, starting_measure):
+        """
+        Helper method for the double stair finder. Iterates and combines the
+        object's values with the existing double_stair_data.
+        """
+        for measure_num, pattern in double_stair_finder(run, starting_measure).items():
+            double_stair_data[measure_num] = pattern
+
+    # we want to get all the runs isolated so we can check each of them for
+    # patterns. We also count the total notes within runs for mono calculation.
+    for measure, notes in measure_obj.items():
+        # if first measure or if next measure, add notes to current run
+        if curr_measure == -1 or measure - 1 == curr_measure:
+            if most_recent_starting_measure == -1:
+                most_recent_starting_measure = measure
+            for note in notes:
+                curr_run += STEP_TO_DIR[ensure_only_step(note)]
+        else:
+            # - - - - - DOUBLE STAIR FINDER - - - - -
+            # I put this here because I needed the measure respective
+            # to the entire chart, and that is in the measure_obj iteration
+            get_double_stair_data(curr_run, most_recent_starting_measure)
+
+            # if there is a gap between prev measure and this one, there was a
+            # break. we want to append the run we had, and set current to this
+            # measure. This gets done within the function below.
+            runs.append(curr_run)
+
+            # After appending the previous one, we reset curr_run and repopulate
+            # it with the run we're currently on
+            curr_run = ""
+            most_recent_starting_measure = measure
+            for note in notes:
+                curr_run += STEP_TO_DIR[ensure_only_step(note)]
+        curr_measure = measure
+
+    # When the loop ends, there will still be notes in curr_run. These need to
+    # be appended into the runs array, checked for double stairs etc.
+    if len(curr_run) != 0:
+        runs.append(curr_run)
+        get_double_stair_data(curr_run, most_recent_starting_measure)
+        curr_run = ""
+
+    # Candles
+    LEFT_CANDLES = ["DRU", "URD"]
+    RIGHT_CANDLES = ["DLU", "ULD"]
+
+    # Create a combined regex pattern for all substrings in each category
+    left_anchor_pattern = "L[DUR]L[DUR]L"
+    down_anchor_pattern = "D[LUR]D[LUR]D"
+    up_anchor_pattern = "U[LDR]U[LDR]U"
+    right_anchor_pattern = "R[LDU]R[LDU]R"
+
+    combined_pattern = (
+        f"({left_anchor_pattern}|{down_anchor_pattern}|"
+        f"{up_anchor_pattern}|{right_anchor_pattern})"
+    )
+
+    for run in runs:
+        # - - - - - ANCHOR CALCULATION - - - - -
+        # Uses regex matching like the previous method
+        # TODO: Use recursive algorithm in step iteration
+        matches = re.findall(combined_pattern, run)
+        for match in matches:
+            if re.search(left_anchor_pattern, match):
+                category_counts["Left Anchors"] += 1
+            elif re.search(down_anchor_pattern, match):
+                category_counts["Down Anchors"] += 1
+            elif re.search(up_anchor_pattern, match):
+                category_counts["Up Anchors"] += 1
+            elif re.search(right_anchor_pattern, match):
+                category_counts["Right Anchors"] += 1
+
+        # - - - - - CANDLE CALCULATION - - - - -
+        # candles are relatively straightforward, if any of those 4 candle
+        # variants exist, then it is a candle.
+        category_counts["Left Candles"] += sum(run.count(pattern)
+                                               for pattern in LEFT_CANDLES)
+        category_counts["Right Candles"] += sum(run.count(pattern)
+                                                for pattern in RIGHT_CANDLES)
+        
+        # Need to unpack the information in the double_stair_data object
+        for measure_num, pattern in double_stair_data.items():
+            category_counts["Double Stairs Count"] += 1
+            str_to_append = "{}x2: measure {}".format(str(pattern), str(measure_num))
+
+            if str_to_append not in category_counts["Double Stairs Array"]:
+                category_counts["Double Stairs Array"].append(str_to_append)
+
+        current_foot = ""
+        currently_facing = ""
+        current_pattern = ""
+
+        for step in run:
+            total_notes_in_runs += 1
+            # switch feet every step during a run
+            if current_foot == "" and step == "L" or step == "R":
+                current_foot = step
+            else:
+                current_foot = "R" if current_foot == "L" else "L"
+
+            current_pattern += step
+
+            if current_foot == "":
+                continue
+
+            # - - - - - MONO CALCULATION - - - - -
+            # get what direction is being faced on the current step based on
+            # the most recent direction. Only changes on D/U after a L/R
+            next_direction = currently_facing
+            if current_foot == "L":
+                if step == "D":
+                    next_direction = "R"
+                elif step == "U":
+                    next_direction = "L"
+            elif current_foot == "R":
+                if step == "D":
+                    next_direction = "L"
+                elif step == "U":
+                    next_direction = "R"
+
+            # check if the direction changes, and if the current pattern is
+            # longer than 5 notes. 6 notes is the minimum length for something
+            # to be considered mono.
+            # increment the total amount of mono notes by the length of the
+            # current pattern.
+            last_U = current_pattern.rfind("U")
+            last_D = current_pattern.rfind("D")
+            lastUD = last_U if last_U > last_D else last_D
+            if currently_facing != next_direction and len(current_pattern[:lastUD-1]) > 5:
+                if (current_pattern[:lastUD-1].endswith("LR") or
+                        current_pattern[:lastUD-1].endswith("RL")):
+                    category_counts["Mono Notes"] += len(current_pattern) - 3
+                else:
+                    category_counts["Mono Notes"] += len(current_pattern) - 2
+
+            # if the direction changes, reset current pattern to start on most
+            # recent left or right note
+            if currently_facing != next_direction:
+                current_pattern = last_left_right(current_pattern)
+                currently_facing = next_direction
+
+            category_counts["Mono Percent"] = (
+                (category_counts["Mono Notes"] / total_notes_in_runs) * 100
+            ) if category_counts["Mono Notes"] != 0 else 0
+
+            category_counts["Total Candles"] = (
+                category_counts["Left Candles"] +
+                category_counts["Right Candles"]
+            )
+
+            if category_counts["Total Candles"] != 0 and total_notes_in_runs > 1:
+                category_counts["Candle Percent"] = (
+                    (category_counts["Total Candles"] / (total_notes_in_runs - 1) / 2) * 100
+                )
+            else:
+                category_counts["Candle Percent"] = 0
+
+
+    category_counts["Double Stairs Count"] = len(category_counts["Double Stairs Array"])
+
+    analysis = pi.PatternInfo(category_counts["Left Candles"],
+                              category_counts["Right Candles"],
+                              category_counts["Total Candles"],
+                              category_counts["Candle Percent"],
+                              category_counts["Mono Percent"],
+                              category_counts["Left Anchors"],
+                              category_counts["Down Anchors"],
+                              category_counts["Up Anchors"],
+                              category_counts["Right Anchors"],
+                              category_counts["Double Stairs Count"],
+                              category_counts["Double Stairs Array"])
 
     return analysis
 
+def double_stair_finder(run, measure_num):
+    """
+        Finds all the double stairs in a run, and notates them with their measure
+        Returns an array of strings indicating where the double stairs are.
+
+        Input: String
+            ex. "LDURLUDR"
+    """
+
+    DBL_STAIRS = [
+        "LDURLDUR",
+        "LUDRLUDR",
+        "RUDLRUDL",
+        "RDULRDUL"
+    ]
+
+    data = {}
+    
+    curr_pattern = ""
+
+    # Iterate through the run string
+    for i, note in enumerate(run):
+        # Add step to pattern
+        curr_pattern += note
+
+        # If our current pattern deviates from double stairs, we want
+        # to reset the pattern at the next applicable instance of left
+        # or right. This ensures that we are not losing previously
+        # counted stairs/beginnings of stairs.
+        if not any(dbl_stair.startswith(curr_pattern) for dbl_stair in DBL_STAIRS):
+            # Slices the current pattern at the next left or right.
+            for j in range(1, len(curr_pattern)):
+                if j < len(curr_pattern) and (curr_pattern[j] == "L" or curr_pattern[j] == "R"):
+                    curr_pattern = curr_pattern[j:]
+            continue
+
+        # If the current pattern length reaches 8, we have found a
+        # double stair, so we reset curr_pattern after printing the
+        # metadata.
+        if len(curr_pattern) == 8:
+            calcd_idx = i - 7 if i - 7 > 0 else 0
+            calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
+            data[calcd_measure_num] = curr_pattern[:4]
+
+            curr_pattern = ""
+
+    return data
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.
@@ -359,13 +659,15 @@ def get_simplified(breakdown, partially):
         elif re.search(r"[()]", b):
             if partially:
                 current_measure = RunDensity.Break
-                b = bh.get_separator(int(bh.remove_all_breakdown_chars(simplified[i])))
+                b = bh.get_separator(
+                    int(bh.remove_all_breakdown_chars(simplified[i])))
             else:
                 if int(bh.remove_all_breakdown_chars(b)) <= 4:
                     b = bh.remove_all_breakdown_chars(b)
                     small_break = True
                 else:
-                    b = bh.get_separator(int(bh.remove_all_breakdown_chars(simplified[i])))
+                    b = bh.get_separator(
+                        int(bh.remove_all_breakdown_chars(simplified[i])))
                     current_measure = RunDensity.Break
         else:
             current_measure = RunDensity.Run_16
@@ -376,26 +678,35 @@ def get_simplified(breakdown, partially):
             simplified[i - 1] = ""
             if small_break and simplified:
                 if current_measure == RunDensity.Run_32:
-                    simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
+                    simplified[i] = "=" + \
+                        str(int(previous_value) + int(b) - 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
                     # Needs to be double escaped, as Discord will parse "\*" as just "*"
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\\\*"
+                    simplified[i] = "\\" + \
+                        str(int(previous_value) + int(b) - 1) + "\\\\*"
                 elif current_measure == RunDensity.Run_20:
-                    simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
+                    simplified[i] = "~" + \
+                        str(int(previous_value) + int(b) - 1) + "~*"
                 else:
                     simplified[i] = str(int(previous_value) + int(b) - 1) + "*"
                 small_break = False
             else:
                 if current_measure == RunDensity.Run_32:
-                    simplified[i] = "=" + str(int(previous_value) + int(b) - 1) + "=*"
-                    simplified[i] = "=" + str(int(previous_value) + int(b) + 1) + "=*"
+                    simplified[i] = "=" + \
+                        str(int(previous_value) + int(b) - 1) + "=*"
+                    simplified[i] = "=" + \
+                        str(int(previous_value) + int(b) + 1) + "=*"
                 elif current_measure == RunDensity.Run_24:
                     # Needs to be double escaped, as Discord will parse "\*" as just "*"
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) - 1) + "\\\\*"
-                    simplified[i] = "\\" + str(int(previous_value) + int(b) + 1) + "\\\\*"
+                    simplified[i] = "\\" + \
+                        str(int(previous_value) + int(b) - 1) + "\\\\*"
+                    simplified[i] = "\\" + \
+                        str(int(previous_value) + int(b) + 1) + "\\\\*"
                 elif current_measure == RunDensity.Run_20:
-                    simplified[i] = "~" + str(int(previous_value) + int(b) - 1) + "~*"
-                    simplified[i] = "~" + str(int(previous_value) + int(b) + 1) + "~*"
+                    simplified[i] = "~" + \
+                        str(int(previous_value) + int(b) - 1) + "~*"
+                    simplified[i] = "~" + \
+                        str(int(previous_value) + int(b) + 1) + "~*"
                 else:
                     simplified[i] = str(int(previous_value) + int(b) - 1) + "*"
                     simplified[i] = str(int(previous_value) + int(b) + 1) + "*"
@@ -427,7 +738,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     current_measure = RunDensity.Break
     hit_first_run = False
     length = 0
-    notes = 0
+    note_count = 0
     holds = 0
     jumps = 0
     mines = 0
@@ -436,7 +747,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     holding = 0
     total_stream = 0
     total_break = 0
-    chart_runs_only = ""
+    measures_and_steps = {}
 
     for i, measure in enumerate(measures):
         bpm = find_current_bpm(i * 4, bpms)
@@ -445,7 +756,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
         for line in lines:
             if re.search(r"[124]", line):
                 measure_density += 1
-                notes += 1
+                note_count += 1
             holds += len(re.findall(r"[2]", line))
             mines += len(re.findall(r"[M]", line))
             rolls += len(re.findall(r"[4]", line))
@@ -472,8 +783,8 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
                 hands += 1
             # Holding computation is done last, as it doesn't affect the current line
             # since current line, if jump or roll, would be 2 or 4 respectively.
-            for j, char in enumerate(line): # For each of the 4 possible arrows
-                if char == "2" or char == "4": # If arrow is hold or roll
+            for j, char in enumerate(line):  # For each of the 4 possible arrows
+                if char == "2" or char == "4":  # If arrow is hold or roll
                     # We are currently holding an arrows
                     holding += 1
                 if char == "3":
@@ -504,9 +815,10 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
                 m = re.sub(re.compile(NO_NOTES_REG + NL_REG), "", measure)
             index = m.rfind("\n")
             m = m[:index]
-            chart_runs_only += m
-        else:
-            chart_runs_only += "\n"
+
+            # REFACTOR BEGIN
+            m = [note for note in m.split("\n") if note != ""]
+            measures_and_steps[i] = m
 
         if measure_density >= 32:
             measures_of_run[RunDensity.Run_32.value] += 1
@@ -531,20 +843,25 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
 
         if current_measure != previous_measure:
             if previous_measure == RunDensity.Run_32:
-                breakdown += "=" + str(measures_of_run[RunDensity.Run_32.value]) + "= "
+                breakdown += "=" + \
+                    str(measures_of_run[RunDensity.Run_32.value]) + "= "
                 measures_of_run[RunDensity.Run_32.value] = 0
             elif previous_measure == RunDensity.Run_24:
-                breakdown += "\\" + str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
+                breakdown += "\\" + \
+                    str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
                 measures_of_run[RunDensity.Run_24.value] = 0
             elif previous_measure == RunDensity.Run_20:
-                breakdown += "~" + str(measures_of_run[RunDensity.Run_20.value]) + "~ "
+                breakdown += "~" + \
+                    str(measures_of_run[RunDensity.Run_20.value]) + "~ "
                 measures_of_run[RunDensity.Run_20.value] = 0
             elif previous_measure == RunDensity.Run_16:
-                breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
+                breakdown += str(
+                    measures_of_run[RunDensity.Run_16.value]) + " "
                 measures_of_run[RunDensity.Run_16.value] = 0
             elif previous_measure == RunDensity.Break:
                 if measures_of_run[RunDensity.Break.value] > 1:
-                    breakdown += "(" + str(measures_of_run[RunDensity.Break.value]) + ") "
+                    breakdown += "(" + \
+                        str(measures_of_run[RunDensity.Break.value]) + ") "
                 measures_of_run[RunDensity.Break.value] = 0
 
         previous_measure = current_measure
@@ -553,15 +870,14 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     if measures_of_run[RunDensity.Run_32.value] > 0:
         breakdown += "=" + str(measures_of_run[RunDensity.Run_32.value]) + "= "
     elif measures_of_run[RunDensity.Run_24.value] > 0:
-        breakdown += "\\" + str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
+        breakdown += "\\" + \
+            str(measures_of_run[RunDensity.Run_24.value]) + "\\ "
     elif measures_of_run[RunDensity.Run_20.value] > 0:
         breakdown += "~" + str(measures_of_run[RunDensity.Run_20.value]) + "~ "
     elif measures_of_run[RunDensity.Run_16.value] > 0:
         breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
 
-    chartinfo.patterninfo = get_pattern_analysis(chart_runs_only, notes)
-
-    del chart_runs_only
+    chartinfo.patterninfo = new_pattern_analysis(measures_and_steps)
 
     minutes = length // 60
     seconds = length % 60
@@ -569,7 +885,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
 
     total_break = adjust_total_break(total_break, measures)
 
-    notesinfo = ni.NotesInfo(notes, jumps, holds, mines, hands, rolls)
+    notesinfo = ni.NotesInfo(note_count, jumps, holds, mines, hands, rolls)
     chartinfo.notesinfo = notesinfo
     chartinfo.length = length
     chartinfo.total_stream = total_stream
@@ -600,33 +916,38 @@ def parse_chart(chart, fileinfo, db, cache=None):
         return                          # we only want single charts
 
     if chart.strip() == ";":
-        logging.info("The {} {} chart for {} is empty. Skipping.".format(difficulty, rating, fileinfo.title))
+        logging.info("The {} {} chart for {} is empty. Skipping.".format(
+            difficulty, rating, fileinfo.title))
         return                          # empty chart
 
     if not findall_with_regex(chart, ANY_NOTES_REG):
-        logging.info("The {} {} chart for {} is empty. Skipping.".format(difficulty, rating, fileinfo.title))
+        logging.info("The {} {} chart for {} is empty. Skipping.".format(
+            difficulty, rating, fileinfo.title))
         return                          # chart only contains 0's
 
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
 
-    chartinfo = ci.ChartInfo(fileinfo, stepartist, difficulty, rating, measures)
-
-
+    chartinfo = ci.ChartInfo(fileinfo, stepartist,
+                             difficulty, rating, measures)
 
     if measures == -1:
-        logging.warning("Unable to parse the {} {} chart for {}. Skipping.".format(difficulty, rating, fileinfo.title))
+        logging.warning("Unable to parse the {} {} chart for {}. Skipping.".format(
+            difficulty, rating, fileinfo.title))
         return
 
-    density, breakdown, chartinfo = get_density_and_breakdown(chartinfo, measures, fileinfo.bpms)
+    density, breakdown, chartinfo = get_density_and_breakdown(
+        chartinfo, measures, fileinfo.bpms)
     partially_simplified = get_simplified(breakdown, True)
     simplified = get_simplified(breakdown, False)
 
     if chartinfo.total_stream:
-        should_normalize = normalizer.if_should_normalize(breakdown, chartinfo.total_stream)
+        should_normalize = normalizer.if_should_normalize(
+            breakdown, chartinfo.total_stream)
         if should_normalize != RunDensity.Run_16:
             bpm_to_use = normalizer.get_best_bpm_to_use(fileinfo.min_bpm, fileinfo.max_bpm, chartinfo.median_nps,
                                                         fileinfo.displaybpm)
-            normalized_breakdown = normalizer.normalize(breakdown, bpm_to_use, should_normalize)
+            normalized_breakdown = normalizer.normalize(
+                breakdown, bpm_to_use, should_normalize)
             if normalized_breakdown != breakdown:
                 chartinfo.normalized_breakdown = normalized_breakdown
 
@@ -639,7 +960,8 @@ def parse_chart(chart, fileinfo, db, cache=None):
 
     fileinfo.chartinfo = chartinfo
 
-    ih.create_and_save_density_graph(list(range(0, len(measures))), density, fileinfo.chartinfo.graph_location)
+    ih.create_and_save_density_graph(
+        list(range(0, len(measures))), density, fileinfo.chartinfo.graph_location)
     add_to_database(fileinfo, db, cache)
 
 
@@ -659,7 +981,8 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
 
     bpms = find_with_regex_dotall(data, r"#BPMS:(.*?)[;]+?")
     if bpms == -1:
-        logging.warning("BPM for file \"{}\" is not readable. Skipping.".format(filename))
+        logging.warning(
+            "BPM for file \"{}\" is not readable. Skipping.".format(filename))
         return
     else:
         bpms = bpms.split(",")
@@ -668,13 +991,15 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
             if "#" in bpm:
                 # Some BPMs are missing a trailing ; (30MIN HARDER in Cirque du Beast)
                 bpm = bpm.split("#", 1)[0]
-                logging.warning("BPM for file \"{}\" is missing semicolon. Handled and continuing.".format(filename))
+                logging.warning(
+                    "BPM for file \"{}\" is missing semicolon. Handled and continuing.".format(filename))
             # Quick way to remove non-printable characters that, for whatever reason,
             # exist in a few .sm files (Oceanlab Megamix)
             old_bpm = bpm
             bpm = "".join(filter(lambda c: c in string.printable, bpm))
             if old_bpm != bpm:
-                logging.warning("BPM for file \"{}\" contains non-printable characters. Handled and continuing.".format(filename))
+                logging.warning(
+                    "BPM for file \"{}\" contains non-printable characters. Handled and continuing.".format(filename))
             bpm = bpm.strip().split("=")
             temp.insert(0, bpm)
         bpms = temp
@@ -682,13 +1007,15 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
     charts = findall_with_regex_dotall(data, r"#NOTES:(.*?);")
 
     if charts == -1:
-        logging.warning("Unable to parse chart(s) data for \"{}\". Skipping.".format(filename))
+        logging.warning(
+            "Unable to parse chart(s) data for \"{}\". Skipping.".format(filename))
         return
     else:
         for i, chart in enumerate(charts):
             sanity_check = chart.split("\n", 6)
             if len(sanity_check) != 7:
-                logging.warning("Unable to parse chart(s) data for \"{}\". Attempting to handle...".format(filename))
+                logging.warning(
+                    "Unable to parse chart(s) data for \"{}\". Attempting to handle...".format(filename))
                 # There's something in this file that is causing the regex to not parse properly.
                 # Usually a misplaced ; instead of a :
                 # This is a quick and dirty attempt to salvage it.
@@ -696,7 +1023,8 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
                 chart = chart.splitlines()
                 problem_line = chart[len(chart) - 1]
                 substring_index = data.find(problem_line)
-                possible_bad_semicolon_index = substring_index + len(problem_line)
+                possible_bad_semicolon_index = substring_index + \
+                    len(problem_line)
 
                 if data[possible_bad_semicolon_index] == ";":
                     # Our guess is correct, we found a premature semicolon
@@ -715,10 +1043,12 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
                     # a few files manually.
                 else:
                     # Our guess was incorrect
-                    logging.warning("Unable to parse \"{}\" correctly. Skipping.".format(filename))
+                    logging.warning(
+                        "Unable to parse \"{}\" correctly. Skipping.".format(filename))
                     return
 
-            fileinfo = fi.FileInfo(title, subtitle, artist, pack, bpms, displaybpm, folder)
+            fileinfo = fi.FileInfo(
+                title, subtitle, artist, pack, bpms, displaybpm, folder)
             parse_chart(chart + ";", fileinfo, db, cache)
 
 
@@ -734,7 +1064,8 @@ def scan_folder(args, db, cache=None):
     logging.debug("{} .sm file(s) detected in initial count.".format(total))
 
     if total <= 0:
-        logging.debug("Exiting scan_folder function; no .sm files found in directory \"{}\".".format(args[DIRECTORY]))
+        logging.debug("Exiting scan_folder function; no .sm files found in directory \"{}\".".format(
+            args[DIRECTORY]))
         return
 
     i = 0  # Current file
@@ -743,10 +1074,12 @@ def scan_folder(args, db, cache=None):
         sm_counter = len(glob.glob1(root, "*.[sS][mM]"))
 
         if sm_counter <= 0:
-            logging.info("There are no .sm file(s) in folder \"{}\". Skipping folder/scanning children.".format(root))
+            logging.info(
+                "There are no .sm file(s) in folder \"{}\". Skipping folder/scanning children.".format(root))
             continue
         elif sm_counter >= 2:
-            logging.warning("Found more than 1 .sm files in folder \"{}\". Skipping folder.".format(root))
+            logging.warning(
+                "Found more than 1 .sm files in folder \"{}\". Skipping folder.".format(root))
             i += sm_counter
             continue
 
@@ -773,7 +1106,8 @@ def scan_folder(args, db, cache=None):
                     continue
                 else:
                     os.remove(root + "/" + file)
-                    logging.info("Removed \"{}\" from \"{}\".".format(filename, root))
+                    logging.info(
+                        "Removed \"{}\" from \"{}\".".format(filename, root))
 
     if args[VERBOSE]:
         output_i, output_total = vh.normalize_num(i, total)
@@ -790,9 +1124,11 @@ def scan_folder(args, db, cache=None):
 # PyCharm assumes args will remain a strict type boolean array, so we disable PyTypeChecker to ignore these warnings.
 def main(argv: list):
     try:
-        arguments, values = getopt.getopt(argv[1:], SHORT_OPTIONS, LONG_OPTIONS)
+        arguments, values = getopt.getopt(
+            argv[1:], SHORT_OPTIONS, LONG_OPTIONS)
     except getopt.error as err:
-        print("An unexpected error occurred with getopt. Error message:\n" + str(err) + "\nExiting.")
+        print("An unexpected error occurred with getopt. Error message:\n" +
+              str(err) + "\nExiting.")
         sys.exit(2)
 
     # An array that will contains the passed in arguments. Positions of elements are declared as
@@ -814,10 +1150,13 @@ def main(argv: list):
         elif arg in ("-l", "--log"):
             try:
                 numeric_level = getattr(logging, val.upper())
-                logging.basicConfig(filename=LOGFILE_NAME, level=numeric_level, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                logging.basicConfig(
+                    filename=LOGFILE_NAME, level=numeric_level, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
             except AttributeError:
-                logging.basicConfig(filename=LOGFILE_NAME, level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
-                print("Log level \"{}\" is not a valid log level. Defaulting to ERROR.".format(val))
+                logging.basicConfig(
+                    filename=LOGFILE_NAME, level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                print(
+                    "Log level \"{}\" is not a valid log level. Defaulting to ERROR.".format(val))
                 print("Valid log levels are: DEBUG, INFO, WARNING, ERROR, CRITICAL")
             logging.info("Logfile initialized.")
         elif arg in ("-c", "--csv"):
@@ -825,7 +1164,8 @@ def main(argv: list):
 
     if not logging.getLogger().hasHandlers():
         # Logging argument wasn't passed in. Default to logging level ERROR and output to stdout.
-        logging.basicConfig(level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+        logging.basicConfig(level=logging.ERROR,
+                            datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
 
     if not args[DIRECTORY] and not args[UNIT_TEST]:
         message = "The directory is a required parameter. Exiting."
@@ -842,7 +1182,8 @@ def main(argv: list):
         if os.path.isfile(database):
             os.remove(database)
         logging.getLogger().handlers = []
-        logging.basicConfig(filename=log_location, level=logging.INFO, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+        logging.basicConfig(filename=log_location, level=logging.INFO,
+                            datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
         with TinyDB(database) as db:
             scan_folder(args, db)
             test.run_tests()
@@ -859,7 +1200,8 @@ def main(argv: list):
             if os.path.isdir(args[DIRECTORY]):
                 scan_folder(args, db, cache)
             else:
-                print("\"" + args[DIRECTORY] + "\" is not a valid directory. Exiting.")
+                print("\"" + args[DIRECTORY] +
+                      "\" is not a valid directory. Exiting.")
                 sys.exit(2)
 
             os.chmod(DATABASE_NAME, 0o777)

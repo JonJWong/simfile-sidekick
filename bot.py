@@ -9,7 +9,7 @@ parse through the uploaded file.
 This is free and unencumbered software released into the public domain. For more information, please refer to the
 LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 from common import DBManager as dbm
@@ -36,15 +36,16 @@ DLPACK_DESTINATION_URL = "D:\\bot_assets\\bot_db"
 
 # The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
 APPROVED_SERVERS = [
-    317212788520910848, # Big Ass Forehead
-    1163182650241069066, # BOT EMOJIS
-    1163200677409988668, # BOT EMOJIS 2
+    317212788520910848,  # Big Ass Forehead
+    1163182650241069066,  # BOT EMOJIS
+    1163200677409988668,  # BOT EMOJIS 2
 ]
 
 # File name and folder constants. Change these if you want to use a different name or folder.
 SERVER_SETTINGS = "server_settings.json"
 USER_SETTINGS = "user_settings.json"
-DATABASE_NAME = "db.json"  # Name of the TinyDB database file that contains parsed song information
+# Name of the TinyDB database file that contains parsed song information
+DATABASE_NAME = "db.json"
 TMP_DIR = "./tmp/"  # Directory to temporarily store user's uploaded .sm files to parse
 
 # The database that contains server configurations, such as what prefix is set
@@ -92,6 +93,8 @@ of the result that matches your desired search result.
 If you want me to parse an .sm file, attach the .sm file to your message and
 type `-parse`. If I get stuck parsing a file, try `-fix` and
 I'll do my best to clean up so I can parse files again.
+If you want to show double staircases and their locations, use `-parse -ds` when
+sending your file.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
@@ -151,6 +154,7 @@ def is_prefix_for_server(id, prefix):
         else:
             return False
 
+
 # Allows SS to see members in other servers
 intents = discord.Intents.all()
 intents.members = True
@@ -158,7 +162,9 @@ intents.members = True
 # Loads the bot's prefixes using the get_prefixes function above
 bot = commands.Bot(command_prefix=get_prefixes(), intents=intents)
 
-bot.remove_command("help")  # Needed in order to replace existing help command with our own
+# Needed in order to replace existing help command with our own
+bot.remove_command("help")
+
 
 def get_mono_desc(mono):
     """Helper function to return pre-formatted text used in mono pattern analysis."""
@@ -230,104 +236,107 @@ def get_footer_image(level):
 
 
 def create_embed(data, ctx):
-    embed = discord.Embed(description="Requested by {}".format(ctx.author.mention))
-    
+    embed = discord.Embed(
+        description="Requested by {}".format(ctx.author.mention))
+
     # Add requester's avatar, commented out since displaying Chart Info on same
     # line would be too tight.
     # embed.set_thumbnail(url=ctx.message.author.avatar_url)
-    
+
     # - - - SONG DETAILS - - -
     song_details = ""
     # Title, Subtitle, and Artist
     if data["title"] == "*Hidden*" and data["artist"] == "*Hidden*":
         song_details += "*<Title and artist hidden>*\n"
     else:
-        song_details += "**" + data["title"] + "** "
+        song_details += f'**{data["title"]}** '
         if data["subtitle"] and data["subtitle"] != "N/A":
-            song_details += "*" + data["subtitle"] + "* "
-        song_details += "by **" + data["artist"] + "**" + "\n"
-    song_details += "From pack(s): " + data["pack"] + "\n"
+            song_details += f'*{data["subtitle"]}* '
+        song_details += f'by **{data["artist"]}** \n'
+    song_details += f'From pack(s): {data["pack"]}\n'
     # Rating, Difficulty, and Stepartist
     try:
-        song_details += get_footer_image(int(data["rating"])) + " "
+        song_details += f'{get_footer_image(int(data["rating"]))} '
     except ValueError:
-        song_details += get_footer_image(-1) + " "
+        song_details += f'{get_footer_image(-1)} '
     stepartist = data["stepartist"].replace("*", "\*")
-    song_details += data["difficulty"] + " - " + stepartist + "\n\n"
+    song_details += f'{data["difficulty"]} - {stepartist}\n\n'
     # Length
-    song_details += "__Song Length__: " + data["length"] + "\n"
+    song_details += f'__Song Length__: {data["length"]}\n'
     # Display BPM
     if data["display_bpm"] and data["display_bpm"] != "N/A":
         song_details += "__Display BPM__: "
         if re.search(r"[:]+", data["display_bpm"]):
             display_bpm_range = data["display_bpm"].split(":")
-            song_details += str(int(float(display_bpm_range[0]))) + "-"
-            song_details += str(int(float(display_bpm_range[1]))) + "\n"
+            song_details += f'{str(int(float(display_bpm_range[0])))}-'
+            song_details += f'{str(int(float(display_bpm_range[1])))}\n'
         else:
-            song_details += str(int(float(data["display_bpm"]))) + "\n"
+            song_details += f'{str(int(float(data["display_bpm"])))}\n'
     # BPM
     song_details += "__BPM__: "
     if int(float(data["min_bpm"]) == int(float(data["max_bpm"]))):
-        song_details += str(int(float(data["min_bpm"]))) + "\n"
+        song_details += f'{str(int(float(data["min_bpm"])))}\n'
     else:
-        song_details += str(int(float(data["min_bpm"]))) + "-"
-        song_details += str(int(float(data["max_bpm"]))) + "\n"
+        song_details += f'{str(int(float(data["min_bpm"])))}-'
+        song_details += f'{str(int(float(data["max_bpm"])))}\n'
     # NPS
-    song_details += "__Peak NPS__: **" + normalize_float(data["max_nps"]) + "** notes/s." + "\n"
-    song_details += "__Median NPS__: **" + normalize_float(data["median_nps"]) + "** notes/s." + "\n"
+    song_details += f'__Peak NPS__: **{normalize_float(data["max_nps"])}** notes/s. \n'
+    song_details += f'__Median NPS__: **{normalize_float(data["median_nps"])}** notes/s.\n'
     # Total Stream/Break
     total_measures = data["total_stream"] + data["total_break"]
     if total_measures != 0:
-        stream_percent = normalize_float((data["total_stream"] / total_measures) * 100)
-        break_percent = normalize_float((data["total_break"] / total_measures) * 100)
-        song_details += "__Total Stream__: **" + str(data["total_stream"]) + "** measures "
-        song_details += "(" + stream_percent + "%)" + "\n"
-        song_details += "__Total Break__: **" + str(data["total_break"]) + "** measures "
-        song_details += "(" + break_percent + "%)" + ""
-    
+        stream_percent = normalize_float(
+            (data["total_stream"] / total_measures) * 100)
+        break_percent = normalize_float(
+            (data["total_break"] / total_measures) * 100)
+        song_details += f'__Total Stream__: **{str(data["total_stream"])}** measures '
+        song_details += f'({stream_percent}%)\n'
+        song_details += f'__Total Break__: **{str(data["total_break"])}** measures '
+        song_details += f'({break_percent}%)'
+
     embed.add_field(name="__Song Details__", value=song_details)
-    
-    
+
     # - - - CHART INFO - - -
     chart_info = ""
-    chart_info += "__Notes__: " + str(data["notes"]) + "\n"
-    chart_info += "__Jumps__: " + str(data["jumps"]) + "\n"
-    chart_info += "__Holds__: " + str(data["holds"]) + "\n"
-    chart_info += "__Mines__: " + str(data["mines"]) + "\n"
-    chart_info += "__Hands__: " + str(data["hands"]) + "\n"
-    chart_info += "__Rolls__: " + str(data["rolls"])
-    
+    chart_info += f'__Notes__: {str(data["notes"])}\n'
+    chart_info += f'__Jumps__: {str(data["jumps"])}\n'
+    chart_info += f'__Holds__: {str(data["holds"])}\n'
+    chart_info += f'__Mines__: {str(data["mines"])}\n'
+    chart_info += f'__Hands__: {str(data["hands"])}\n'
+    chart_info += f'__Rolls__: {str(data["rolls"])}'
+
     embed.add_field(name="__Chart Info__", value=chart_info, inline=True)
-    
-    
+
     # - - - PATTERN ANALYSIS - - -
-    pattern_analysis = "*Analysis does not consider patterns in break segments.*" + "\n"
+    pattern_analysis = f'*Analysis does not consider patterns in break segments, or microholds in runs.*\n'
     # Candles
-    pattern_analysis += "__Candles__: **" + str(data["total_candles"]) + "** "
-    pattern_analysis += "(" + str(data["left_foot_candles"]) + " left, "
-    pattern_analysis += str(data["right_foot_candles"]) + " right)" + "\n"
-    candle_density = data["total_candles"] / (data["notes"] / 16)
-    pattern_analysis += "__Candle density__: " + str(normalize_float(candle_density)) + " candles/measure" + "\n"
+    pattern_analysis += f'__Candles__: **{str(data["total_candles"])}** '
+    pattern_analysis += f'({str(data["left_foot_candles"])} left, '
+    pattern_analysis += f'{str(data["right_foot_candles"])} right)\n'
+    candle_density = data["total_candles"] / (data["total_stream"] * 16)
+    pattern_analysis += f'__Candle density__: {str(normalize_float(candle_density))} candles/measure\n'
     # Mono
-    pattern_analysis += "__Mono__: " + str(normalize_float(data["mono_percent"])) + "% "
-    pattern_analysis += "(" + get_mono_desc(data["mono_percent"]) + ")" + "\n"
-    # Boxes
-    corner_boxes = data["corner_ld_boxes"] + data["corner_lu_boxes"] + data["corner_rd_boxes"] + data["corner_ru_boxes"]
-    total_boxes = data["lr_boxes"] + data["ud_boxes"] + corner_boxes
-    pattern_analysis += "__Boxes__: **" + str(total_boxes) + "** "
-    pattern_analysis += "(" + str(data["lr_boxes"]) + " LRLR, " + str(data["ud_boxes"]) + " UDUD, "
-    pattern_analysis += str(corner_boxes) + " corner)" + "\n"
+    pattern_analysis += f'__Mono__: {str(normalize_float(data["mono_percent"]))}% '
+    pattern_analysis += f'({get_mono_desc(data["mono_percent"])})\n'
     # Anchors
-    total_anchors = data["anchor_left"] + data["anchor_down"] + data["anchor_up"] + data["anchor_right"]
-    pattern_analysis += "__Anchors__: **" + str(total_anchors) + "** "
-    pattern_analysis += "(" + str(data["anchor_left"]) + " left, "
-    pattern_analysis += str(data["anchor_down"]) + " down, "
-    pattern_analysis += str(data["anchor_up"]) + " up, "
-    pattern_analysis += str(data["anchor_right"]) + " right)"
-    
-    embed.add_field(name="__Pattern Analysis__", value=pattern_analysis, inline=False)
-    
-    
+    total_anchors = data["anchor_left"] + data["anchor_down"] + \
+        data["anchor_up"] + data["anchor_right"]
+    pattern_analysis += f'__Anchors__: **{str(total_anchors)}** '
+    pattern_analysis += f'({str(data["anchor_left"])} left, '
+    pattern_analysis += f'{str(data["anchor_down"])} down, '
+    pattern_analysis += f'{str(data["anchor_up"])} up, '
+    pattern_analysis += f'{str(data["anchor_right"])} right)\n'
+    # Double Stairs
+    if "-ds" in ctx.message.content.split(" "):
+        pattern_analysis += f'__Double Stairs__: {data["double_stairs_count"]} \n'
+        pattern_analysis += '__Locations__:\n'
+        if data['double_stairs_count'] > 0:
+            for entry in data["double_stairs_array"]:
+                pattern_analysis += f'{entry}\n'
+
+    embed.add_field(name="__Pattern Analysis__",
+                    value=pattern_analysis, inline=False)
+
     # - - - BREAKDOWNS - - -
 
     if data["breakdown"]:
@@ -335,85 +344,95 @@ def create_embed(data, ctx):
         # larger than this restriction.
         # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
         if len(data["breakdown"]) > 1024:
-            embed.add_field(name="__Detailed Breakdown__", value="***Too large to display***", inline=False)
+            embed.add_field(name="__Detailed Breakdown__",
+                            value="***Too large to display***", inline=False)
         else:
-            embed.add_field(name="__Detailed Breakdown__", value=data["breakdown"], inline=False)
+            embed.add_field(name="__Detailed Breakdown__",
+                            value=data["breakdown"], inline=False)
         if data["partial_breakdown"] != data["simple_breakdown"]:
             if len(data["partial_breakdown"]) > 1024:
-                embed.add_field(name="__Partially Simplified__", value="***Too large to display***", inline=False)
+                embed.add_field(name="__Partially Simplified__",
+                                value="***Too large to display***", inline=False)
             else:
-                embed.add_field(name="__Partially Simplified__", value=data["partial_breakdown"], inline=False)
+                embed.add_field(name="__Partially Simplified__",
+                                value=data["partial_breakdown"], inline=False)
         if len(data["simple_breakdown"]) > 1024:
             simple_breakdown = ""
             simple_breakdown_array = data["simple_breakdown"].split(" ")
             num_breaks = 1
             for i in simple_breakdown_array:
                 if (len(simple_breakdown) + len(i)) > 1024:
-                    embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+                    embed.add_field(name="__Simplified Breakdown *(Part " +
+                                    str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
                     num_breaks += 1
                     simple_breakdown = ""
                 simple_breakdown += i + " "
-            embed.add_field(name="__Simplified Breakdown *(Part " + str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
+            embed.add_field(name="__Simplified Breakdown *(Part " +
+                            str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
         else:
-            embed.add_field(name="__Simplified Breakdown__", value=data["simple_breakdown"], inline=False)
+            embed.add_field(name="__Simplified Breakdown__",
+                            value=data["simple_breakdown"], inline=False)
     if data["normalized_breakdown"]:
         text = "*This is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
-        embed.add_field(name="__Normalized Breakdown__", value=text + data["normalized_breakdown"], inline=False)
-
-
+        embed.add_field(name="__Normalized Breakdown__",
+                        value=text + data["normalized_breakdown"], inline=False)
 
     # - - - FOOTER - - -
-    footer_text = "Made by Artimst, maintained by JWong for personal use"
-    embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
-
     file = discord.File(data["graph_location"], filename="density.png")
 
     embed.set_image(url="attachment://density.png")
-    
+
     return embed, file
+
 
 @bot.command(name="search", rest_is_raw=True)
 async def search_song(ctx, *, song_name: str):
-#async def search_song(ctx, song_name: str):
+    # async def search_song(ctx, song_name: str):
     if not song_name:
-        embed = discord.Embed(description=f"Sorry {ctx.author.mention}, but please supply a title.")
+        embed = discord.Embed(
+            description=f"Sorry {ctx.author.mention}, but please supply a title.")
         await ctx.send(embed=embed)
         return
 
-    # Strip the whitespaces since query is unstripped due to rest_is_raw=True 
+    # Strip the whitespaces since query is unstripped due to rest_is_raw=True
     query = song_name.strip()
-    
+
     results = dbm.search(query, DATABASE_NAME)
-    
+
     if isinstance(results, int):
         if results == 0:
-            embed = discord.Embed(description="Sorry {}, but I could not find any songs.".format(ctx.author.mention))
+            embed = discord.Embed(
+                description="Sorry {}, but I could not find any songs.".format(ctx.author.mention))
             await ctx.send(embed=embed)
         elif results == -1:
-            embed = discord.Embed(description="There was an error processing this request.")
+            embed = discord.Embed(
+                description="There was an error processing this request.")
             await ctx.send(embed=embed)
     elif isinstance(results, list):
         if len(results) == 1:
             data = results[0]
-            
+
             embed, file = create_embed(data, ctx)
             await ctx.send(file=file, embed=embed)
 
         elif len(results) > 1:
             data = results
-            
+
             user = "{}".format(ctx.author.mention)
             max_results = len(data)
             if max_results >= 26:
                 max_results = 25
                 search_description = "There were too many results, but I can show you the first 25." + "\n"
                 search_description += "If your song isn't listed, please refine your search." + "\n"
-                search_description += user + ", enter a number from `1` to `" + str(max_results) + "` "
+                search_description += user + \
+                    ", enter a number from `1` to `" + str(max_results) + "` "
                 search_description += "to select the search result."
-                embed = discord.Embed(title="Search Results", description=search_description)
+                embed = discord.Embed(
+                    title="Search Results", description=search_description)
             else:
-                embed = discord.Embed(title="Search Results", description=user + ", enter a number from `1` to `" + str(len(data)) + "` to select the search result.")
-            
+                embed = discord.Embed(title="Search Results", description=user +
+                                      ", enter a number from `1` to `" + str(len(data)) + "` to select the search result.")
+
             for i, d in enumerate(data):
                 if i >= 25:
                     break
@@ -421,33 +440,33 @@ async def search_song(ctx, *, song_name: str):
                 if d["subtitle"] and d["subtitle"] != "N/A":
                     title += "*" + d["subtitle"] + "* "
                 title += "by " + d["artist"]
-                
+
                 value = "Pack(s): " + d["pack"] + "\n"
-                value += get_footer_image(int(d["rating"])) + " " + d["difficulty"] + " - " + d["stepartist"].replace("*", "\*")
-                
+                value += get_footer_image(int(d["rating"])) + " " + \
+                    d["difficulty"] + " - " + \
+                    d["stepartist"].replace("*", "\*")
+
                 embed.add_field(name=title, value=value, inline=False)
-                
-                
-                
-            
+
             if len(embed) > 6000:
-                embed = discord.Embed(description="Sorry {}, but there are too many results for me to display.".format(ctx.author.mention))
+                embed = discord.Embed(
+                    description="Sorry {}, but there are too many results for me to display.".format(ctx.author.mention))
                 await ctx.send(embed=embed)
                 return
             else:
                 await ctx.send(embed=embed)
-            
+
             try:
                 msg = await bot.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
             except asyncio.TimeoutError:
                 # User didn't respond in 30s, just exit
                 return
-            
+
             if msg:
-                embed, file = None, None 
+                embed, file = None, None
                 try:
                     index = int(msg.content) - 1
-                    
+
                     if index < 0 or index >= len(data):
                         raise IndexError
 
@@ -457,7 +476,8 @@ async def search_song(ctx, *, song_name: str):
                     # saying "invalid input" if the user searches for another song/uses another command.
                     pass
                 except IndexError:
-                    embed = discord.Embed(description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
+                    embed = discord.Embed(
+                        description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
                 finally:
                     if embed:
                         await ctx.send(file=file, embed=embed)
@@ -473,7 +493,7 @@ async def stream_visualiser(ctx, input: str):
     else:
         # https://github.com/andrewcalimlim/Stream-Visualizer-Bot/blob/master/bot.js
         input = re.findall(r"\[[LDUR]*\]|[LDUR]", input)
-        
+
         normalized_input = []
         for i, line in enumerate(input):
             temp_line = [0, 0, 0, 0]
@@ -488,7 +508,7 @@ async def stream_visualiser(ctx, input: str):
                 elif c == "R":
                     temp_line[3] = 1
             normalized_input.append(temp_line)
-        
+
         message = ""
         for i, line in enumerate(normalized_input):
             for j, arrow in enumerate(line):
@@ -543,7 +563,8 @@ async def settings(ctx, *input: str):
     user_id = ctx.message.author.id
 
     if not input or input[0] == "help":
-        embed = discord.Embed(description="{}'s Settings".format(ctx.author.mention))
+        embed = discord.Embed(
+            description="{}'s Settings".format(ctx.author.mention))
 
         title = "**Auto-delete** is "
 
@@ -565,7 +586,8 @@ async def settings(ctx, *input: str):
         if len(input) <= 1:
             result = udbm.get_autodelete(user_id, USER_SETTINGS)
             if result is None:
-                message = "{}, it looks like you don't have this preference set. ".format(ctx.author.mention)
+                message = "{}, it looks like you don't have this preference set. ".format(
+                    ctx.author.mention)
                 message += "The default behavior is: "
                 if DEFAULT_AUTODELETE_BEHAVIOR:
                     message += "I will automatically delete .sm files."
@@ -586,6 +608,7 @@ async def settings(ctx, *input: str):
         else:
             await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
         return
+
 
 @bot.command(name="fix")
 async def fix(ctx):
@@ -611,11 +634,13 @@ async def parse(ctx):
     """
 
     if len(ctx.message.attachments) < 1:
-        message = "{}, you need to attach a .sm file.".format(ctx.author.mention)
+        message = "{}, you need to attach a .sm file.".format(
+            ctx.author.mention)
         await ctx.send(message)
         return
     elif len(ctx.message.attachments) > 1:
-        message = "{}, it looks like you attached multiple files. ".format(ctx.author.mention)
+        message = "{}, it looks like you attached multiple files. ".format(
+            ctx.author.mention)
         message += "I can currently only parse one file at a time."
         await ctx.send(message)
         return
@@ -631,11 +656,12 @@ async def parse(ctx):
         where the first half of the URL is formatted like it was before, and the latter half
         is the authentication token.
     """
-    
+
     url_token_split = attachment.url.split("?")
     new_url_because_discord_sucks = url_token_split[0]
     if not new_url_because_discord_sucks.endswith(".sm"):
-        message = "Sorry {}, I can only parse .sm files.".format(ctx.author.mention)
+        message = "Sorry {}, I can only parse .sm files.".format(
+            ctx.author.mention)
         await ctx.send(message)
         return
 
@@ -651,7 +677,8 @@ async def parse(ctx):
     # I had the bot parse XS Project Collection, then tried uploading another .sm file immediately after. The message
     # below didn't appear until after XS Project Collection was complete.
     if os.path.exists(usr_tmp_dir):
-        message = "It looks like I'm already parsing a file for you {}.".format(ctx.author.mention)
+        message = "It looks like I'm already parsing a file for you {}.".format(
+            ctx.author.mention)
         await ctx.send(message)
         return
     else:
@@ -676,14 +703,16 @@ async def parse(ctx):
 
     hide_artist_info = False
 
-    autodelete = udbm.get_autodelete_with_default(ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
+    autodelete = udbm.get_autodelete_with_default(
+        ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
     if autodelete:
         hide_artist_info = True
         await ctx.message.delete()
 
     # Call scan.py's parser function and put results in temporary database
     # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
-    parse_file(db, usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", hide_artist_info, None)
+    parse_file(db, usr_tmp_file, usr_tmp_dir,
+               "*<Uploaded>*", hide_artist_info, None)
 
     # Get results from temporary database
     results = [result for result in db]
@@ -704,6 +733,7 @@ async def parse(ctx):
     db.close()
     os.remove(usr_tmp_db)
     os.rmdir(usr_tmp_dir)
+
 
 @bot.command(name="delpack")
 @has_permissions(administrator=True)
@@ -733,7 +763,8 @@ async def delpack(ctx, input: str):
         body += " - " + u + "\n"
 
     if body:
-        embed.add_field(name="Songs will be updated (they exist in other packs):", value=body, inline=False)
+        embed.add_field(
+            name="Songs will be updated (they exist in other packs):", value=body, inline=False)
 
     body = ""
 
@@ -741,9 +772,11 @@ async def delpack(ctx, input: str):
         body += " - " + d + "\n"
 
     if body:
-        embed.add_field(name="Songs will be deleted:", value=body, inline=False)
+        embed.add_field(name="Songs will be deleted:",
+                        value=body, inline=False)
 
-    embed.add_field(name="Are you sure you want to do this?", value="Type Y or N.", inline=False)
+    embed.add_field(name="Are you sure you want to do this?",
+                    value="Type Y or N.", inline=False)
 
     await ctx.send(embed=embed)
 
@@ -755,9 +788,9 @@ async def delpack(ctx, input: str):
 
     if msg and msg.content.upper() == "Y":
         dbm.delete_by_ids(list(d for d in deletes), DATABASE_NAME)
-        dbm.remove_pack_from_songs_by_id(input, list(u for u in updates), DATABASE_NAME)
+        dbm.remove_pack_from_songs_by_id(
+            input, list(u for u in updates), DATABASE_NAME)
         await ctx.send("Songs deleted.")
-
 
 
 @bot.command(name="dlpack")
@@ -817,7 +850,7 @@ async def dlpack(ctx, input: str):
         await process_msg.edit(content=message)
         os.remove(output)
         return
-    
+
     temp_pack_dir = TMP_DIR + "pack/"
 
     # extract files to both the temp dir, and the destination for DB
@@ -843,7 +876,8 @@ async def dlpack(ctx, input: str):
     await process_msg.edit(content=message)
 
     # Args Ordered: Rebuild, Verbose, Directory, Media_remove, Log, Unit_test, CSV
-    scan_args = [False, False, DLPACK_DESTINATION_URL, True, False, False, False]
+    scan_args = [False, False, DLPACK_DESTINATION_URL,
+                 True, False, False, False]
     scan_folder(scan_args, db)
     db.close()
 
@@ -901,7 +935,6 @@ async def prefix(ctx, input: str):
     await ctx.send("Prefix is now: " + new_prefix)
 
 
-
 @bot.command(name="help")
 async def help(ctx):
     """
@@ -912,6 +945,7 @@ async def help(ctx):
     :return: Nothing
     """
     await ctx.send(HELP_MESSAGE)
+
 
 @bot.event
 async def on_message(message):
@@ -925,7 +959,6 @@ async def on_message(message):
 
     if prefix:  # if prefix is not null, this sometimes happens if a user/another bot sends an embedded message
         prefix = prefix[0]  # retrieves the first character
-
 
     server_id = None
 

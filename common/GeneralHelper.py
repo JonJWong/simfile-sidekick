@@ -7,7 +7,7 @@ Various common functions are defined here that are used throughout Simfile Sidek
 This is free and unencumbered software released into the public domain. For more information, please refer to the
 LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 from typing import List

@@ -6,7 +6,7 @@ A discord bot to scan and parse StepMania simfiles. Inspired by Nav's Breakdown 
 
 ## About this guide
 
-This was originally written by artimst, and now hosted by JonJWong.
+This was originally written by artimst, and now hosted/updated by JonJWong.
 Original repo: https://gitlab.com/artimst/simfile-sidekick
 
 ## How to use
