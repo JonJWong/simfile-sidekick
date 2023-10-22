@@ -26,12 +26,14 @@ class PatternInfo(object):
 
     double_stairs_count: int = 0
     double_stairs_array: []
+    doublestep_count: int = 0
+    doublestep_array: []
 
     def __init__(self, left_foot_candles: int, right_foot_candles: int,
                  total_candles: int, candles_percent: float,
                  mono_percent: float, anchor_left: int, anchor_down: int,
                  anchor_up: int, anchor_right: int, double_stairs_count: int,
-                 double_stairs_array: []):
+                 double_stairs_array: [], doublestep_count: int, doublestep_array: []):
         self.left_foot_candles = left_foot_candles
         self.right_foot_candles = right_foot_candles
         self.total_candles = total_candles
@@ -43,3 +45,5 @@ class PatternInfo(object):
         self.anchor_right = anchor_right
         self.double_stairs_count = double_stairs_count
         self.double_stairs_array = double_stairs_array
+        self.doublestep_count = doublestep_count
+        self.doublestep_array = doublestep_array

@@ -180,6 +180,8 @@ def add_to_database(fileinfo, db, cache):
             "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
             "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
             "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
+            "doublestep_count": fileinfo.chartinfo.patterninfo.doublestep_count,
+            "doublestep_array": fileinfo.chartinfo.patterninfo.doublestep_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -388,7 +390,9 @@ def new_pattern_analysis(measure_obj):
         "Mono Notes": 0,
         "Mono Percent": 0.0,
         "Double Stairs Count": 0,
+        "Doublestep Count": 0,
         "Double Stairs Array": [],
+        "Doublestep Array": [],
     }
 
     # Candles
@@ -406,22 +410,107 @@ def new_pattern_analysis(measure_obj):
         f"{up_anchor_pattern}|{right_anchor_pattern})"
     )
 
-    double_stair_data = {}
-
     total_notes_in_runs = 0
 
     curr_run = ""
     prev_measure = None
     most_recent_starting_measure = None
 
+    def __process_double_data(data, category_counts, category_key, array_key, pattern_format):
+        for measure, pattern in data.items():
+            category_counts[category_key] += 1
+            str_to_append = pattern_format.format(str(pattern), str(measure))
+
+            if str_to_append not in category_counts[array_key]:
+                category_counts[array_key].append(str_to_append)
+
+    def __double_parser(run, measure_num):
+        """
+        Finds all the double stairs/doublesteps in a run, and notates them with
+        their measure.
+        Returns a dictionary for each with measure: pattern as key: value pairs.
+
+        ```
+        Input: String ex. "LDURLUDR"
+        Output: Dictionary, Dictionary
+            ex. {
+                15: "LDUR",
+                33: "RUDL"
+            }
+            ex. {
+                15: "LUUD",
+                33: "DURR"
+            }
+        ```
+        """
+        nonlocal category_counts
+
+        DBL_STAIRS = [
+            "LDURLDUR",
+            "LUDRLUDR",
+            "RUDLRUDL",
+            "RDULRDUL"
+        ]
+
+        DBL_STEPS = [
+            "LL",
+            "DD",
+            "UU",
+            "RR"
+        ]
+
+
+        double_stair_data = {}
+        doublestep_data = {}
+        
+        curr_pattern = ""
+
+        # Iterate through the run string
+        for i, note in enumerate(run):
+            # - - - - - DOUBLESTEP FINDER - - - - -
+            for pattern in DBL_STEPS:
+                if run.startswith(pattern, i):
+                    calcd_measure = measure_num + (math.floor(i / 16))
+                    doublestep_data[calcd_measure] = pattern
+
+            # - - - - - DOUBLE STAIR FINDER - - - - -
+            # Add step to pattern
+            curr_pattern += note
+
+            # If our current pattern deviates from double stairs, we want
+            # to reset the pattern at the next applicable instance of left
+            # or right. This ensures that we are not losing previously
+            # counted stairs/beginnings of stairs.
+            if not any(dbl_stair.startswith(curr_pattern) for dbl_stair in DBL_STAIRS):
+                # Slices the current pattern at the next left or right.
+                for j in range(1, len(curr_pattern)):
+                    if j < len(curr_pattern) and (curr_pattern[j] == "L" or curr_pattern[j] == "R"):
+                        curr_pattern = curr_pattern[j:]
+                continue
+
+            # If the current pattern length reaches 8, we have found a
+            # double stair, so we reset curr_pattern after printing the
+            # metadata.
+            if len(curr_pattern) == 8:
+                calcd_idx = i - 7 if i - 7 > 0 else 0
+                calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
+                double_stair_data[calcd_measure_num] = curr_pattern[:4]
+
+                curr_pattern = ""
+
+        # Process double_stair_data
+        __process_double_data(double_stair_data, category_counts, "Double Stairs Count", "Double Stairs Array", "{}x2: measure {}")
+
+        # Process doublestep_data
+        __process_double_data(doublestep_data, category_counts, "Doublestep Count", "Doublestep Array", "{}: measure {}")
+
     def __analyze(run):
-        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, double_stair_data, total_notes_in_runs, curr_run, most_recent_starting_measure
-        # - - - - - DOUBLE STAIR FINDER - - - - -
-        # I put this here because I needed the measure respective
-        # to the entire chart, and that is in the measure_obj iteration
-        for measure, pattern in double_stair_finder(curr_run, most_recent_starting_measure).items():
-            double_stair_data[measure] = pattern
-        # - - - - - ANCHOR CALCULATION - - - - -
+        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, total_notes_in_runs, curr_run, most_recent_starting_measure
+        # - - - - - DOUBLE PARSER - - - - -
+        # Finds double stairs and doublesteps iteratively by searching through the run from start to end.
+        __double_parser(curr_run, most_recent_starting_measure)
+
+        # - - - - - ANCHOR FINDER - - - - -
         # Uses regex matching like the previous method
         # TODO: Use recursive algorithm in step iteration
         matches = re.findall(combined_pattern, run)
@@ -435,21 +524,13 @@ def new_pattern_analysis(measure_obj):
             elif re.search(right_anchor_pattern, match):
                 category_counts["Right Anchors"] += 1
 
-        # - - - - - CANDLE CALCULATION - - - - -
-        # candles are relatively straightforward, if any of those 4 candle
+        # - - - - - CANDLE FINDER - - - - -
+        # Candles are relatively straightforward, if any of those 4 candle
         # variants exist, then it is a candle.
         category_counts["Left Candles"] += sum(run.count(pattern)
                                                for pattern in LEFT_CANDLES)
         category_counts["Right Candles"] += sum(run.count(pattern)
                                                 for pattern in RIGHT_CANDLES)
-        
-        # Need to unpack the information in the double_stair_data object
-        for measure, pattern in double_stair_data.items():
-            category_counts["Double Stairs Count"] += 1
-            str_to_append = "{}x2: measure {}".format(str(pattern), str(measure))
-
-            if str_to_append not in category_counts["Double Stairs Array"]:
-                category_counts["Double Stairs Array"].append(str_to_append)
 
         current_foot = ""
         currently_facing = ""
@@ -461,7 +542,9 @@ def new_pattern_analysis(measure_obj):
             if current_foot == "" and step == "L" or step == "R":
                 current_foot = step
             else:
-                current_foot = "R" if current_foot == "L" else "L"
+                # don't switch feet during doublesteps mid-run
+                if current_pattern[-1] != step:
+                    current_foot = "R" if current_foot == "L" else "L"
 
             current_pattern += step
 
@@ -563,58 +646,11 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Up Anchors"],
                               category_counts["Right Anchors"],
                               category_counts["Double Stairs Count"],
-                              category_counts["Double Stairs Array"])
+                              category_counts["Double Stairs Array"],
+                              category_counts["Doublestep Count"],
+                              category_counts["Doublestep Array"],)
 
     return analysis
-
-def double_stair_finder(run, measure_num):
-    """
-    Finds all the double stairs in a run, and notates them with their measure
-    Returns an array of strings indicating where the double stairs are.
-
-    Input: String
-        ex. "LDURLUDR"
-    """
-
-    DBL_STAIRS = [
-        "LDURLDUR",
-        "LUDRLUDR",
-        "RUDLRUDL",
-        "RDULRDUL"
-    ]
-
-    data = {}
-    
-    curr_pattern = ""
-
-    # Iterate through the run string
-    for i, note in enumerate(run):
-        # Add step to pattern
-        curr_pattern += note
-
-        # If our current pattern deviates from double stairs, we want
-        # to reset the pattern at the next applicable instance of left
-        # or right. This ensures that we are not losing previously
-        # counted stairs/beginnings of stairs.
-        if not any(dbl_stair.startswith(curr_pattern) for dbl_stair in DBL_STAIRS):
-            # Slices the current pattern at the next left or right.
-            for j in range(1, len(curr_pattern)):
-                if j < len(curr_pattern) and (curr_pattern[j] == "L" or curr_pattern[j] == "R"):
-                    curr_pattern = curr_pattern[j:]
-            continue
-
-        # If the current pattern length reaches 8, we have found a
-        # double stair, so we reset curr_pattern after printing the
-        # metadata.
-        if len(curr_pattern) == 8:
-            calcd_idx = i - 7 if i - 7 > 0 else 0
-            print(calcd_idx, measure_num)
-            calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
-            data[calcd_measure_num] = curr_pattern[:4]
-
-            curr_pattern = ""
-
-    return data
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.
