@@ -233,7 +233,8 @@ def get_footer_image(level):
         return LEVEL_TO_EMOJISTRING[level]
     else:
         return "<:wun:1163199650916999228>"
-    
+
+
 def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
     pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
     if data[pattern_type + '_count'] > 0:
@@ -241,6 +242,7 @@ def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
         for entry in data[pattern_type + "_array"]:
             pattern_analysis += f'{entry}\n'
     return pattern_analysis
+
 
 def create_embed(data, ctx):
     embed = discord.Embed(
@@ -316,12 +318,14 @@ def create_embed(data, ctx):
 
     # - - - PATTERN ANALYSIS - - -
     pattern_analysis = f'*Analysis does not consider patterns in break segments, or microholds in runs.*\n'
+
     # Candles
     pattern_analysis += f'__Candles__: **{str(data["total_candles"])}** '
     pattern_analysis += f'({str(data["left_foot_candles"])} left, '
     pattern_analysis += f'{str(data["right_foot_candles"])} right)\n'
     candle_density = data["total_candles"] / (data["total_stream"] * 16)
     pattern_analysis += f'__Candle density__: {str(normalize_float(candle_density))} candles/measure\n'
+
     # Mono
     pattern_analysis += f'__Mono__: {str(normalize_float(data["mono_percent"]))}% '
     pattern_analysis += f'({get_mono_desc(data["mono_percent"])})\n'
@@ -336,8 +340,10 @@ def create_embed(data, ctx):
 
     # Doubles
     if "-xtras" in ctx.message.content.split(" "):
-        pattern_analysis = __append_pattern_info("Double Stairs", "double_stairs", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Double Steps", "doublesteps", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info(
+            "Double Stairs", "double_stairs", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info(
+            "Double Steps", "doublesteps", data, pattern_analysis)
 
     embed.add_field(name="__Pattern Analysis__",
                     value=pattern_analysis, inline=False)

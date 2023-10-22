@@ -459,10 +459,9 @@ def new_pattern_analysis(measure_obj):
             "RR"
         ]
 
-
         double_stair_data = {}
         doublesteps_data = {}
-        
+
         curr_pattern = ""
 
         # Iterate through the run string
@@ -470,7 +469,7 @@ def new_pattern_analysis(measure_obj):
             # - - - - - DOUBLESTEP FINDER - - - - -
             for pattern in DBL_STEPS:
                 if run.startswith(pattern, i):
-                    calcd_measure = measure_num + (math.floor(i / 16))
+                    calcd_measure = measure_num + (math.floor((i+1) / 16))
                     doublesteps_data[calcd_measure] = pattern
 
             # - - - - - DOUBLE STAIR FINDER - - - - -
@@ -499,10 +498,12 @@ def new_pattern_analysis(measure_obj):
                 curr_pattern = ""
 
         # Process double_stair_data
-        __process_double_data(double_stair_data, category_counts, "Double Stairs Count", "Double Stairs Array", "{}x2: measure {}")
+        __process_double_data(double_stair_data, category_counts,
+                              "Double Stairs Count", "Double Stairs Array", "{}x2: measure {}")
 
         # Process doublesteps_data
-        __process_double_data(doublesteps_data, category_counts, "Doublesteps Count", "Doublesteps Array", "{}: measure {}")
+        __process_double_data(doublesteps_data, category_counts,
+                              "Doublesteps Count", "Doublesteps Array", "{}: measure {}")
 
     def __analyze(run):
         nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, total_notes_in_runs, curr_run, most_recent_starting_measure
@@ -543,7 +544,7 @@ def new_pattern_analysis(measure_obj):
                 current_foot = step
             else:
                 # don't switch feet during doublesteps mid-run
-                if current_pattern[-1] != step:
+                if len(current_pattern) > 1 and current_pattern[-1] != step:
                     current_foot = "R" if current_foot == "L" else "L"
 
             current_pattern += step
@@ -598,7 +599,8 @@ def new_pattern_analysis(measure_obj):
 
             if category_counts["Total Candles"] != 0 and total_notes_in_runs > 1:
                 category_counts["Candle Percent"] = (
-                    (category_counts["Total Candles"] / (total_notes_in_runs - 1) / 2) * 100
+                    (category_counts["Total Candles"] /
+                     (total_notes_in_runs - 1) / 2) * 100
                 )
             else:
                 category_counts["Candle Percent"] = 0
@@ -607,13 +609,13 @@ def new_pattern_analysis(measure_obj):
         nonlocal curr_run, STEP_TO_DIR
         for note in notes_in_measure:
             curr_run += STEP_TO_DIR[ensure_only_step(note)]
-        
+
     def __reset(measure):
         nonlocal curr_run, prev_measure, most_recent_starting_measure
         curr_run = ""
         most_recent_starting_measure = measure
         prev_measure = measure
-        
+
     # we want to get all the runs isolated so we can check each of them for
     # patterns. We also count the total notes within runs for mono calculation.
     for i, (measure_num, notes_in_measure) in enumerate(measure_obj.items()):
@@ -634,7 +636,8 @@ def new_pattern_analysis(measure_obj):
 
         prev_measure = measure_num
 
-    category_counts["Double Stairs Count"] = len(category_counts["Double Stairs Array"])
+    category_counts["Double Stairs Count"] = len(
+        category_counts["Double Stairs Array"])
 
     analysis = pi.PatternInfo(category_counts["Left Candles"],
                               category_counts["Right Candles"],
@@ -651,6 +654,7 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Doublesteps Array"],)
 
     return analysis
+
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.
