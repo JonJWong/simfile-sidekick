@@ -172,7 +172,6 @@ def add_to_database(fileinfo, db, cache):
             "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
             "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
             "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
-            "candles_percent": fileinfo.chartinfo.patterninfo.candles_percent,
             "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
             "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
             "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
@@ -180,6 +179,10 @@ def add_to_database(fileinfo, db, cache):
             "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
             "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
             "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
+            "doublesteps_count": fileinfo.chartinfo.patterninfo.doublesteps_count,
+            "doublesteps_array": fileinfo.chartinfo.patterninfo.doublesteps_array,
+            "jumps_count": fileinfo.chartinfo.patterninfo.jumps_count,
+            "jumps_array": fileinfo.chartinfo.patterninfo.jumps_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -373,6 +376,12 @@ def new_pattern_analysis(measure_obj):
         "0101": "[DR]",
         "0011": "[UR]",
         "0110": "[DU]",
+        # Hands
+        "1110": "[LDU]",
+        "1101": "[LDR]",
+        "1011": "[LUR]",
+        "0111": "[DUR]",
+        "1111": "[LDUR]"
     }
 
     # Initialize counters
@@ -380,7 +389,6 @@ def new_pattern_analysis(measure_obj):
         "Left Candles": 0,
         "Right Candles": 0,
         "Total Candles": 0,
-        "Candle Percent": 0.0,
         "Left Anchors": 0,
         "Down Anchors": 0,
         "Up Anchors": 0,
@@ -388,61 +396,12 @@ def new_pattern_analysis(measure_obj):
         "Mono Notes": 0,
         "Mono Percent": 0.0,
         "Double Stairs Count": 0,
+        "Doublesteps Count": 0,
         "Double Stairs Array": [],
+        "Doublesteps Array": [],
+        "Jumps Count": 0,
+        "Jumps Array": []
     }
-
-    double_stair_data = {}
-
-    runs = []
-    total_notes_in_runs = 0
-
-    curr_run = ""
-    curr_measure = -1
-    most_recent_starting_measure = -1
-
-
-    def get_double_stair_data(run, starting_measure):
-        """
-        Helper method for the double stair finder. Iterates and combines the
-        object's values with the existing double_stair_data.
-        """
-        for measure_num, pattern in double_stair_finder(run, starting_measure).items():
-            double_stair_data[measure_num] = pattern
-
-    # we want to get all the runs isolated so we can check each of them for
-    # patterns. We also count the total notes within runs for mono calculation.
-    for measure, notes in measure_obj.items():
-        # if first measure or if next measure, add notes to current run
-        if curr_measure == -1 or measure - 1 == curr_measure:
-            if most_recent_starting_measure == -1:
-                most_recent_starting_measure = measure
-            for note in notes:
-                curr_run += STEP_TO_DIR[ensure_only_step(note)]
-        else:
-            # - - - - - DOUBLE STAIR FINDER - - - - -
-            # I put this here because I needed the measure respective
-            # to the entire chart, and that is in the measure_obj iteration
-            get_double_stair_data(curr_run, most_recent_starting_measure)
-
-            # if there is a gap between prev measure and this one, there was a
-            # break. we want to append the run we had, and set current to this
-            # measure. This gets done within the function below.
-            runs.append(curr_run)
-
-            # After appending the previous one, we reset curr_run and repopulate
-            # it with the run we're currently on
-            curr_run = ""
-            most_recent_starting_measure = measure
-            for note in notes:
-                curr_run += STEP_TO_DIR[ensure_only_step(note)]
-        curr_measure = measure
-
-    # When the loop ends, there will still be notes in curr_run. These need to
-    # be appended into the runs array, checked for double stairs etc.
-    if len(curr_run) != 0:
-        runs.append(curr_run)
-        get_double_stair_data(curr_run, most_recent_starting_measure)
-        curr_run = ""
 
     # Candles
     LEFT_CANDLES = ["DRU", "URD"]
@@ -459,8 +418,89 @@ def new_pattern_analysis(measure_obj):
         f"{up_anchor_pattern}|{right_anchor_pattern})"
     )
 
-    for run in runs:
-        # - - - - - ANCHOR CALCULATION - - - - -
+    total_notes_in_runs = 0
+
+    curr_run = ""
+    prev_measure = None
+    most_recent_starting_measure = None
+
+    def __process_mistake_data(data, category_counts, category_key, array_key, pattern_format):
+        for measure, datum in data.items():
+            if isinstance(datum, list):
+                for data in datum:
+                    category_counts[category_key] += 1
+                    str_to_append = pattern_format.format(
+                        str(data), str(measure))
+
+                    if str_to_append not in category_counts[array_key]:
+                        category_counts[array_key].append(str_to_append)
+            else:
+                category_counts[category_key] += 1
+                str_to_append = pattern_format.format(str(datum), str(measure))
+
+                if str_to_append not in category_counts[array_key]:
+                    category_counts[array_key].append(str_to_append)
+
+    def __double_parser(run, measure_num):
+        """
+        Finds all the double stairs/doublesteps in a run, and notates them with
+        their measure.
+        Returns a dictionary for each with measure: pattern as key: value pairs.
+
+        ```
+        Input: String ex. "LDURLUDR"
+        Output: Dictionary, Dictionary
+            ex. {
+                15: "LDUR",
+                33: "RUDL"
+            }
+            ex. {
+                15: "LUUD",
+                33: "DURR"
+            }
+        ```
+        """
+        nonlocal category_counts
+        # Iterate through the run string
+
+    def __analyze(run):
+        """
+        Method to find Anchors and Candles via regex, double stairs and double
+        steps via iterative string matching, and mono through iteration paying
+        attention to direction changes based on which foot hits the U/D arrow.
+
+        Does not return anything, but modifies a `nonlocal category_counts`
+        variable, which contains data pertinent to the patterning of a chart.
+
+        Parameters
+        -----------
+        Input: string
+            Takes in a string where each character denotes an arrow in the run.
+            ex. "LDURLUDRLRUDL"
+
+        Output: None
+        """
+        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, \
+              total_notes_in_runs, curr_run, most_recent_starting_measure, STEP_TO_DIR
+        
+        DBL_STAIRS = [
+            "LDURLDUR",
+            "LUDRLUDR",
+            "RUDLRUDL",
+            "RDULRDUL"
+        ]
+
+        DBL_STEPS = [
+            "LL", "DD", "UU", "RR",
+            "LUR", "LDR", "RUL", "RDL",
+            "LUDL", "LDUL", "RUDR", "RDUR"
+        ]
+
+        double_stair_data = {}
+        doublesteps_data = {}
+        jumps_data = {}
+
+        # - - - - - ANCHOR FINDER - - - - -
         # Uses regex matching like the previous method
         # TODO: Use recursive algorithm in step iteration
         matches = re.findall(combined_pattern, run)
@@ -474,155 +514,173 @@ def new_pattern_analysis(measure_obj):
             elif re.search(right_anchor_pattern, match):
                 category_counts["Right Anchors"] += 1
 
-        # - - - - - CANDLE CALCULATION - - - - -
-        # candles are relatively straightforward, if any of those 4 candle
+        # - - - - - CANDLE FINDER - - - - -
+        # Candles are relatively straightforward, if any of those 4 candle
         # variants exist, then it is a candle.
         category_counts["Left Candles"] += sum(run.count(pattern)
                                                for pattern in LEFT_CANDLES)
         category_counts["Right Candles"] += sum(run.count(pattern)
                                                 for pattern in RIGHT_CANDLES)
-        
-        # Need to unpack the information in the double_stair_data object
-        for measure_num, pattern in double_stair_data.items():
-            category_counts["Double Stairs Count"] += 1
-            str_to_append = "{}x2: measure {}".format(str(pattern), str(measure_num))
 
-            if str_to_append not in category_counts["Double Stairs Array"]:
-                category_counts["Double Stairs Array"].append(str_to_append)
-
-        current_foot = ""
-        currently_facing = ""
+        current_foot = None
+        previous_foot = None
+        currently_facing = None
+        next_direction = None
         current_pattern = ""
+        ds_pattern = ""
+        jumping = False
 
-        for step in run:
+        # - - - - - RUN ITERATION LOOP - - - - -
+        # One step at a time.
+
+        for i, note in enumerate(run):
+            current_measure = most_recent_starting_measure + math.floor(i + 1 / 16)
+            # - - - - - JUMP DETECTION - - - - -
+            # If there is a jump we need to reset the direction the player is facing
+            # on the next step, since it is most likely ambiguous.
+            if note == "[" and not jumping:
+                jump_end_idx = run.find("]", i)
+                jump_str = run[i+1:jump_end_idx].split()
+                jumping = True
+                current_foot, previous_foot, currently_facing, current_pattern = (None, None, None, None)
+                jumps_data[current_measure] = jump_str
+            elif note == "]":
+                if jumping:
+                    jumping = False
+
             total_notes_in_runs += 1
-            # switch feet every step during a run
-            if current_foot == "" and step == "L" or step == "R":
-                current_foot = step
-            else:
-                current_foot = "R" if current_foot == "L" else "L"
 
-            current_pattern += step
-
-            if current_foot == "":
+            if jumping:
                 continue
 
-            # - - - - - MONO CALCULATION - - - - -
-            # get what direction is being faced on the current step based on
-            # the most recent direction. Only changes on D/U after a L/R
-            next_direction = currently_facing
-            if current_foot == "L":
-                if step == "D":
-                    next_direction = "R"
-                elif step == "U":
-                    next_direction = "L"
-            elif current_foot == "R":
-                if step == "D":
-                    next_direction = "L"
-                elif step == "U":
-                    next_direction = "R"
+            # print(f"pattern: {current_pattern}\n prev_foot: {previous_foot} curr_foot: {current_foot} curr_facing: {currently_facing} next_direction: {next_direction} step:{step}\n")
 
-            # check if the direction changes, and if the current pattern is
-            # longer than 5 notes. 6 notes is the minimum length for something
-            # to be considered mono.
-            # increment the total amount of mono notes by the length of the
-            # current pattern.
-            last_U = current_pattern.rfind("U")
-            last_D = current_pattern.rfind("D")
-            lastUD = last_U if last_U > last_D else last_D
-            if currently_facing != next_direction and len(current_pattern[:lastUD-1]) > 5:
-                if (current_pattern[:lastUD-1].endswith("LR") or
-                        current_pattern[:lastUD-1].endswith("RL")):
-                    category_counts["Mono Notes"] += len(current_pattern) - 3
-                else:
-                    category_counts["Mono Notes"] += len(current_pattern) - 2
+            # - - - - - DOUBLESTEP FINDER - - - - -
+            # There are two types of doublesteps, repeated arrows "DD"
+            # and accidents like L"UR"DL. Thanks StoryTime
+            # Calculate the current measure based on how far in the run we are
+            # added to the starting measure number of the run
+            # checks for a double-step pattern at every index of the run
+            # currently being iterated on.
+            # TODO: improve runtime complexity if possible? Integrate into mono
+            # detection?
+            for pattern in DBL_STEPS:
+                if run.startswith(pattern, i):
+                    amt_to_add = math.floor((i+len(pattern)-1) / 16)
+                    if i+len(pattern)-1 >= len(run):
+                        dblstep_measure = measure_num + 1
+                    else:
+                        dblstep_measure = measure_num + amt_to_add
 
-            # if the direction changes, reset current pattern to start on most
-            # recent left or right note
-            if currently_facing != next_direction:
-                current_pattern = last_left_right(current_pattern)
-                currently_facing = next_direction
+                    if doublesteps_data.get(dblstep_measure):
+                        if isinstance(doublesteps_data[dblstep_measure], str):
+                            doublesteps_data[dblstep_measure] = [
+                                doublesteps_data[dblstep_measure]]
+                            doublesteps_data[dblstep_measure].append(pattern)
+                        elif isinstance(doublesteps_data[dblstep_measure], list):
+                            doublesteps_data[dblstep_measure].append(pattern)
+                    else:
+                        doublesteps_data[dblstep_measure] = pattern
 
-            category_counts["Mono Percent"] = (
-                (category_counts["Mono Notes"] / total_notes_in_runs) * 100
-            ) if category_counts["Mono Notes"] != 0 else 0
+            # Add step to pattern
+            ds_pattern += note
 
-            category_counts["Total Candles"] = (
-                category_counts["Left Candles"] +
-                category_counts["Right Candles"]
-            )
+            # - - - - - DOUBLE STAIR FINDER - - - - -
+            # If our ds_pattern deviates from double stairs, we want
+            # to reset the pattern at the next applicable instance of left
+            # or right. This ensures that we are not losing previously
+            # counted stairs/beginnings of stairs.
+            if not any(dbl_stair.startswith(ds_pattern) for dbl_stair in DBL_STAIRS):
+                # Slices the current pattern at the next left or right.
+                for j in range(1, len(ds_pattern)):
+                    if j < len(ds_pattern) and (ds_pattern[j] == "L" or ds_pattern[j] == "R"):
+                        ds_pattern = ds_pattern[j:]
+                continue
 
-            if category_counts["Total Candles"] != 0 and total_notes_in_runs > 1:
-                category_counts["Candle Percent"] = (
-                    (category_counts["Total Candles"] / (total_notes_in_runs - 1) / 2) * 100
-                )
-            else:
-                category_counts["Candle Percent"] = 0
+            # If the ds_pattern length reaches 8, we have found a
+            # double stair, so we reset ds_pattern after printing the
+            # metadata.
+            if len(ds_pattern) == 8:
+                calcd_idx = i - 7 if i - 7 > 0 else 0
+                dbl_stair_measure = measure_num + math.floor(calcd_idx / 16)
+                double_stair_data[dbl_stair_measure] = ds_pattern[:4]
 
+                ds_pattern = ""
 
-    category_counts["Double Stairs Count"] = len(category_counts["Double Stairs Array"])
+        # - - - - - ITERATION END - - - - -
+
+        # Process double_stair_data
+        __process_mistake_data(double_stair_data, category_counts,
+                              "Double Stairs Count", "Double Stairs Array", "{}: measure {}")
+
+        # Process doublesteps_data
+        __process_mistake_data(doublesteps_data, category_counts,
+                              "Doublesteps Count", "Doublesteps Array", "{}: measure {}")
+        
+        # Process jump_data
+        __process_mistake_data(jumps_data, category_counts,
+                            "Jumps Count", "Jumps Array", "{}: measure {}")
+
+        category_counts["Mono Percent"] = (
+            (category_counts["Mono Notes"] / total_notes_in_runs) * 100
+        ) if category_counts["Mono Notes"] != 0 else 0
+
+        category_counts["Total Candles"] = (
+            category_counts["Left Candles"] +
+            category_counts["Right Candles"]
+        )
+
+    def __populate(notes_in_measure):
+        nonlocal curr_run, STEP_TO_DIR
+        for note in notes_in_measure:
+            curr_run += STEP_TO_DIR[ensure_only_step(note)]
+
+    def __reset(measure):
+        nonlocal curr_run, prev_measure, most_recent_starting_measure
+        curr_run = ""
+        most_recent_starting_measure = measure
+        prev_measure = measure
+
+    # we want to get all the runs isolated so we can check each of them for
+    # patterns. We also count the total notes within runs for mono calculation.
+    for i, (measure_num, notes_in_measure) in enumerate(measure_obj.items()):
+        if i == 0 or measure_num - prev_measure > 1:
+            # Analyze and reset if it's the first measure or a gap is detected.
+            if i != 0:
+                __analyze(curr_run)
+                __reset(measure_num)
+            most_recent_starting_measure = measure_num
+            curr_run = ""
+
+        # Populate notes for the current measure.
+        __populate(notes_in_measure)
+
+        if i == len(measure_obj) - 1:
+            # Analyze if it's the last measure.
+            __analyze(curr_run)
+
+        prev_measure = measure_num
+
+    category_counts["Double Stairs Count"] = len(
+        category_counts["Double Stairs Array"])
 
     analysis = pi.PatternInfo(category_counts["Left Candles"],
                               category_counts["Right Candles"],
                               category_counts["Total Candles"],
-                              category_counts["Candle Percent"],
                               category_counts["Mono Percent"],
                               category_counts["Left Anchors"],
                               category_counts["Down Anchors"],
                               category_counts["Up Anchors"],
                               category_counts["Right Anchors"],
                               category_counts["Double Stairs Count"],
-                              category_counts["Double Stairs Array"])
+                              category_counts["Double Stairs Array"],
+                              category_counts["Doublesteps Count"],
+                              category_counts["Doublesteps Array"],
+                              category_counts["Jumps Count"],
+                              category_counts["Jumps Array"],)
 
     return analysis
 
-def double_stair_finder(run, measure_num):
-    """
-        Finds all the double stairs in a run, and notates them with their measure
-        Returns an array of strings indicating where the double stairs are.
-
-        Input: String
-            ex. "LDURLUDR"
-    """
-
-    DBL_STAIRS = [
-        "LDURLDUR",
-        "LUDRLUDR",
-        "RUDLRUDL",
-        "RDULRDUL"
-    ]
-
-    data = {}
-    
-    curr_pattern = ""
-
-    # Iterate through the run string
-    for i, note in enumerate(run):
-        # Add step to pattern
-        curr_pattern += note
-
-        # If our current pattern deviates from double stairs, we want
-        # to reset the pattern at the next applicable instance of left
-        # or right. This ensures that we are not losing previously
-        # counted stairs/beginnings of stairs.
-        if not any(dbl_stair.startswith(curr_pattern) for dbl_stair in DBL_STAIRS):
-            # Slices the current pattern at the next left or right.
-            for j in range(1, len(curr_pattern)):
-                if j < len(curr_pattern) and (curr_pattern[j] == "L" or curr_pattern[j] == "R"):
-                    curr_pattern = curr_pattern[j:]
-            continue
-
-        # If the current pattern length reaches 8, we have found a
-        # double stair, so we reset curr_pattern after printing the
-        # metadata.
-        if len(curr_pattern) == 8:
-            calcd_idx = i - 7 if i - 7 > 0 else 0
-            calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
-            data[calcd_measure_num] = curr_pattern[:4]
-
-            curr_pattern = ""
-
-    return data
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.

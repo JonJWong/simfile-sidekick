@@ -93,8 +93,8 @@ of the result that matches your desired search result.
 If you want me to parse an .sm file, attach the .sm file to your message and
 type `-parse`. If I get stuck parsing a file, try `-fix` and
 I'll do my best to clean up so I can parse files again.
-If you want to show double staircases and their locations, use `-parse -ds` when
-sending your file.
+If you want to show double staircases, doublesteps and their locations,
+use `-parse -xtras` when sending your file.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
@@ -117,6 +117,61 @@ by the characters `L`, `D`, `U`, or `R` to represent arrows. You can put
 brackets around arrows to denote jumps, e.g. `[LR]`
 """
 
+STR_TO_EMOJI = {
+    1: "<:1footer:1163200171891495012>",
+    2: "<:2footer:1163200173405655221>",
+    3: "<:3footer:1163200174148042893>",
+    4: "<:4footer:1163200180842139768>",
+    5: "<:5footer:1163200183589404793>",
+    6: "<:6footer:1163200184336007188>",
+    7: "<:7footer:1163200185376194732>",
+    8: "<:8footer:1163200187020349611>",
+    9: "<:9footer:1163200189297856583>",
+    10: "<:10footer:1163200191894138980>",
+    11: "<:11footer:1163200192695255090>",
+    12: "<:12footer:1163200193559269496>",
+    13: "<:13footer:1163200292754559119>",
+    14: "<:14footer:1163200197090885783>",
+    15: "<:15footer:1163200294549721129>",
+    16: "<:16footer:1163200299838754856>",
+    17: "<:17footer:1163200300665020446>",
+    18: "<:18footer:1163200301453549664>",
+    19: "<:19footer:1163200302422425721>",
+    20: "<:20footer:1163200199833944084>",
+    21: "<:21footer:1163200392662880306>",
+    22: "<:22footer:1163200204296683530>",
+    23: "<:23footer:1163200394105733130>",
+    24: "<:24footer:1163200207606005850>",
+    25: "<:25footer:1163200394923618405>",
+    26: "<:26footer:1163200395703767050>",
+    27: "<:27footer:1163200396341301410>",
+    28: "<:28footer:1163200211221499967>",
+    29: "<:29footer:1163200211221499967>",
+    30: "<:30footer:1163200398836891689>",
+    31: "<:31footer:1163200399679946783>",
+    32: "<:32footer:1163200475622027335>",
+    33: "<:33footer:1163200477425573999>",
+    34: "<:34footer:1163200214027477042>",
+    35: "<:35footer:1163200478839054416>",
+    36: "<:36footer:1163200218175643658>",
+    37: "<:37footer:1163200479615004742>",
+    38: "<:38footer:1163201160463781888>",
+    39: "<:39footer:1163201161252319352>",
+    "wun": "<:wun:1163199650916999228>",
+    "red_L": "<:red_L:1163182809536532581>",
+    "red_D": "<:red_D:1163182816230637628>",
+    "red_U": "<:red_U:1163182822752800858>",
+    "red_R": "<:red_R:1163182828201197729>",
+    "blue_L": "<:blue_L:1163182833045622906>",
+    "blue_D": "<:blue_D:1163182838225576096>",
+    "blue_U": "<:blue_U:1163182842130477115>",
+    "blue_R": "<:blue_R:1163182847394324600>",
+    "green_L": "<:green_L:1163182853652234270>",
+    "green_D": "<:green_D:1163182857838137405>",
+    "green_U": "<:green_U:1163182863215243364>",
+    "green_R": "<:green_R:1163182868269387927>",
+    "bg": "<:bg:1163182776078581791>"
+}
 
 def get_prefixes():
     """Loads server prefixes from database.
@@ -187,52 +242,38 @@ def normalize_float(num):
 
 def get_footer_image(level):
     """Helper function that returns a fancy image for the difficulty of a chart."""
-    LEVEL_TO_EMOJISTRING = {
-        1: "<:1footer:1163200171891495012>",
-        2: "<:2footer:1163200173405655221>",
-        3: "<:3footer:1163200174148042893>",
-        4: "<:4footer:1163200180842139768>",
-        5: "<:5footer:1163200183589404793>",
-        6: "<:6footer:1163200184336007188>",
-        7: "<:7footer:1163200185376194732>",
-        8: "<:8footer:1163200187020349611>",
-        9: "<:9footer:1163200189297856583>",
-        10: "<:10footer:1163200191894138980>",
-        11: "<:11footer:1163200192695255090>",
-        12: "<:12footer:1163200193559269496>",
-        13: "<:13footer:1163200292754559119>",
-        14: "<:14footer:1163200197090885783>",
-        15: "<:15footer:1163200294549721129>",
-        16: "<:16footer:1163200299838754856>",
-        17: "<:17footer:1163200300665020446>",
-        18: "<:18footer:1163200301453549664>",
-        19: "<:19footer:1163200302422425721>",
-        20: "<:20footer:1163200199833944084>",
-        21: "<:21footer:1163200392662880306>",
-        22: "<:22footer:1163200204296683530>",
-        23: "<:23footer:1163200394105733130>",
-        24: "<:24footer:1163200207606005850>",
-        25: "<:25footer:1163200394923618405>",
-        26: "<:26footer:1163200395703767050>",
-        27: "<:27footer:1163200396341301410>",
-        28: "<:28footer:1163200211221499967>",
-        29: "<:29footer:1163200211221499967>",
-        30: "<:30footer:1163200398836891689>",
-        31: "<:31footer:1163200399679946783>",
-        32: "<:32footer:1163200475622027335>",
-        33: "<:33footer:1163200477425573999>",
-        34: "<:34footer:1163200214027477042>",
-        35: "<:35footer:1163200478839054416>",
-        36: "<:36footer:1163200218175643658>",
-        37: "<:37footer:1163200479615004742>",
-        38: "<:38footer:1163201160463781888>",
-        39: "<:39footer:1163201161252319352>"
-    }
-
-    if level in LEVEL_TO_EMOJISTRING:
-        return LEVEL_TO_EMOJISTRING[level]
+    if STR_TO_EMOJI.get(level):
+        return STR_TO_EMOJI[level]
     else:
-        return "<:wun:1163199650916999228>"
+        return STR_TO_EMOJI["wun"]
+
+
+def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
+    pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
+    if data[pattern_type + '_count'] > 0:
+        pattern_analysis += f'__{pattern_name[:-1]} locations__:\n'
+        for entry in data[pattern_type + "_array"]:
+            pattern_analysis += f'{entry}\n'
+        # # Replace L, D, U, R with emojis
+        # commented because the embed becomes too long
+        # for entry in data[pattern_type + "_array"]:
+        #     new_entry = entry.split(":")
+        #     first_chars = [char for char in new_entry[0]]
+        #     for i, char in enumerate(first_chars):
+        #         if len(first_chars) > 2 and len(first_chars) % 2 == 0:
+        #             if i % 2 == 0:
+        #                 color = "red"
+        #             else:
+        #                 color = "blue"
+        #         else:
+        #             color = "red"
+
+        #         first_chars[i] = STR_TO_EMOJI[f"{color}_{char}"]
+        #     new_entry[0] = "".join(first_chars)
+        #     new_entry = ":".join(new_entry)
+        #     pattern_analysis += f'{new_entry}\n'
+
+    return pattern_analysis
 
 
 def create_embed(data, ctx):
@@ -309,15 +350,18 @@ def create_embed(data, ctx):
 
     # - - - PATTERN ANALYSIS - - -
     pattern_analysis = f'*Analysis does not consider patterns in break segments, or microholds in runs.*\n'
+
     # Candles
     pattern_analysis += f'__Candles__: **{str(data["total_candles"])}** '
     pattern_analysis += f'({str(data["left_foot_candles"])} left, '
     pattern_analysis += f'{str(data["right_foot_candles"])} right)\n'
-    candle_density = data["total_candles"] / (data["total_stream"] * 16)
+    candle_density = data["total_candles"] / (data["total_stream"]) if data["total_stream"] != 0 else 0
     pattern_analysis += f'__Candle density__: {str(normalize_float(candle_density))} candles/measure\n'
+
     # Mono
     pattern_analysis += f'__Mono__: {str(normalize_float(data["mono_percent"]))}% '
     pattern_analysis += f'({get_mono_desc(data["mono_percent"])})\n'
+
     # Anchors
     total_anchors = data["anchor_left"] + data["anchor_down"] + \
         data["anchor_up"] + data["anchor_right"]
@@ -326,16 +370,15 @@ def create_embed(data, ctx):
     pattern_analysis += f'{str(data["anchor_down"])} down, '
     pattern_analysis += f'{str(data["anchor_up"])} up, '
     pattern_analysis += f'{str(data["anchor_right"])} right)\n'
-    # Double Stairs
-    if "-ds" in ctx.message.content.split(" "):
-        pattern_analysis += f'__Double Stairs__: {data["double_stairs_count"]} \n'
-        pattern_analysis += '__Locations__:\n'
-        if data['double_stairs_count'] > 0:
-            for entry in data["double_stairs_array"]:
-                pattern_analysis += f'{entry}\n'
 
-    embed.add_field(name="__Pattern Analysis__",
-                    value=pattern_analysis, inline=False)
+    # (Potential) Errors
+    if "-xtras" in ctx.message.content.split(" "):
+        pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Doublesteps", "doublesteps", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Jumps", "jumps", data, pattern_analysis)
+
+    embed.add_field(name="__Pattern Analysis__", value=pattern_analysis,
+                    inline=False)
 
     # - - - BREAKDOWNS - - -
 
@@ -519,41 +562,41 @@ async def stream_visualiser(ctx, input: str):
                     # Whole note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:red_L:1163182809536532581>"
+                            message += STR_TO_EMOJI["red_L"]
                         elif j == 1:
-                            message += "<:red_D:1163182816230637628>"
+                            message += STR_TO_EMOJI["red_D"]
                         elif j == 2:
-                            message += "<:red_U:1163182822752800858>"
+                            message += STR_TO_EMOJI["red_U"]
                         elif j == 3:
-                            message += "<:red_R:1163182828201197729>"
+                            message += STR_TO_EMOJI["red_R"]
                     else:
-                        message += "<:bg:1163182776078581791>"
+                        message += STR_TO_EMOJI["bg"]
                 elif i % 2 == 0:
                     # Half note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:blue_L:1163182833045622906>"
+                            message += STR_TO_EMOJI["blue_L"]
                         elif j == 1:
-                            message += "<:blue_D:1163182838225576096>"
+                            message += STR_TO_EMOJI["blue_D"]
                         elif j == 2:
-                            message += "<:blue_U:1163182842130477115>"
+                            message += STR_TO_EMOJI["blue_U"]
                         elif j == 3:
-                            message += "<:blue_R:1163182847394324600>"
+                            message += STR_TO_EMOJI["blue_R"]
                     else:
-                        message += "<:bg:1163182776078581791>"
+                        message += STR_TO_EMOJI["bg"]
                 elif i % 1 == 0 or i % 3 == 0:
                     # Quarter note
                     if arrow == 1:
                         if j == 0:
-                            message += "<:green_L:1163182853652234270>"
+                            message += STR_TO_EMOJI["green_L"]
                         elif j == 1:
-                            message += "<:green_D:1163182857838137405>"
+                            message += STR_TO_EMOJI["green_D"]
                         elif j == 2:
-                            message += "<:green_U:1163182863215243364>"
+                            message += STR_TO_EMOJI["green_U"]
                         elif j == 3:
-                            message += "<:green_R:1163182868269387927>"
+                            message += STR_TO_EMOJI["green_R"]
                     else:
-                        message += "<:bg:1163182776078581791>"
+                        message += STR_TO_EMOJI["bg"]
             message += "\n"
         await ctx.send(message)
 
