@@ -167,12 +167,6 @@ def add_to_database(fileinfo, db, cache):
             "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
             "candles_percent": fileinfo.chartinfo.patterninfo.candles_percent,
             "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
-            "lr_boxes": fileinfo.chartinfo.patterninfo.lr_boxes,
-            "ud_boxes": fileinfo.chartinfo.patterninfo.ud_boxes,
-            "corner_ld_boxes": fileinfo.chartinfo.patterninfo.corner_ld_boxes,
-            "corner_lu_boxes": fileinfo.chartinfo.patterninfo.corner_lu_boxes,
-            "corner_rd_boxes": fileinfo.chartinfo.patterninfo.corner_rd_boxes,
-            "corner_ru_boxes": fileinfo.chartinfo.patterninfo.corner_ru_boxes,
             "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
             "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
             "anchor_up": fileinfo.chartinfo.patterninfo.anchor_up,
@@ -224,105 +218,6 @@ def find_current_bpm(measure, bpms):
         if float(bpm[0]) <= measure:
             return bpm[1]
 
-
-def get_pattern_analysis(chart, num_notes):
-    """Performs pattern analysis on a chart.
-
-    This function will perform a series of pattern analysis of the chart that is passed in. It uses a series of regex
-    search functions to obtain the data. It will return an analysis object.
-    """
-    # - - - CANDLE ANALYSIS - - -
-    # Capture patterns that require one foot to move up to down, or vice versa.
-    pattern = "(?=("  # Adds lookahead for ULDLU patterns
-    pattern += D_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + R_REG + NL_REG + D_REG
-    pattern += "))"
-    left_foot_candles = len(re.findall(re.compile(pattern), chart))
-
-    pattern = "(?=("  # Adds lookahead for ULDLU patterns
-    pattern += D_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + L_REG + NL_REG + D_REG
-    pattern += "))"
-    right_foot_candles = len(re.findall(re.compile(pattern), chart))
-
-    # - - - MONO ANALYSIS - - -
-    # Capture patterns that lock the direction you face. To be considered a mono segment, your feet will be locked to
-    # the 2 same arrows for 4 notes.
-    # TODO: How to properly calculate mono with more than 4 notes per foot?
-
-    # For patterns that lock your left foot to LD and right foot to RU
-    pattern = ""
-    for i in range(4):
-        pattern += "(" + L_REG + OR_REG + D_REG + ")+" + NL_REG
-        pattern += "(" + R_REG + OR_REG + U_REG + ")+"
-        if i != 3:
-            pattern += NL_REG
-    ld_ru_mono = len(re.findall(re.compile(pattern), chart))
-
-    # For patterns that lock your left foot to LU and right foot to RD
-    pattern = ""
-    for i in range(4):
-        pattern += "(" + L_REG + OR_REG + U_REG + ")+" + NL_REG
-        pattern += "(" + R_REG + OR_REG + D_REG + ")+"
-        if i != 3:
-            pattern += NL_REG
-    lu_rd_mono = len(re.findall(re.compile(pattern), chart))
-
-    # - - - BOX ANALYSIS - - -
-    # For patterns that lock both feet to an arrow for 2 notes each
-    # TODO: How to properly calculate boxes with 3 notes?
-    pattern = L_REG + NL_REG + R_REG + NL_REG + L_REG + NL_REG + R_REG + OR_REG
-    pattern += R_REG + NL_REG + L_REG + NL_REG + R_REG + NL_REG + L_REG
-    lr_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = U_REG + NL_REG + D_REG + NL_REG + U_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + U_REG + NL_REG + D_REG + NL_REG + U_REG
-    ud_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = L_REG + NL_REG + D_REG + NL_REG + L_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + L_REG + NL_REG + D_REG + NL_REG + L_REG
-    corner_ld_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = L_REG + NL_REG + U_REG + NL_REG + L_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + L_REG + NL_REG + U_REG + NL_REG + L_REG
-    corner_lu_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + D_REG + NL_REG + R_REG + NL_REG + D_REG + OR_REG
-    pattern += D_REG + NL_REG + R_REG + NL_REG + D_REG + NL_REG + R_REG
-    corner_rd_boxes = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + U_REG + NL_REG + R_REG + NL_REG + U_REG + OR_REG
-    pattern += U_REG + NL_REG + R_REG + NL_REG + U_REG + NL_REG + R_REG
-    corner_ru_boxes = len(re.findall(re.compile(pattern), chart))
-
-    # - - - ANCHOR ANALYSIS - - -
-    # For patterns that lock one foot to an arrow for 3 notes
-    # TODO: How to properly calculate anchors with more than 3 notes?
-    pattern = L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG + NL_REG + ANY_NOTES_REG + NL_REG + L_REG
-    anchor_left = len(re.findall(re.compile(pattern), chart))
-
-    pattern = D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG + NL_REG + ANY_NOTES_REG + NL_REG + D_REG
-    anchor_down = len(re.findall(re.compile(pattern), chart))
-
-    pattern = U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG + NL_REG + ANY_NOTES_REG + NL_REG + U_REG
-    anchor_up = len(re.findall(re.compile(pattern), chart))
-
-    pattern = R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG + NL_REG + ANY_NOTES_REG + NL_REG + R_REG
-    anchor_right = len(re.findall(re.compile(pattern), chart))
-
-
-    total_candles = left_foot_candles + right_foot_candles
-    candles_percent = (total_candles / math.floor((num_notes - 1) / 2)) * 100
-
-    # Multiplied by 8 as there are 8 notes for every instance of mono
-    mono_percent = (((ld_ru_mono + lu_rd_mono) * 8)/num_notes) * 100
-
-    analysis = pi.PatternInfo(left_foot_candles, right_foot_candles, total_candles, candles_percent, mono_percent,
-                              lr_boxes, ud_boxes, corner_ld_boxes, corner_lu_boxes, corner_rd_boxes, corner_ru_boxes,
-                              anchor_left, anchor_down, anchor_up, anchor_right)
-
-    return analysis
-
 """
     Takes in a string as a pattern, and returns "L", "R". Always returns
     whichever comes last in string.
@@ -343,10 +238,10 @@ def last_left_right(pattern):
     without mines, hold ends, or holds/rolls in the rows.
 """
 def ensure_only_step(note):
-    chars = note.split()
+    chars = [step for step in note]
 
-    for i, char in enumerate(chars):
-        if char != "1" and char != "0":
+    for i, step in enumerate(chars):
+        if step == "3" or step == "M":
             chars[i] = "0"
 
     return "".join(chars)
@@ -379,7 +274,6 @@ def new_pattern_analysis(measure_obj):
 
     runs = []
     total_notes = 0
-    total_mono_notes = 0
 
     curr_run = ""
     curr_measure = -1
@@ -389,14 +283,17 @@ def new_pattern_analysis(measure_obj):
     for measure, notes in measure_obj.items():
         # if first measure or if next measure, append notes
         if curr_measure == -1 or measure - 1 == curr_measure:
-            curr_run += "".join([STEP_TO_DIR[note] for note in notes])
+            for note in notes:
+                curr_run += STEP_TO_DIR[ensure_only_step(note)]
         else:
             # if there is a gap between prev measure and this one, there was a
             # break. we want to append the run we had, and set current to this
             # measure
             runs.append(curr_run)
             total_notes += len(curr_run)
-            curr_run = "".join([STEP_TO_DIR[note] for note in notes])
+            curr_run = ""
+            for note in notes:
+                curr_run += STEP_TO_DIR[ensure_only_step(note)]
         curr_measure = measure
 
    # Define the substrings for each category of pattern
@@ -407,10 +304,14 @@ def new_pattern_analysis(measure_obj):
     category_counts = {
         "Left Candles": 0,
         "Right Candles": 0,
+        "Total Candles": 0,
+        "Candle Percent": 0.0,
         "Left Anchors": 0,
         "Down Anchors": 0,
         "Up Anchors": 0,
         "Right Anchors": 0,
+        "Mono Notes": 0,
+        "Mono Percent": 0.0,
     }
 
     # Create a combined regex pattern for all substrings in each category
@@ -488,15 +389,33 @@ def new_pattern_analysis(measure_obj):
             if currently_facing != next_direction and len(current_pattern[:lastUD-1]) > 5:
                 if (current_pattern[:lastUD-1].endswith("LR") or
                     current_pattern[:lastUD-1].endswith("RL")):
-                    total_mono_notes += len(current_pattern) - 3
+                    category_counts["Mono Notes"] += len(current_pattern) - 3
                 else:
-                    total_mono_notes += len(current_pattern) - 2
+                    category_counts["Mono Notes"] += len(current_pattern) - 2
 
             # if the direction changes, reset current pattern to start on most
             # recent left or right note
             if currently_facing != next_direction:
                 current_pattern = last_left_right(current_pattern)
                 currently_facing = next_direction
+
+        category_counts["Mono Percent"] = total_notes / category_counts["Mono Notes"] if category_counts["Mono Notes"] != 0 else 0
+        category_counts["Total Candles"] = category_counts["Left Candles"] + category_counts["Right Candles"]
+        category_counts["Candle Percent"] = (category_counts["Total Candles"] / math.floor((total_notes - 1) / 2)) * 100 if category_counts["Total Candles"] != 0 else 0
+
+    print(category_counts)
+    analysis = pi.PatternInfo(category_counts["Left Candles"],
+                              category_counts["Right Candles"],
+                              category_counts["Total Candles"],
+                              category_counts["Candle Percent"],
+                              category_counts["Mono Percent"],
+                              category_counts["Left Anchors"],
+                              category_counts["Down Anchors"],
+                              category_counts["Up Anchors"],
+                              category_counts["Right Anchors"])
+
+    print(category_counts)
+    return analysis
 
 def get_simplified(breakdown, partially):
     """Takes the detailed breakdown and creates a simplified breakdown.
@@ -610,7 +529,6 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     holding = 0
     total_stream = 0
     total_break = 0
-    chart_runs_only = ""
     measures_and_steps = {}
 
     for i, measure in enumerate(measures):
@@ -679,13 +597,10 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
                 m = re.sub(re.compile(NO_NOTES_REG + NL_REG), "", measure)
             index = m.rfind("\n")
             m = m[:index]
-            chart_runs_only += m
 
             # REFACTOR BEGIN
             m = [note for note in m.split("\n") if note != ""]
             measures_and_steps[i] = m
-        else:
-            chart_runs_only += "\n"
 
         if measure_density >= 32:
             measures_of_run[RunDensity.Run_32.value] += 1
@@ -738,9 +653,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
     elif measures_of_run[RunDensity.Run_16.value] > 0:
         breakdown += str(measures_of_run[RunDensity.Run_16.value]) + " "
 
-    chartinfo.patterninfo = get_pattern_analysis(chart_runs_only, note_count)
-
-    del chart_runs_only
+    chartinfo.patterninfo = new_pattern_analysis(measures_and_steps)
 
     minutes = length // 60
     seconds = length % 60

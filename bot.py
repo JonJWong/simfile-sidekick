@@ -311,12 +311,6 @@ def create_embed(data, ctx):
     # Mono
     pattern_analysis += "__Mono__: " + str(normalize_float(data["mono_percent"])) + "% "
     pattern_analysis += "(" + get_mono_desc(data["mono_percent"]) + ")" + "\n"
-    # Boxes
-    corner_boxes = data["corner_ld_boxes"] + data["corner_lu_boxes"] + data["corner_rd_boxes"] + data["corner_ru_boxes"]
-    total_boxes = data["lr_boxes"] + data["ud_boxes"] + corner_boxes
-    pattern_analysis += "__Boxes__: **" + str(total_boxes) + "** "
-    pattern_analysis += "(" + str(data["lr_boxes"]) + " LRLR, " + str(data["ud_boxes"]) + " UDUD, "
-    pattern_analysis += str(corner_boxes) + " corner)" + "\n"
     # Anchors
     total_anchors = data["anchor_left"] + data["anchor_down"] + data["anchor_up"] + data["anchor_right"]
     pattern_analysis += "__Anchors__: **" + str(total_anchors) + "** "
