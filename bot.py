@@ -9,7 +9,7 @@ parse through the uploaded file.
 This is free and unencumbered software released into the public domain. For more information, please refer to the
 LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 from common import DBManager as dbm
@@ -93,6 +93,8 @@ of the result that matches your desired search result.
 If you want me to parse an .sm file, attach the .sm file to your message and
 type `-parse`. If I get stuck parsing a file, try `-fix` and
 I'll do my best to clean up so I can parse files again.
+If you want to show double staircases and their locations, use `-parse -ds` when
+sending your file.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
@@ -325,11 +327,12 @@ def create_embed(data, ctx):
     pattern_analysis += f'{str(data["anchor_up"])} up, '
     pattern_analysis += f'{str(data["anchor_right"])} right)\n'
     # Double Stairs
-    if data["double_stairs_count"] > 0:
+    if "-ds" in ctx.message.content.split(" "):
         pattern_analysis += f'__Double Stairs__: {data["double_stairs_count"]} \n'
         pattern_analysis += '__Locations__:\n'
-    for entry in data["double_stairs_array"]:
-        pattern_analysis += f'{entry}\n'
+        if data['double_stairs_count'] > 0:
+            for entry in data["double_stairs_array"]:
+                pattern_analysis += f'{entry}\n'
 
     embed.add_field(name="__Pattern Analysis__",
                     value=pattern_analysis, inline=False)
@@ -375,9 +378,6 @@ def create_embed(data, ctx):
                         value=text + data["normalized_breakdown"], inline=False)
 
     # - - - FOOTER - - -
-    footer_text = "Made by Artimst, maintained by JWong for personal use"
-    embed.set_footer(text=footer_text, icon_url=AVATAR_URL)
-
     file = discord.File(data["graph_location"], filename="density.png")
 
     embed.set_image(url="attachment://density.png")

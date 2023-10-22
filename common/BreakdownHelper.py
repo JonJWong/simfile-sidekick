@@ -7,7 +7,7 @@ Various functions are defined here to assist with the generation and modificatio
 This is free and unencumbered software released into the public domain. For more information, please refer to the
 LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 
