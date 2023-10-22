@@ -417,12 +417,20 @@ def new_pattern_analysis(measure_obj):
     most_recent_starting_measure = None
 
     def __process_double_data(data, category_counts, category_key, array_key, pattern_format):
-        for measure, pattern in data.items():
-            category_counts[category_key] += 1
-            str_to_append = pattern_format.format(str(pattern), str(measure))
+        for measure, datum in data.items():
+            if isinstance(datum, list):
+                for data in datum:
+                    category_counts[category_key] += 1
+                    str_to_append = pattern_format.format(str(data), str(measure))
 
-            if str_to_append not in category_counts[array_key]:
-                category_counts[array_key].append(str_to_append)
+                    if str_to_append not in category_counts[array_key]:
+                        category_counts[array_key].append(str_to_append)
+            else:
+                category_counts[category_key] += 1
+                str_to_append = pattern_format.format(str(datum), str(measure))
+
+                if str_to_append not in category_counts[array_key]:
+                    category_counts[array_key].append(str_to_append)
 
     def __double_parser(run, measure_num):
         """
@@ -453,10 +461,9 @@ def new_pattern_analysis(measure_obj):
         ]
 
         DBL_STEPS = [
-            "LL",
-            "DD",
-            "UU",
-            "RR"
+            "LL", "DD", "UU", "RR",
+            "LUR", "LDR", "RUL", "RDL",
+            "LUDL", "LDUL", "RUDR", "RDUR"
         ]
 
         double_stair_data = {}
@@ -467,15 +474,32 @@ def new_pattern_analysis(measure_obj):
         # Iterate through the run string
         for i, note in enumerate(run):
             # - - - - - DOUBLESTEP FINDER - - - - -
+            # There are two types of doublesteps, repeated arrows "DD"
+            # and accidents like L"UR"DL. Thanks StoryTime
+            # Calculate the current measure based on how far in the run we are
+            # added to the starting measure number of the run
+
             for pattern in DBL_STEPS:
                 if run.startswith(pattern, i):
-                    calcd_measure = measure_num + (math.floor((i+1) / 16))
-                    doublesteps_data[calcd_measure] = pattern
+                    amt_to_add = math.floor((i+len(pattern)-1) / 16)
+                    if i+len(pattern)-1 >= len(run):
+                        dblstep_measure = measure_num + 1
+                    else:
+                        dblstep_measure = measure_num + amt_to_add
 
-            # - - - - - DOUBLE STAIR FINDER - - - - -
+                    if doublesteps_data.get(dblstep_measure):
+                        if isinstance(doublesteps_data[dblstep_measure], str):
+                            doublesteps_data[dblstep_measure] = [doublesteps_data[dblstep_measure]]
+                            doublesteps_data[dblstep_measure].append(pattern)
+                        elif isinstance(doublesteps_data[dblstep_measure], list):
+                            doublesteps_data[dblstep_measure].append(pattern)
+                    else:
+                        doublesteps_data[dblstep_measure]=pattern
+
             # Add step to pattern
             curr_pattern += note
 
+            # - - - - - DOUBLE STAIR FINDER - - - - -
             # If our current pattern deviates from double stairs, we want
             # to reset the pattern at the next applicable instance of left
             # or right. This ensures that we are not losing previously
@@ -492,8 +516,8 @@ def new_pattern_analysis(measure_obj):
             # metadata.
             if len(curr_pattern) == 8:
                 calcd_idx = i - 7 if i - 7 > 0 else 0
-                calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
-                double_stair_data[calcd_measure_num] = curr_pattern[:4]
+                dbl_stair_measure = measure_num + math.floor(calcd_idx / 16)
+                double_stair_data[dbl_stair_measure] = curr_pattern[:4]
 
                 curr_pattern = ""
 

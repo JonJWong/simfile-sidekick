@@ -238,7 +238,7 @@ def get_footer_image(level):
 def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
     pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
     if data[pattern_type + '_count'] > 0:
-        pattern_analysis += '__Locations__:\n'
+        pattern_analysis += f'__{pattern_name[:-1]} locations__:\n'
         for entry in data[pattern_type + "_array"]:
             pattern_analysis += f'{entry}\n'
     return pattern_analysis
