@@ -249,8 +249,21 @@ def ensure_only_step(note):
         Necessary because the main pattern analysis function only checks for notes
         without mines, hold ends, or holds/rolls in the rows.
     """
+    # If not a note, return no note
+    if len(note) != 4:
+        return "0000"
+
+    # If there is no notes in input, return no note
+    for i, char in enumerate(["0", "1", "2", "3", "4", "M"]):
+        if i == len(note) and char not in note:
+            return "0000"
+        elif char in note:
+            break
+
+    # put chars of note in a list
     chars = [step for step in note]
 
+    # if there is a hold end, or a mine, remove it
     for i, step in enumerate(chars):
         if step == "3" or step == "M":
             chars[i] = "0"
@@ -336,10 +349,30 @@ def new_pattern_analysis(measure_obj):
             ex. 1: ['1000', '0100', '0010', '0001']
     """
     STEP_TO_DIR = {
+        # Steps
         "1000": "L",
         "0100": "D",
         "0010": "U",
         "0001": "R",
+        # Holds
+        "2000": "L",
+        "0200": "D",
+        "0020": "U",
+        "0002": "R",
+        # Rolls
+        "4000": "L",
+        "0400": "D",
+        "0040": "U",
+        "0004": "R",
+        # None
+        "0000": "",
+        # Jumps
+        "1100": "[LD]",
+        "1010": "[LU]",
+        "1001": "[LR]",
+        "0101": "[DR]",
+        "0011": "[UR]",
+        "0110": "[DU]",
     }
 
     # Initialize counters
