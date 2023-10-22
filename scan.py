@@ -247,6 +247,7 @@ def ensure_only_step(note):
 def rec_anchor_check(run, arrow_idx, next_idx, count = 0):
     """
         Recursive function to check for anchors within a run
+        TODO: Implement this in the iterative analysis
     """
     # If we've reached the end of the run and there were less than 3 instances
     # of the arrow in question, return false
@@ -270,6 +271,7 @@ def rec_anchor_check(run, arrow_idx, next_idx, count = 0):
 def rec_tower_check(run, arrow_idx, next_idx, count = 0):
     """
         Recursive function to check for boxes within a run
+        TODO: Implement this in the iterative analysis
     """
     # If we've reached the end of the run and there were less than 2 instances
     # of the arrow in question, return false
@@ -383,8 +385,6 @@ def new_pattern_analysis(measure_obj):
     f"{up_anchor_pattern}|{right_anchor_pattern})"
     )
 
-    print(runs)
-
     for run in runs:
         # - - - - - ANCHOR CALCULATION - - - - -
         # Uses regex matching like the previous method
@@ -463,7 +463,6 @@ def new_pattern_analysis(measure_obj):
         category_counts["Total Candles"] = category_counts["Left Candles"] + category_counts["Right Candles"]
         category_counts["Candle Percent"] = (category_counts["Total Candles"] / math.floor((total_notes_in_runs - 1) / 2)) * 100 if category_counts["Total Candles"] != 0 else 0
 
-    print(category_counts, total_notes_in_runs)
     analysis = pi.PatternInfo(category_counts["Left Candles"],
                               category_counts["Right Candles"],
                               category_counts["Total Candles"],
