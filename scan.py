@@ -51,10 +51,6 @@ UNIT_TEST = 5
 CSV = 6
 
 # Regex constants. Used mainly in the pattern recognition section.
-L_REG = "[124]+000"                     # Left arrow (1000)
-D_REG = "0[124]+00"                     # Down arrow (0100)
-U_REG = "00[124]+0"                     # Up Arrow (0010)
-R_REG = "000[124]+"                     # Right Arrow (0001)
 NL_REG = "[\s]+"                        # New line
 OR_REG = "|"                            # Regex for "or"
 NO_NOTES_REG = "[03M][03M][03M][03M]"   # Matches a line containing no notes (0000)
@@ -251,6 +247,7 @@ def ensure_only_step(note):
     I decided to ignore them.
 
     #TODO: Consider microholds in runs
+           Move Anchor and candle calculation into mono calculation iteration
     
     Parameters
     -----------
@@ -273,7 +270,7 @@ def new_pattern_analysis(measure_obj):
     }
 
     runs = []
-    total_notes = 0
+    total_notes_in_runs = 0
 
     curr_run = ""
     curr_measure = -1
@@ -281,7 +278,7 @@ def new_pattern_analysis(measure_obj):
     # we want to get all the runs isolated so we can check each of them for
     # patterns. We also count the total notes within runs for mono calculation.
     for measure, notes in measure_obj.items():
-        # if first measure or if next measure, append notes
+        # if first measure or if next measure, add notes to current run
         if curr_measure == -1 or measure - 1 == curr_measure:
             for note in notes:
                 curr_run += STEP_TO_DIR[ensure_only_step(note)]
@@ -290,14 +287,13 @@ def new_pattern_analysis(measure_obj):
             # break. we want to append the run we had, and set current to this
             # measure
             runs.append(curr_run)
-            total_notes += len(curr_run)
             curr_run = ""
             for note in notes:
                 curr_run += STEP_TO_DIR[ensure_only_step(note)]
         curr_measure = measure
 
    # Define the substrings for each category of pattern
-    LEFT_CANDLES = ["DRU", "UDR"]
+    LEFT_CANDLES = ["DRU", "URD"]
     RIGHT_CANDLES = ["DLU", "ULD"]
 
     # Initialize counters
@@ -352,8 +348,8 @@ def new_pattern_analysis(measure_obj):
         current_pattern = ""
 
         for step in run:
+            total_notes_in_runs += 1
             # switch feet every step during a run
-            total_notes += 1
             if current_foot == "" and step == "L" or step == "R":
                 current_foot = step
             else:
@@ -399,11 +395,11 @@ def new_pattern_analysis(measure_obj):
                 current_pattern = last_left_right(current_pattern)
                 currently_facing = next_direction
 
-        category_counts["Mono Percent"] = total_notes / category_counts["Mono Notes"] if category_counts["Mono Notes"] != 0 else 0
+        category_counts["Mono Percent"] = (category_counts["Mono Notes"] / total_notes_in_runs) * 100 if category_counts["Mono Notes"] != 0 else 0
         category_counts["Total Candles"] = category_counts["Left Candles"] + category_counts["Right Candles"]
-        category_counts["Candle Percent"] = (category_counts["Total Candles"] / math.floor((total_notes - 1) / 2)) * 100 if category_counts["Total Candles"] != 0 else 0
+        category_counts["Candle Percent"] = (category_counts["Total Candles"] / math.floor((total_notes_in_runs - 1) / 2)) * 100 if category_counts["Total Candles"] != 0 else 0
 
-    print(category_counts)
+    print(category_counts, total_notes_in_runs)
     analysis = pi.PatternInfo(category_counts["Left Candles"],
                               category_counts["Right Candles"],
                               category_counts["Total Candles"],
@@ -414,7 +410,6 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Up Anchors"],
                               category_counts["Right Anchors"])
 
-    print(category_counts)
     return analysis
 
 def get_simplified(breakdown, partially):
