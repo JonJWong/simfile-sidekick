@@ -329,8 +329,8 @@ def create_embed(data, ctx):
     # Double Stairs
     if "-ds" in ctx.message.content.split(" "):
         pattern_analysis += f'__Double Stairs__: {data["double_stairs_count"]} \n'
-        pattern_analysis += '__Locations__:\n'
         if data['double_stairs_count'] > 0:
+            pattern_analysis += '__Locations__:\n'
             for entry in data["double_stairs_array"]:
                 pattern_analysis += f'{entry}\n'
 

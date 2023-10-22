@@ -391,59 +391,6 @@ def new_pattern_analysis(measure_obj):
         "Double Stairs Array": [],
     }
 
-    double_stair_data = {}
-
-    runs = []
-    total_notes_in_runs = 0
-
-    curr_run = ""
-    curr_measure = -1
-    most_recent_starting_measure = -1
-
-
-    def get_double_stair_data(run, starting_measure):
-        """
-        Helper method for the double stair finder. Iterates and combines the
-        object's values with the existing double_stair_data.
-        """
-        for measure_num, pattern in double_stair_finder(run, starting_measure).items():
-            double_stair_data[measure_num] = pattern
-
-    # we want to get all the runs isolated so we can check each of them for
-    # patterns. We also count the total notes within runs for mono calculation.
-    for measure, notes in measure_obj.items():
-        # if first measure or if next measure, add notes to current run
-        if curr_measure == -1 or measure - 1 == curr_measure:
-            if most_recent_starting_measure == -1:
-                most_recent_starting_measure = measure
-            for note in notes:
-                curr_run += STEP_TO_DIR[ensure_only_step(note)]
-        else:
-            # - - - - - DOUBLE STAIR FINDER - - - - -
-            # I put this here because I needed the measure respective
-            # to the entire chart, and that is in the measure_obj iteration
-            get_double_stair_data(curr_run, most_recent_starting_measure)
-
-            # if there is a gap between prev measure and this one, there was a
-            # break. we want to append the run we had, and set current to this
-            # measure. This gets done within the function below.
-            runs.append(curr_run)
-
-            # After appending the previous one, we reset curr_run and repopulate
-            # it with the run we're currently on
-            curr_run = ""
-            most_recent_starting_measure = measure
-            for note in notes:
-                curr_run += STEP_TO_DIR[ensure_only_step(note)]
-        curr_measure = measure
-
-    # When the loop ends, there will still be notes in curr_run. These need to
-    # be appended into the runs array, checked for double stairs etc.
-    if len(curr_run) != 0:
-        runs.append(curr_run)
-        get_double_stair_data(curr_run, most_recent_starting_measure)
-        curr_run = ""
-
     # Candles
     LEFT_CANDLES = ["DRU", "URD"]
     RIGHT_CANDLES = ["DLU", "ULD"]
@@ -459,7 +406,21 @@ def new_pattern_analysis(measure_obj):
         f"{up_anchor_pattern}|{right_anchor_pattern})"
     )
 
-    for run in runs:
+    double_stair_data = {}
+
+    total_notes_in_runs = 0
+
+    curr_run = ""
+    prev_measure = None
+    most_recent_starting_measure = None
+
+    def __analyze(run):
+        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, double_stair_data, total_notes_in_runs, curr_run, most_recent_starting_measure
+        # - - - - - DOUBLE STAIR FINDER - - - - -
+        # I put this here because I needed the measure respective
+        # to the entire chart, and that is in the measure_obj iteration
+        for measure, pattern in double_stair_finder(curr_run, most_recent_starting_measure).items():
+            double_stair_data[measure] = pattern
         # - - - - - ANCHOR CALCULATION - - - - -
         # Uses regex matching like the previous method
         # TODO: Use recursive algorithm in step iteration
@@ -483,9 +444,9 @@ def new_pattern_analysis(measure_obj):
                                                 for pattern in RIGHT_CANDLES)
         
         # Need to unpack the information in the double_stair_data object
-        for measure_num, pattern in double_stair_data.items():
+        for measure, pattern in double_stair_data.items():
             category_counts["Double Stairs Count"] += 1
-            str_to_append = "{}x2: measure {}".format(str(pattern), str(measure_num))
+            str_to_append = "{}x2: measure {}".format(str(pattern), str(measure))
 
             if str_to_append not in category_counts["Double Stairs Array"]:
                 category_counts["Double Stairs Array"].append(str_to_append)
@@ -559,6 +520,36 @@ def new_pattern_analysis(measure_obj):
             else:
                 category_counts["Candle Percent"] = 0
 
+    def __populate(notes_in_measure):
+        nonlocal curr_run, STEP_TO_DIR
+        for note in notes_in_measure:
+            curr_run += STEP_TO_DIR[ensure_only_step(note)]
+        
+    def __reset(measure):
+        nonlocal curr_run, prev_measure, most_recent_starting_measure
+        curr_run = ""
+        most_recent_starting_measure = measure
+        prev_measure = measure
+        
+    # we want to get all the runs isolated so we can check each of them for
+    # patterns. We also count the total notes within runs for mono calculation.
+    for i, (measure_num, notes_in_measure) in enumerate(measure_obj.items()):
+        if i == 0 or measure_num - prev_measure > 1:
+            # Analyze and reset if it's the first measure or a gap is detected.
+            if i != 0:
+                __analyze(curr_run)
+                __reset(measure_num)
+            most_recent_starting_measure = measure_num
+            curr_run = ""
+
+        # Populate notes for the current measure.
+        __populate(notes_in_measure)
+
+        if i == len(measure_obj) - 1:
+            # Analyze if it's the last measure.
+            __analyze(curr_run)
+
+        prev_measure = measure_num
 
     category_counts["Double Stairs Count"] = len(category_counts["Double Stairs Array"])
 
@@ -578,11 +569,11 @@ def new_pattern_analysis(measure_obj):
 
 def double_stair_finder(run, measure_num):
     """
-        Finds all the double stairs in a run, and notates them with their measure
-        Returns an array of strings indicating where the double stairs are.
+    Finds all the double stairs in a run, and notates them with their measure
+    Returns an array of strings indicating where the double stairs are.
 
-        Input: String
-            ex. "LDURLUDR"
+    Input: String
+        ex. "LDURLUDR"
     """
 
     DBL_STAIRS = [
@@ -617,6 +608,7 @@ def double_stair_finder(run, measure_num):
         # metadata.
         if len(curr_pattern) == 8:
             calcd_idx = i - 7 if i - 7 > 0 else 0
+            print(calcd_idx, measure_num)
             calcd_measure_num = measure_num + math.floor(calcd_idx / 16)
             data[calcd_measure_num] = curr_pattern[:4]
 
