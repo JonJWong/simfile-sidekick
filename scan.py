@@ -214,26 +214,28 @@ def find_current_bpm(measure, bpms):
         if float(bpm[0]) <= measure:
             return bpm[1]
 
-"""
-    Takes in a string as a pattern, and returns "L", "R". Always returns
-    whichever comes last in string.
 
-    Input assumes that there is always at least 1 L/R in string.
-"""
 def last_left_right(pattern):
+    """
+        Takes in a string as a pattern, and returns "L", "R". Always returns
+        whichever comes last in string.
+
+        Input assumes that there is always at least 1 L/R in string.
+    """
     last_L = pattern.rfind("L")
     last_R = pattern.rfind("R")
 
     return pattern[last_L:] if last_L > last_R else pattern[last_R:]
 
-"""
-    Filters a row in chart to ensure that it only contains arrows. This is to
-    catch edge cases where hold ends and arrows might be on the same row, or
-    even mines and arrows.
-    Necessary because the main pattern analysis function only checks for notes
-    without mines, hold ends, or holds/rolls in the rows.
-"""
+
 def ensure_only_step(note):
+    """
+        Filters a row in chart to ensure that it only contains arrows. This is to
+        catch edge cases where hold ends and arrows might be on the same row, or
+        even mines and arrows.
+        Necessary because the main pattern analysis function only checks for notes
+        without mines, hold ends, or holds/rolls in the rows.
+    """
     chars = [step for step in note]
 
     for i, step in enumerate(chars):
@@ -242,26 +244,80 @@ def ensure_only_step(note):
 
     return "".join(chars)
 
-"""
-    Refactored pattern analysis. Considering how niche microholds are in runs,
-    I decided to ignore them.
+def rec_anchor_check(run, arrow_idx, next_idx, count = 0):
+    """
+        Recursive function to check for anchors within a run
+    """
+    # If we've reached the end of the run and there were less than 3 instances
+    # of the arrow in question, return false
+    if next_idx >= len(run) and count < 3:
+        return False
 
-    #TODO: Consider microholds in runs
-           Move Anchor and candle calculation into mono calculation iteration
+    # if the two input arrows are the same, call the function again for the next
+    # step, otherwise return whether or not the count >= 3
+    if run[arrow_idx] == run[next_idx]:
+        # If the first two match, we need to count as two arrows, but only move
+        # forward by 1 count thereafter.
+        if count == 0:
+            new_count = 2
+        else:
+            new_count += 1
+        return rec_anchor_check(run, next_idx, next_idx + 2, new_count)
+    else:
+        return count >= 3
     
-    Parameters
-    -----------
-    measure_obj:
-        key: int
-        val: arr
-    
-    Measure_obj contains all the measures of run in a chart, where the key is the
-        measure numbner, and the value is an array containing all the notes.
-        Notes are in string format.
 
-        ex. 1: ['1000', '0100', '0010', '0001']
-"""
+def rec_tower_check(run, arrow_idx, next_idx, count = 0):
+    """
+        Recursive function to check for boxes within a run
+    """
+    # If we've reached the end of the run and there were less than 2 instances
+    # of the arrow in question, return false
+    if next_idx + 1 >= len(run) and count < 2:
+        return False, "None"
+
+    # if the two input arrows are the same, call the function again for the next
+    # step, otherwise return whether or not the count >= 2
+    if run[arrow_idx] == run[next_idx] and run[arrow_idx + 1] == run[next_idx + 1]:
+        # If the first two match, we need to count as two arrows, but only move
+        # forward by 1 count thereafter.
+        if count == 0:
+            new_count = 2
+        else:
+            new_count += 1
+
+        return rec_tower_check(run, next_idx + 1, next_idx + 2, new_count)
+    else:
+        if count == 2:
+            pattern_type = "Box"
+        elif count >= 2:
+            pattern_type = "Tower"
+        else:
+            pattern_type = "None"
+
+        return count >= 2, pattern_type
+
+
 def new_pattern_analysis(measure_obj):
+    """
+        Refactored pattern analysis. Considering how niche microholds are in runs,
+        I decided to ignore them.
+
+        #TODO: Consider microholds in runs
+            Move Anchor and candle calculation into mono calculation iteration
+        
+        Parameters
+        -----------
+        measure_obj:
+            key: int
+            val: arr
+        
+        Measure_obj contains all the measures of run in a chart, where the key is the
+            measure numbner, and the value is an array containing all the notes.
+            Notes are in string format.
+
+            ex. 1: ['1000', '0100', '0010', '0001']
+    """
     STEP_TO_DIR = {
         "1000": "L",
         "0100": "D",
@@ -292,9 +348,11 @@ def new_pattern_analysis(measure_obj):
                 curr_run += STEP_TO_DIR[ensure_only_step(note)]
         curr_measure = measure
 
-   # Define the substrings for each category of pattern
-    LEFT_CANDLES = ["DRU", "URD"]
-    RIGHT_CANDLES = ["DLU", "ULD"]
+    # When the loop ends, there will still be notes in curr_run. These need to
+    # be appended into the runs array
+    if len(curr_run) != 0:
+        runs.append(curr_run)
+        curr_run = ""
 
     # Initialize counters
     category_counts = {
@@ -310,30 +368,30 @@ def new_pattern_analysis(measure_obj):
         "Mono Percent": 0.0,
     }
 
+    # Candles
+    LEFT_CANDLES = ["DRU", "URD"]
+    RIGHT_CANDLES = ["DLU", "ULD"]
+
     # Create a combined regex pattern for all substrings in each category
-    left_candle_pattern = "|".join(map(re.escape, LEFT_CANDLES))
-    right_candle_pattern = "|".join(map(re.escape, RIGHT_CANDLES))
     left_anchor_pattern = "L[DUR]L[DUR]L"
     down_anchor_pattern = "D[LUR]D[LUR]D"
     up_anchor_pattern = "U[LDR]U[LDR]U"
     right_anchor_pattern = "R[LDU]R[LDU]R"
     
     combined_pattern = (
-    f"({left_candle_pattern}|{right_candle_pattern}|"
-    f"{left_anchor_pattern}|{down_anchor_pattern}|"
+    f"({left_anchor_pattern}|{down_anchor_pattern}|"
     f"{up_anchor_pattern}|{right_anchor_pattern})"
     )
 
+    print(runs)
+
     for run in runs:
-        # Iterate over runs and count occurrences of all specified patterns
-        # uses regex matching
+        # - - - - - ANCHOR CALCULATION - - - - -
+        # Uses regex matching like the previous method
+        # TODO: Use recursive algorithm in step iteration
         matches = re.findall(combined_pattern, run)
         for match in matches:
-            if match in LEFT_CANDLES:
-                category_counts["Left Candles"] += 1
-            elif match in RIGHT_CANDLES:
-                category_counts["Right Candles"] += 1
-            elif re.search(left_anchor_pattern, match):
+            if re.search(left_anchor_pattern, match):
                 category_counts["Left Anchors"] += 1
             elif re.search(down_anchor_pattern, match):
                 category_counts["Down Anchors"] += 1
@@ -342,7 +400,12 @@ def new_pattern_analysis(measure_obj):
             elif re.search(right_anchor_pattern, match):
                 category_counts["Right Anchors"] += 1
 
-        # - - - - - MONO CALCULATION - - - - -
+        # - - - - - CANDLE CALCULATION - - - - -
+        # candles are relatively straightforward, if any of those 4 candle
+        # variants exist, then it is a candle.
+        category_counts["Left Candles"] += sum(run.count(pattern) for pattern in LEFT_CANDLES)
+        category_counts["Right Candles"] += sum(run.count(pattern) for pattern in RIGHT_CANDLES)
+
         current_foot = ""
         currently_facing = ""
         current_pattern = ""
@@ -360,6 +423,7 @@ def new_pattern_analysis(measure_obj):
             if current_foot == "":
                 continue
 
+            # - - - - - MONO CALCULATION - - - - -
             # get what direction is being faced on the current step based on
             # the most recent direction. Only changes on D/U after a L/R
             next_direction = currently_facing
