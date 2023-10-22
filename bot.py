@@ -93,8 +93,8 @@ of the result that matches your desired search result.
 If you want me to parse an .sm file, attach the .sm file to your message and
 type `-parse`. If I get stuck parsing a file, try `-fix` and
 I'll do my best to clean up so I can parse files again.
-If you want to show double staircases and their locations, use `-parse -ds` when
-sending your file.
+If you want to show double staircases, doublesteps and their locations,
+use `-parse -xtras` when sending your file.
 
 To adjust your user settings, type `-settings help`. I can automatically
 delete uploaded .sm files.
@@ -233,7 +233,14 @@ def get_footer_image(level):
         return LEVEL_TO_EMOJISTRING[level]
     else:
         return "<:wun:1163199650916999228>"
-
+    
+def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
+    pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
+    if data[pattern_type + '_count'] > 0:
+        pattern_analysis += '__Locations__:\n'
+        for entry in data[pattern_type + "_array"]:
+            pattern_analysis += f'{entry}\n'
+    return pattern_analysis
 
 def create_embed(data, ctx):
     embed = discord.Embed(
@@ -326,13 +333,11 @@ def create_embed(data, ctx):
     pattern_analysis += f'{str(data["anchor_down"])} down, '
     pattern_analysis += f'{str(data["anchor_up"])} up, '
     pattern_analysis += f'{str(data["anchor_right"])} right)\n'
-    # Double Stairs
-    if "-ds" in ctx.message.content.split(" "):
-        pattern_analysis += f'__Double Stairs__: {data["double_stairs_count"]} \n'
-        if data['double_stairs_count'] > 0:
-            pattern_analysis += '__Locations__:\n'
-            for entry in data["double_stairs_array"]:
-                pattern_analysis += f'{entry}\n'
+
+    # Doubles
+    if "-xtras" in ctx.message.content.split(" "):
+        pattern_analysis = __append_pattern_info("Double Stairs", "double_stairs", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Double Steps", "doublesteps", data, pattern_analysis)
 
     embed.add_field(name="__Pattern Analysis__",
                     value=pattern_analysis, inline=False)

@@ -180,8 +180,8 @@ def add_to_database(fileinfo, db, cache):
             "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
             "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
             "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
-            "doublestep_count": fileinfo.chartinfo.patterninfo.doublestep_count,
-            "doublestep_array": fileinfo.chartinfo.patterninfo.doublestep_array,
+            "doublesteps_count": fileinfo.chartinfo.patterninfo.doublesteps_count,
+            "doublesteps_array": fileinfo.chartinfo.patterninfo.doublesteps_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -390,9 +390,9 @@ def new_pattern_analysis(measure_obj):
         "Mono Notes": 0,
         "Mono Percent": 0.0,
         "Double Stairs Count": 0,
-        "Doublestep Count": 0,
+        "Doublesteps Count": 0,
         "Double Stairs Array": [],
-        "Doublestep Array": [],
+        "Doublesteps Array": [],
     }
 
     # Candles
@@ -461,7 +461,7 @@ def new_pattern_analysis(measure_obj):
 
 
         double_stair_data = {}
-        doublestep_data = {}
+        doublesteps_data = {}
         
         curr_pattern = ""
 
@@ -471,7 +471,7 @@ def new_pattern_analysis(measure_obj):
             for pattern in DBL_STEPS:
                 if run.startswith(pattern, i):
                     calcd_measure = measure_num + (math.floor(i / 16))
-                    doublestep_data[calcd_measure] = pattern
+                    doublesteps_data[calcd_measure] = pattern
 
             # - - - - - DOUBLE STAIR FINDER - - - - -
             # Add step to pattern
@@ -501,8 +501,8 @@ def new_pattern_analysis(measure_obj):
         # Process double_stair_data
         __process_double_data(double_stair_data, category_counts, "Double Stairs Count", "Double Stairs Array", "{}x2: measure {}")
 
-        # Process doublestep_data
-        __process_double_data(doublestep_data, category_counts, "Doublestep Count", "Doublestep Array", "{}: measure {}")
+        # Process doublesteps_data
+        __process_double_data(doublesteps_data, category_counts, "Doublesteps Count", "Doublesteps Array", "{}: measure {}")
 
     def __analyze(run):
         nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, total_notes_in_runs, curr_run, most_recent_starting_measure
@@ -647,8 +647,8 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Right Anchors"],
                               category_counts["Double Stairs Count"],
                               category_counts["Double Stairs Array"],
-                              category_counts["Doublestep Count"],
-                              category_counts["Doublestep Array"],)
+                              category_counts["Doublesteps Count"],
+                              category_counts["Doublesteps Array"],)
 
     return analysis
 
