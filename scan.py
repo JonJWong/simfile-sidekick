@@ -172,7 +172,6 @@ def add_to_database(fileinfo, db, cache):
             "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
             "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
             "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
-            "candles_percent": fileinfo.chartinfo.patterninfo.candles_percent,
             "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
             "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
             "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
@@ -182,6 +181,8 @@ def add_to_database(fileinfo, db, cache):
             "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
             "doublesteps_count": fileinfo.chartinfo.patterninfo.doublesteps_count,
             "doublesteps_array": fileinfo.chartinfo.patterninfo.doublesteps_array,
+            "jumps_count": fileinfo.chartinfo.patterninfo.jumps_count,
+            "jumps_array": fileinfo.chartinfo.patterninfo.jumps_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -375,6 +376,12 @@ def new_pattern_analysis(measure_obj):
         "0101": "[DR]",
         "0011": "[UR]",
         "0110": "[DU]",
+        # Hands
+        "1110": "[LDU]",
+        "1101": "[LDR]",
+        "1011": "[LUR]",
+        "0111": "[DUR]",
+        "1111": "[LDUR]"
     }
 
     # Initialize counters
@@ -382,7 +389,6 @@ def new_pattern_analysis(measure_obj):
         "Left Candles": 0,
         "Right Candles": 0,
         "Total Candles": 0,
-        "Candle Percent": 0.0,
         "Left Anchors": 0,
         "Down Anchors": 0,
         "Up Anchors": 0,
@@ -393,6 +399,8 @@ def new_pattern_analysis(measure_obj):
         "Doublesteps Count": 0,
         "Double Stairs Array": [],
         "Doublesteps Array": [],
+        "Jumps Count": 0,
+        "Jumps Array": []
     }
 
     # Candles
@@ -416,12 +424,13 @@ def new_pattern_analysis(measure_obj):
     prev_measure = None
     most_recent_starting_measure = None
 
-    def __process_double_data(data, category_counts, category_key, array_key, pattern_format):
+    def __process_mistake_data(data, category_counts, category_key, array_key, pattern_format):
         for measure, datum in data.items():
             if isinstance(datum, list):
                 for data in datum:
                     category_counts[category_key] += 1
-                    str_to_append = pattern_format.format(str(data), str(measure))
+                    str_to_append = pattern_format.format(
+                        str(data), str(measure))
 
                     if str_to_append not in category_counts[array_key]:
                         category_counts[array_key].append(str_to_append)
@@ -489,12 +498,13 @@ def new_pattern_analysis(measure_obj):
 
                     if doublesteps_data.get(dblstep_measure):
                         if isinstance(doublesteps_data[dblstep_measure], str):
-                            doublesteps_data[dblstep_measure] = [doublesteps_data[dblstep_measure]]
+                            doublesteps_data[dblstep_measure] = [
+                                doublesteps_data[dblstep_measure]]
                             doublesteps_data[dblstep_measure].append(pattern)
                         elif isinstance(doublesteps_data[dblstep_measure], list):
                             doublesteps_data[dblstep_measure].append(pattern)
                     else:
-                        doublesteps_data[dblstep_measure]=pattern
+                        doublesteps_data[dblstep_measure] = pattern
 
             # Add step to pattern
             curr_pattern += note
@@ -522,17 +532,35 @@ def new_pattern_analysis(measure_obj):
                 curr_pattern = ""
 
         # Process double_stair_data
-        __process_double_data(double_stair_data, category_counts,
-                              "Double Stairs Count", "Double Stairs Array", "{}x2: measure {}")
+        __process_mistake_data(double_stair_data, category_counts,
+                              "Double Stairs Count", "Double Stairs Array", "{}: measure {}")
 
         # Process doublesteps_data
-        __process_double_data(doublesteps_data, category_counts,
+        __process_mistake_data(doublesteps_data, category_counts,
                               "Doublesteps Count", "Doublesteps Array", "{}: measure {}")
 
     def __analyze(run):
-        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, total_notes_in_runs, curr_run, most_recent_starting_measure
+        """
+        Method to find Anchors and Candles via regex, double stairs and double
+        steps via iterative string matching, and mono through iteration paying
+        attention to direction changes based on which foot hits the U/D arrow.
+
+        Does not return anything, but modifies a `nonlocal category_counts`
+        variable, which contains data pertinent to the patterning of a chart.
+
+        Parameters
+        -----------
+        Input: string
+            Takes in a string where each character denotes an arrow in the run.
+            ex. "LDURLUDRLRUDL"
+
+        Output: None
+        """
+        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, \
+              total_notes_in_runs, curr_run, most_recent_starting_measure, STEP_TO_DIR
         # - - - - - DOUBLE PARSER - - - - -
-        # Finds double stairs and doublesteps iteratively by searching through the run from start to end.
+        # Finds double stairs and doublesteps iteratively by searching through
+        # the run from start to end.
         __double_parser(curr_run, most_recent_starting_measure)
 
         # - - - - - ANCHOR FINDER - - - - -
@@ -560,9 +588,28 @@ def new_pattern_analysis(measure_obj):
         current_foot = ""
         currently_facing = ""
         current_pattern = ""
+        jumping = False
+        jumps_data = {}
 
-        for step in run:
+        # - - - - - RUN ITERATION LOOP - - - - -
+        # One step at a time.
+        for i, step in enumerate(run):
+            if step == "[" and not jumping:
+                jump_end_idx = run.find("]", i)
+                jump_str = run[i+1:jump_end_idx].split()
+                jumping = True
+                current_foot, currently_facing, current_pattern = ("", "", "")
+                current_measure = most_recent_starting_measure + math.floor(i + 1 / 16)
+                jumps_data[current_measure] = jump_str
+            elif step == "]":
+                if jumping:
+                    jumping = False
+
             total_notes_in_runs += 1
+
+            if jumping:
+                continue
+
             # switch feet every step during a run
             if current_foot == "" and step == "L" or step == "R":
                 current_foot = step
@@ -621,13 +668,9 @@ def new_pattern_analysis(measure_obj):
                 category_counts["Right Candles"]
             )
 
-            if category_counts["Total Candles"] != 0 and total_notes_in_runs > 1:
-                category_counts["Candle Percent"] = (
-                    (category_counts["Total Candles"] /
-                     (total_notes_in_runs - 1) / 2) * 100
-                )
-            else:
-                category_counts["Candle Percent"] = 0
+        # Process jump_data
+        __process_mistake_data(jumps_data, category_counts,
+                            "Jumps Count", "Jumps Array", "{}: measure {}")
 
     def __populate(notes_in_measure):
         nonlocal curr_run, STEP_TO_DIR
@@ -666,7 +709,6 @@ def new_pattern_analysis(measure_obj):
     analysis = pi.PatternInfo(category_counts["Left Candles"],
                               category_counts["Right Candles"],
                               category_counts["Total Candles"],
-                              category_counts["Candle Percent"],
                               category_counts["Mono Percent"],
                               category_counts["Left Anchors"],
                               category_counts["Down Anchors"],
@@ -675,7 +717,9 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Double Stairs Count"],
                               category_counts["Double Stairs Array"],
                               category_counts["Doublesteps Count"],
-                              category_counts["Doublesteps Array"],)
+                              category_counts["Doublesteps Array"],
+                              category_counts["Jumps Count"],
+                              category_counts["Jumps Array"],)
 
     return analysis
 

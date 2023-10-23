@@ -393,13 +393,6 @@ def run_tests():
         fail_val("Sa MaRichi's candle count is incorrect.", 49, result["total_candles"])
         failed += 1
 
-    if result["candles_percent"] == 55.68181818181818:
-        good("Sa MaRichi's candle percent is correct.")
-        passed += 1
-    else:
-        fail_val("Sa MaRichi's candle percent is incorrect.", 55.68181818181818, result["candles_percent"])
-        failed += 1
-
     if failed > 0:
         sys.exit("Unit tests did not pass.")
     else:
