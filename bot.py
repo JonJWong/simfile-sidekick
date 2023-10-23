@@ -355,7 +355,7 @@ def create_embed(data, ctx):
     pattern_analysis += f'__Candles__: **{str(data["total_candles"])}** '
     pattern_analysis += f'({str(data["left_foot_candles"])} left, '
     pattern_analysis += f'{str(data["right_foot_candles"])} right)\n'
-    candle_density = data["total_candles"] / (data["total_stream"])
+    candle_density = data["total_candles"] / (data["total_stream"]) if data["total_stream"] != 0 else 0
     pattern_analysis += f'__Candle density__: {str(normalize_float(candle_density))} candles/measure\n'
 
     # Mono
