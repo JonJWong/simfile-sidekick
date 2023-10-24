@@ -185,6 +185,8 @@ def add_to_database(fileinfo, db, cache):
             "jumps_array": fileinfo.chartinfo.patterninfo.jumps_array,
             "mono_count": fileinfo.chartinfo.patterninfo.mono_count,
             "mono_array": fileinfo.chartinfo.patterninfo.mono_array,
+            "box_count": fileinfo.chartinfo.patterninfo.box_count,
+            "box_array": fileinfo.chartinfo.patterninfo.box_array,
             "display_bpm": fileinfo.displaybpm,
             "max_bpm": fileinfo.max_bpm,
             "min_bpm": fileinfo.min_bpm,
@@ -361,7 +363,9 @@ def new_pattern_analysis(measure_obj):
         "Jumps Count": 0,
         "Jumps Array": [],
         "Mono Count": 0,
-        "Mono Array": []
+        "Mono Array": [],
+        "Box Count": 0,
+        "Box Array": []
     }
 
     # Candles
@@ -520,10 +524,22 @@ def new_pattern_analysis(measure_obj):
             "LUDL", "LDUL", "RUDR", "RDUR"
         ]
 
+        BOXES = [
+            # left-foot leading
+            "LULU", "LRLR", "LDLD",
+            "DRDR", "URUR",
+            # right-foot leading
+            "RURU", "RLRL", "RDRD",
+            "DLDL", "ULUL",
+            # ambiguous
+            "UDUD", "DUDU"
+        ]
+
         double_stair_data = {}
         doublesteps_data = {}
         jumps_data = {}
         mono_data = {}
+        box_data = {}
 
         # - - - - - ANCHOR FINDER - - - - -
         # Uses regex matching like the previous method
@@ -581,7 +597,6 @@ def new_pattern_analysis(measure_obj):
                 amt_to_subtract += jump_end_idx - i
                 current_foot, curr_direction, mono_pattern, dbl_stair_pattern = (
                     None, None, "", None)
-                print(jump_str, curr_measure)
                 __fill_mistake_data(jumps_data, curr_measure, jump_str)
             elif curr_step == "]":
                 if jumping:
@@ -613,6 +628,13 @@ def new_pattern_analysis(measure_obj):
 
                     __fill_mistake_data(
                         doublesteps_data, dblstep_measure, pattern)
+                    
+            # - - - - - BOX FINDER - - - - -
+            # Uses same logic as doublesteps, but with boxes.
+            for pattern in BOXES:
+                if run.startswith(pattern, i):
+                    __fill_mistake_data(
+                        box_data, curr_measure, pattern)
 
             # Since there can't be double stairs or mono if there are no l/R
             #  notes, we can go ahead and skip the rest of the logic
@@ -673,16 +695,19 @@ def new_pattern_analysis(measure_obj):
             # metadata.
             if len(ds_pattern) == 8:
                 calcd_idx = i - 7 if i - 7 > 0 else 0
-                dbl_stair_measure = most_recent_starting_measure + math.floor(calcd_idx / 16)
                 dbl_stair_pattern = ds_pattern[:4]
 
                 __fill_mistake_data(double_stair_data,
-                                    dbl_stair_measure, dbl_stair_pattern)
+                                    curr_measure, dbl_stair_pattern)
 
                 ds_pattern = ""
 
         # - - - - - ITERATION END - - - - -
 
+        # Process box_data
+        __process_mistake_data(box_data, category_counts,
+                               "Box Count", "Box Array")
+        
         # Process double_stair_data
         __process_mistake_data(double_stair_data, category_counts,
                                "Double Stairs Count", "Double Stairs Array")
@@ -754,7 +779,9 @@ def new_pattern_analysis(measure_obj):
                               category_counts["Jumps Count"],
                               category_counts["Jumps Array"],
                               category_counts["Mono Count"],
-                              category_counts["Mono Array"])
+                              category_counts["Mono Array"],
+                              category_counts["Box Count"],
+                              category_counts["Box Array"])
 
     return analysis
 
