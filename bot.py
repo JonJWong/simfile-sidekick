@@ -252,8 +252,25 @@ def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
     pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
     if data[pattern_type + '_count'] > 0:
         pattern_analysis += f'__{pattern_name[:-1]} locations__:\n'
+
+        data_obj = {}
         for entry in data[pattern_type + "_array"]:
-            pattern_analysis += f'{entry}\n'
+            measure, datum = entry
+            if data_obj.get(measure):
+                data_obj[measure].append(datum)
+            else:
+                data_obj[measure] = [datum]
+        
+        for measure in sorted(data_obj.keys()):
+            datum = data_obj[measure]
+            pattern_analysis += f'**{measure}**: '
+
+            for i, entry in enumerate(datum):
+                if i != len(datum) - 1:
+                    pattern_analysis += f"{entry}, "
+                else:
+                    pattern_analysis += f"{entry}\n"
+
         # # Replace L, D, U, R with emojis
         # commented because the embed becomes too long
         # for entry in data[pattern_type + "_array"]:
@@ -376,6 +393,7 @@ def create_embed(data, ctx):
         pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
         pattern_analysis = __append_pattern_info("Doublesteps", "doublesteps", data, pattern_analysis)
         pattern_analysis = __append_pattern_info("Jumps", "jumps", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Monos", "mono", data, pattern_analysis)
 
     embed.add_field(name="__Pattern Analysis__", value=pattern_analysis,
                     inline=False)
