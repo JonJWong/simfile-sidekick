@@ -430,6 +430,16 @@ def new_pattern_analysis(measure_obj):
                 return first_L
 
             return first_L if first_L < first_R else first_R
+        
+        def __last_left_right(pattern):
+            """
+                Takes in a string as a pattern/, and returns the index of the
+                first instance of "L" or "R". Assumes input includes at least 1
+            """
+            last_l = pattern.rfind("L")
+            last_r = pattern.rfind("R")
+
+            return last_l if last_l > last_r else last_r
 
         def __find_starting_foot(pattern):
             """
@@ -449,11 +459,19 @@ def new_pattern_analysis(measure_obj):
             
             return starting_foot
         
-        def __process_mono(pattern, category_counts):
+        def __process_mono(pattern):
             if len(pattern) >= 8:
-                print(pattern)
-                if pattern[-2] == "L" or pattern[-2] == "R":
-                    category_counts["Mono Notes"] += len(pattern) - 2
+                sliced = pattern[:-2]
+                if sliced.endswith("U") or sliced.endswith("D"):
+                    sliced += pattern[-2]
+
+                if sliced.endswith("LR") or sliced.endswith("RL"):
+                    sliced = sliced.rstrip("LR")
+                    sliced += pattern[len(sliced)]
+                
+                ult = sliced[-1]
+                penult = sliced[-2]
+                category_counts["Mono Notes"] += len(sliced)
 
         def __fill_mistake_data(data_obj, measure, pattern):
             if data_obj.get(measure):
@@ -507,6 +525,7 @@ def new_pattern_analysis(measure_obj):
         ds_pattern = ""
         jumping = False
         no_lr = False
+        amt_to_subtract = 0
 
         starting_foot = __find_starting_foot(run)
         # If the starting foot can't be found, the entire run is U/D
@@ -521,21 +540,24 @@ def new_pattern_analysis(measure_obj):
         # - - - - - RUN ITERATION LOOP - - - - -
         # One step at a time.
         for i, curr_step in enumerate(run):
-            current_measure = most_recent_starting_measure + \
-                math.floor(i + 1 / 16)
+            curr_measure = most_recent_starting_measure + \
+                math.floor((i + 1 - amt_to_subtract) / 16)
             # - - - - - JUMP DETECTION - - - - -
             # If there is a jump we need to reset the direction the player is facing
             # on the next step, since it is most likely ambiguous.
             if curr_step == "[" and not jumping:
                 jump_end_idx = run.find("]", i)
-                jump_str = run[i+1:jump_end_idx].split()
+                jump_str = run[i+1:jump_end_idx]
                 jumping = True
+                amt_to_subtract += jump_end_idx - i
                 current_foot, curr_direction, mono_pattern, dbl_stair_pattern = (
-                    None, None, None, None, None)
-                __fill_mistake_data(jumps_data, current_measure, jump_str)
+                    None, None, "", None)
+                print(jump_str, curr_measure)
+                __fill_mistake_data(jumps_data, curr_measure, jump_str)
             elif curr_step == "]":
                 if jumping:
                     jumping = False
+                    continue
 
             if not no_lr:
                 total_notes_in_runs += 1
@@ -576,7 +598,7 @@ def new_pattern_analysis(measure_obj):
                     current_foot = "L" if current_foot == "R" else "R"
                 else:
                     current_foot = __find_starting_foot(run[i+1:])
-                    __process_mono(mono_pattern, category_counts)
+                    __process_mono(mono_pattern)
 
             # Add step to pattern
             mono_pattern += curr_step
@@ -599,8 +621,9 @@ def new_pattern_analysis(measure_obj):
             # mono_pattern string is longer than 6 notes, we add it to the mono
             # count.
             if prev_direction != curr_direction:
-                __process_mono(mono_pattern, category_counts)
-                mono_pattern = mono_pattern[-2:]
+                __process_mono(mono_pattern)
+                last_lr = __last_left_right(mono_pattern)
+                mono_pattern = mono_pattern[last_lr:]
 
             # - - - - - DOUBLE STAIR FINDER - - - - -
             # If our ds_pattern deviates from double stairs, we want
