@@ -261,7 +261,8 @@ def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
             else:
                 data_obj[measure] = [datum]
         
-        for measure, datum in data_obj.items():
+        for measure in sorted(data_obj.keys()):
+            datum = data_obj[measure]
             pattern_analysis += f'**{measure}**: '
 
             for i, entry in enumerate(datum):
