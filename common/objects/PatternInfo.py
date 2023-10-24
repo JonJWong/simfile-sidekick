@@ -29,13 +29,16 @@ class PatternInfo(object):
     doublesteps_array: []
     jumps_count: int = 0
     jumps_array: []
+    mono_count: int = 0
+    mono_array: []
 
     def __init__(self, left_foot_candles: int, right_foot_candles: int,
                  total_candles: int, mono_percent: float, anchor_left: int, 
                  anchor_down: int, anchor_up: int, anchor_right: int,
                  double_stairs_count: int, double_stairs_array: [],
                  doublesteps_count: int, doublesteps_array: [],
-                 jumps_count: int, jumps_array: []):
+                 jumps_count: int, jumps_array: [], mono_count: int,
+                 mono_array: []):
         self.left_foot_candles = left_foot_candles
         self.right_foot_candles = right_foot_candles
         self.total_candles = total_candles
@@ -50,3 +53,5 @@ class PatternInfo(object):
         self.doublesteps_array = doublesteps_array
         self.jumps_count = jumps_count
         self.jumps_array = jumps_array
+        self.mono_count = mono_count
+        self.mono_array = mono_array
