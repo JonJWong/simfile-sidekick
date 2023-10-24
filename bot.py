@@ -390,11 +390,11 @@ def create_embed(data, ctx):
 
     # (Potential) Errors
     if "-xtras" in ctx.message.content.split(" "):
-        pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Boxs", "box", data, pattern_analysis)
         pattern_analysis = __append_pattern_info("Doublesteps", "doublesteps", data, pattern_analysis)
+        pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
         pattern_analysis = __append_pattern_info("Mid Stream Jumps", "jumps", data, pattern_analysis)
         pattern_analysis = __append_pattern_info("Monos", "mono", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Boxs", "box", data, pattern_analysis)
 
     embed.add_field(name="__Pattern Analysis__", value=pattern_analysis,
                     inline=False)
