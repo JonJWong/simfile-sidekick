@@ -416,8 +416,8 @@ def new_pattern_analysis(measure_obj):
 
         def __first_left_right(pattern):
             """
-                Takes in a string as a pattern/, and returns "L", "R". Always returns
-                whichever comes first in string. If there are no L/R notes, returns -1
+                Takes in a string as a pattern/, and returns the index of the
+                first instance of "L" or "R". Returns -1 if no L/R
             """
             first_L = pattern.find("L")
             first_R = pattern.find("R")
@@ -437,14 +437,23 @@ def new_pattern_analysis(measure_obj):
                 to which foot starts the run. Returns -1 if there are no L/R
                 in the input.
             """
-
-            if __first_left_right(pattern) == -1:
+            first_lr = __first_left_right(pattern)
+            if first_lr == -1:
                 return -1
 
-            starting_foot = None
+            starting_foot = pattern[first_lr]
 
-            for i, step in enumerate(pattern):
-                pass
+            for i in reversed(range(1, first_lr)):
+                if pattern[i] != pattern[i-1]:
+                    starting_foot = "L" if starting_foot == "R" else "R"
+            
+            return starting_foot
+        
+        def __process_mono(pattern, category_counts):
+            if len(pattern) >= 8:
+                print(pattern)
+                if pattern[-2] == "L" or pattern[-2] == "R":
+                    category_counts["Mono Notes"] += len(pattern) - 2
 
         def __fill_mistake_data(data_obj, measure, pattern):
             if data_obj.get(measure):
@@ -492,44 +501,47 @@ def new_pattern_analysis(measure_obj):
                                                 for pattern in RIGHT_CANDLES)
 
         current_foot = None
-        previous_foot = None
-        currently_facing = None
-        next_direction = None
+        prev_direction = None
+        curr_direction = None
         mono_pattern = ""
         ds_pattern = ""
         jumping = False
+        no_lr = False
+
+        starting_foot = __find_starting_foot(run)
+        # If the starting foot can't be found, the entire run is U/D
+        # so we mark the entire run as mono.
+        if starting_foot == -1:
+            category_counts["Mono Notes"] += len(run)
+            total_notes_in_runs += len(run) 
+            no_lr = True
+
+        current_foot = starting_foot
 
         # - - - - - RUN ITERATION LOOP - - - - -
         # One step at a time.
-
-        for i, note in enumerate(run):
+        for i, curr_step in enumerate(run):
             current_measure = most_recent_starting_measure + \
                 math.floor(i + 1 / 16)
             # - - - - - JUMP DETECTION - - - - -
             # If there is a jump we need to reset the direction the player is facing
             # on the next step, since it is most likely ambiguous.
-            if note == "[" and not jumping:
+            if curr_step == "[" and not jumping:
                 jump_end_idx = run.find("]", i)
                 jump_str = run[i+1:jump_end_idx].split()
                 jumping = True
-                current_foot, previous_foot, currently_facing, mono_pattern = (
-                    None, None, None, None)
+                current_foot, curr_direction, mono_pattern, dbl_stair_pattern = (
+                    None, None, None, None, None)
                 __fill_mistake_data(jumps_data, current_measure, jump_str)
-            elif note == "]":
+            elif curr_step == "]":
                 if jumping:
                     jumping = False
 
-            total_notes_in_runs += 1
+            if not no_lr:
+                total_notes_in_runs += 1
 
             if jumping:
                 continue
-
-            starting_foot = __find_starting_foot(run)
-            # If the starting foot can't be found, the entire run is an UD drill
-            # so we mark the entire run as mono.
-            if starting_foot == -1:
-                category_counts["Mono Notes"] += len(run)
-                break
 
             # - - - - - DOUBLESTEP FINDER - - - - -
             # There are two types of doublesteps, repeated arrows "DD"
@@ -551,14 +563,52 @@ def new_pattern_analysis(measure_obj):
                     __fill_mistake_data(
                         doublesteps_data, dblstep_measure, pattern)
 
+            # Since there can't be double stairs or mono if there are no l/R
+            #  notes, we can go ahead and skip the rest of the logic
+            if no_lr:
+                continue
+
+            # - - - - - MONO ANALYSIS - - - - -
+            # switch feet every step unless it's a doublestep
+            if i != 0:
+                prev_step = run[i-1]
+                if prev_step != curr_step:
+                    current_foot = "L" if current_foot == "R" else "R"
+                else:
+                    current_foot = __find_starting_foot(run[i+1:])
+                    __process_mono(mono_pattern, category_counts)
+
             # Add step to pattern
-            ds_pattern += note
+            mono_pattern += curr_step
+            ds_pattern += curr_step
+
+            prev_direction = curr_direction
+            # the foot on the U/D determines which direction we're facing
+            if current_foot == "L":
+                if curr_step == "D":
+                    curr_direction = "L"
+                elif curr_step == "U":
+                    curr_direction = "R"
+            if current_foot == "R":
+                if curr_step == "D":
+                    curr_direction = "R"
+                elif curr_step == "U":
+                    curr_direction = "L"
+
+            # Check for directional changes, if the direction changed, and the
+            # mono_pattern string is longer than 6 notes, we add it to the mono
+            # count.
+            if prev_direction != curr_direction:
+                __process_mono(mono_pattern, category_counts)
+                mono_pattern = mono_pattern[-2:]
 
             # - - - - - DOUBLE STAIR FINDER - - - - -
             # If our ds_pattern deviates from double stairs, we want
             # to reset the pattern at the next applicable instance of left
             # or right. This ensures that we are not losing previously
             # counted stairs/beginnings of stairs.
+            # This only finds the first instance of double stairs, and quad
+            # stairs will count as 2 entries.
             if not any(dbl_stair.startswith(ds_pattern) for dbl_stair in DBL_STAIRS):
                 # Slices the current pattern at the next left or right.
                 for j in range(1, len(ds_pattern)):
@@ -653,6 +703,7 @@ def new_pattern_analysis(measure_obj):
 
         prev_measure = measure_num
 
+    print(f'mono notes: {category_counts["Mono Notes"]} total: {total_notes_in_runs}')
     category_counts["Mono Percent"] = (
         (category_counts["Mono Notes"] / total_notes_in_runs) * 100
     )
