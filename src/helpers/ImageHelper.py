@@ -13,7 +13,7 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
-from common import BreakdownHelper as bh
+from helpers import BreakdownHelper as bh
 from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 from typing import List
 import logging
@@ -24,8 +24,8 @@ IMAGE_WIDTH = 1000  # Width of the density graph and breakdown image in pixels
 GRAPH_HEIGHT = 400  # Height of the density graph in pixels
 
 FONT_SIZE = 32
-FONT = ImageFont.truetype("./resources/font/DejaVuSansMono.ttf", FONT_SIZE)
-FONT_BOLD = ImageFont.truetype("./resources/font/DejaVuSansMono-Bold.ttf", FONT_SIZE)
+FONT = ImageFont.truetype("assets/font/DejaVuSansMono.ttf", FONT_SIZE)
+FONT_BOLD = ImageFont.truetype("assets/font/DejaVuSansMono-Bold.ttf", FONT_SIZE)
 
 # Since the font is monospaced, this gives us the width and height of a single character
 CHAR_LEFT, CHAR_TOP, CHAR_RIGHT, CHAR_BOTTOM = FONT.getbbox("A")

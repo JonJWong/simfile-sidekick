@@ -4,8 +4,8 @@
 24ths, 20ths, etc.
 """
 
-from common.BreakdownHelper import remove_all_breakdown_chars
-from common.enums.RunDensity import RunDensity
+from helpers.BreakdownHelper import remove_all_breakdown_chars
+from enums.RunDensity import RunDensity
 import math
 
 # Percent of the song that meets normalization criteria. If, for example, the song has over 50%

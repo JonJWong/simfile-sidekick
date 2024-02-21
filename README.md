@@ -2,7 +2,7 @@
 
 A discord bot to scan and parse StepMania simfiles. Inspired by Nav's Breakdown Buddy.
 
-![Screenshot](images/screenshot.png)
+![Screenshot](src/assets/images/screenshot.png)
 
 ## About this guide
 

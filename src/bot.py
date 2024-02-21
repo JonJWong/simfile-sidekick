@@ -12,14 +12,13 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
-from common import DBManager as dbm
-from common import UserDBManager as udbm
+# Module Imports
+from tinydb import Query, TinyDB, where
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 from dotenv import load_dotenv
-from scan import parse_file, scan_folder
-from tinydb import Query, TinyDB, where
-from zipfile import BadZipFile, ZipFile
+
+# External Imports
 import asyncio
 import discord
 import gdown
@@ -30,40 +29,21 @@ import shutil
 import sys
 import urllib.request
 
-DLPACK_ON_SELECTED_SERVERS_ONLY = False
+# Internal Imports
+from db import DBManager as dbm
+from db import UserDBManager as udbm
+from scan.scan import parse_file, scan_folder
+from zipfile import BadZipFile, ZipFile
 
-DLPACK_DESTINATION_URL = "D:\\bot_assets\\bot_db"
-
-# The Server IDs for DCH and SN. Only admins in these channels will be able to use the "-dlpack" command
-APPROVED_SERVERS = [
-    317212788520910848,  # Big Ass Forehead
-    1163182650241069066,  # BOT EMOJIS
-    1163200677409988668,  # BOT EMOJIS 2
-]
-
-# File name and folder constants. Change these if you want to use a different name or folder.
-SERVER_SETTINGS = "server_settings.json"
-USER_SETTINGS = "user_settings.json"
-# Name of the TinyDB database file that contains parsed song information
-DATABASE_NAME = "db.json"
-TMP_DIR = "./tmp/"  # Directory to temporarily store user's uploaded .sm files to parse
+from globals import DLPACK_ON_SELECTED_SERVERS_ONLY, DLPACK_DESTINATION_URL, TMP_DIR, USER_AGENT, DEFAULT_PREFIX, PREFIXES, DEFAULT_AUTODELETE_BEHAVIOR, SERVER_SETTINGS, USER_SETTINGS, DATABASE_NAME, APPROVED_SERVERS, HELP_MESSAGE, STR_TO_EMOJI
+from helpers.bothelpers import get_prefixes, is_prefix_for_server
+from helpers.messagehelpers import get_footer_image, create_embed
 
 # The database that contains server configurations, such as what prefix is set
 server_db = TinyDB(SERVER_SETTINGS)
 
 # The database that contains user configurations
 user_db = TinyDB(USER_SETTINGS)
-
-# The default prefix for the bot
-DEFAULT_PREFIX = "-"
-
-# Default behavior to automatically delete user's uploaded .sm files
-DEFAULT_AUTODELETE_BEHAVIOR = True
-DEFAULT_NORMALIZE_BEHAVIOR = False
-
-# The array of valid prefixes. This is updated when the bot starts to include all prefixes for Discord servers that has
-# set a non-default prefix. See get_prefixes, is_prefix_for_server, and on_message functions for more info.
-prefixes = [DEFAULT_PREFIX]
 
 # Loads the discord token from the .env file.
 load_dotenv()
@@ -76,375 +56,15 @@ if not TOKEN:  # if the DISCORD_TOKEN is blank in the .env file, or if the .env 
     print("DISCORD_TOKEN=YourBotsDiscordTokenHere")
     sys.exit(1)
 
-# Author avatar, used in footer
-AVATAR_URL = "https://cdn.discordapp.com/avatars/542501947547320330/a_fd4512e7da6691d45387618677c3f01b.gif?size=1024"
-
-# User Agent needed in order to download user's uploaded .sm files.
-USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36"
-
-HELP_MESSAGE = """ \
-Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
-Breakdown Buddy.
-
-If you want to search for a song stored locally in the owner's database, use
-`-search` followed by the song name. Once the results appear, enter the number
-of the result that matches your desired search result.
-
-If you want me to parse an .sm file, attach the .sm file to your message and
-type `-parse`. If I get stuck parsing a file, try `-fix` and
-I'll do my best to clean up so I can parse files again.
-If you want to show double staircases, doublesteps and their locations,
-use `-parse -xtras` when sending your file.
-
-To adjust your user settings, type `-settings help`. I can automatically
-delete uploaded .sm files.
-
-I can also search by tags. The syntax is `-[tag]:[value]`
-Currently supported tags are: `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
-Song title must come before the tags.
-
-Example: `-search -bpm:160`
-`-search sigatrev -rating:20`
-
-Admins can:
-Change the prefix using `-prefix` followed by the prefix they
-want to use, e.g. `-prefix !`.
-Add packs to the database by using `-dlpack URL`.
-Delete packs from the database by using `-delpack packName`.
-
-I also have built in stream visualizer functionality. Use `-sv` followed
-by the characters `L`, `D`, `U`, or `R` to represent arrows. You can put
-brackets around arrows to denote jumps, e.g. `[LR]`
-"""
-
-STR_TO_EMOJI = {
-    1: "<:1footer:1163200171891495012>",
-    2: "<:2footer:1163200173405655221>",
-    3: "<:3footer:1163200174148042893>",
-    4: "<:4footer:1163200180842139768>",
-    5: "<:5footer:1163200183589404793>",
-    6: "<:6footer:1163200184336007188>",
-    7: "<:7footer:1163200185376194732>",
-    8: "<:8footer:1163200187020349611>",
-    9: "<:9footer:1163200189297856583>",
-    10: "<:10footer:1163200191894138980>",
-    11: "<:11footer:1163200192695255090>",
-    12: "<:12footer:1163200193559269496>",
-    13: "<:13footer:1163200292754559119>",
-    14: "<:14footer:1163200197090885783>",
-    15: "<:15footer:1163200294549721129>",
-    16: "<:16footer:1163200299838754856>",
-    17: "<:17footer:1163200300665020446>",
-    18: "<:18footer:1163200301453549664>",
-    19: "<:19footer:1163200302422425721>",
-    20: "<:20footer:1163200199833944084>",
-    21: "<:21footer:1163200392662880306>",
-    22: "<:22footer:1163200204296683530>",
-    23: "<:23footer:1163200394105733130>",
-    24: "<:24footer:1163200207606005850>",
-    25: "<:25footer:1163200394923618405>",
-    26: "<:26footer:1163200395703767050>",
-    27: "<:27footer:1163200396341301410>",
-    28: "<:28footer:1163200211221499967>",
-    29: "<:29footer:1163200211221499967>",
-    30: "<:30footer:1163200398836891689>",
-    31: "<:31footer:1163200399679946783>",
-    32: "<:32footer:1163200475622027335>",
-    33: "<:33footer:1163200477425573999>",
-    34: "<:34footer:1163200214027477042>",
-    35: "<:35footer:1163200478839054416>",
-    36: "<:36footer:1163200218175643658>",
-    37: "<:37footer:1163200479615004742>",
-    38: "<:38footer:1163201160463781888>",
-    39: "<:39footer:1163201161252319352>",
-    "wun": "<:wun:1163199650916999228>",
-    "red_L": "<:red_L:1163182809536532581>",
-    "red_D": "<:red_D:1163182816230637628>",
-    "red_U": "<:red_U:1163182822752800858>",
-    "red_R": "<:red_R:1163182828201197729>",
-    "blue_L": "<:blue_L:1163182833045622906>",
-    "blue_D": "<:blue_D:1163182838225576096>",
-    "blue_U": "<:blue_U:1163182842130477115>",
-    "blue_R": "<:blue_R:1163182847394324600>",
-    "green_L": "<:green_L:1163182853652234270>",
-    "green_D": "<:green_D:1163182857838137405>",
-    "green_U": "<:green_U:1163182863215243364>",
-    "green_R": "<:green_R:1163182868269387927>",
-    "bg": "<:bg:1163182776078581791>"
-}
-
-def get_prefixes():
-    """Loads server prefixes from database.
-
-    Even though servers can have their own prefixes, each one of these prefixes will need to be in the prefixes array
-    created above. When the bot starts, this function is called. It will check the server database settings and add each
-    servers chosen prefix to the prefixes array.
-    """
-    for item in server_db:
-        prefix = item["prefix"]
-        if prefix not in prefixes:
-            prefixes.append(prefix)
-    return prefixes
-
-
-def is_prefix_for_server(id, prefix):
-    """Check to see if prefix is used for server.
-
-    This function checks if a command entered by a user is using the servers set prefix.
-    """
-    results = server_db.search(where("id") == id)
-
-    if not results:
-        # There is no entry in the database for this server. No configurations were set, so check if it matches the
-        # default prefix.
-        if prefix == DEFAULT_PREFIX:
-            return True
-        else:
-            return False
-    else:
-        # The server has a set prefix
-        data = json.loads(json.dumps(results[0]))
-        if prefix == data["prefix"]:
-            return True
-        else:
-            return False
-
-
 # Allows SS to see members in other servers
 intents = discord.Intents.all()
 intents.members = True
 
 # Loads the bot's prefixes using the get_prefixes function above
-bot = commands.Bot(command_prefix=get_prefixes(), intents=intents)
+bot = commands.Bot(command_prefix=get_prefixes(server_db), intents=intents)
 
 # Needed in order to replace existing help command with our own
 bot.remove_command("help")
-
-
-def get_mono_desc(mono):
-    """Helper function to return pre-formatted text used in mono pattern analysis."""
-    if mono == 0:
-        return "*None*"
-    if mono > 0 and mono < 10:
-        return "*Low*"
-    elif mono >= 10 and mono < 30:
-        return "Kinda"
-    elif mono >= 30 and mono < 50:
-        return "**Quite Mono**"
-    elif mono > 50:
-        return "__**WTF**__"
-
-
-def normalize_float(num):
-    """Helper function that returns a floating point number to 2 decimal places."""
-    return "{:.2f}".format(float(num))
-
-
-def get_footer_image(level):
-    """Helper function that returns a fancy image for the difficulty of a chart."""
-    if STR_TO_EMOJI.get(level):
-        return STR_TO_EMOJI[level]
-    else:
-        return STR_TO_EMOJI["wun"]
-
-
-def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
-    pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
-    if data[pattern_type + '_count'] > 0:
-        pattern_analysis += f'__{pattern_name[:-1]} locations__:\n'
-
-        data_obj = {}
-        for entry in data[pattern_type + "_array"]:
-            measure, datum = entry
-            if data_obj.get(measure):
-                data_obj[measure].append(datum)
-            else:
-                data_obj[measure] = [datum]
-        
-        for measure in sorted(data_obj.keys()):
-            datum = data_obj[measure]
-            pattern_analysis += f'**{measure}**: '
-
-            for i, entry in enumerate(datum):
-                if i != len(datum) - 1:
-                    pattern_analysis += f"{entry}, "
-                else:
-                    pattern_analysis += f"{entry}\n"
-
-        # # Replace L, D, U, R with emojis
-        # commented because the embed becomes too long
-        # for entry in data[pattern_type + "_array"]:
-        #     new_entry = entry.split(":")
-        #     first_chars = [char for char in new_entry[0]]
-        #     for i, char in enumerate(first_chars):
-        #         if len(first_chars) > 2 and len(first_chars) % 2 == 0:
-        #             if i % 2 == 0:
-        #                 color = "red"
-        #             else:
-        #                 color = "blue"
-        #         else:
-        #             color = "red"
-
-        #         first_chars[i] = STR_TO_EMOJI[f"{color}_{char}"]
-        #     new_entry[0] = "".join(first_chars)
-        #     new_entry = ":".join(new_entry)
-        #     pattern_analysis += f'{new_entry}\n'
-
-    return pattern_analysis
-
-
-def create_embed(data, ctx):
-    embed = discord.Embed(
-        description="Requested by {}".format(ctx.author.mention))
-
-    # Add requester's avatar, commented out since displaying Chart Info on same
-    # line would be too tight.
-    # embed.set_thumbnail(url=ctx.message.author.avatar_url)
-
-    # - - - SONG DETAILS - - -
-    song_details = ""
-    # Title, Subtitle, and Artist
-    if data["title"] == "*Hidden*" and data["artist"] == "*Hidden*":
-        song_details += "*<Title and artist hidden>*\n"
-    else:
-        song_details += f'**{data["title"]}** '
-        if data["subtitle"] and data["subtitle"] != "N/A":
-            song_details += f'*{data["subtitle"]}* '
-        song_details += f'by **{data["artist"]}** \n'
-    song_details += f'From pack(s): {data["pack"]}\n'
-    # Rating, Difficulty, and Stepartist
-    try:
-        song_details += f'{get_footer_image(int(data["rating"]))} '
-    except ValueError:
-        song_details += f'{get_footer_image(-1)} '
-    stepartist = data["stepartist"].replace("*", "\*")
-    song_details += f'{data["difficulty"]} - {stepartist}\n\n'
-    # Length
-    song_details += f'__Song Length__: {data["length"]}\n'
-    # Display BPM
-    if data["display_bpm"] and data["display_bpm"] != "N/A":
-        song_details += "__Display BPM__: "
-        if re.search(r"[:]+", data["display_bpm"]):
-            display_bpm_range = data["display_bpm"].split(":")
-            song_details += f'{str(int(float(display_bpm_range[0])))}-'
-            song_details += f'{str(int(float(display_bpm_range[1])))}\n'
-        else:
-            song_details += f'{str(int(float(data["display_bpm"])))}\n'
-    # BPM
-    song_details += "__BPM__: "
-    if int(float(data["min_bpm"]) == int(float(data["max_bpm"]))):
-        song_details += f'{str(int(float(data["min_bpm"])))}\n'
-    else:
-        song_details += f'{str(int(float(data["min_bpm"])))}-'
-        song_details += f'{str(int(float(data["max_bpm"])))}\n'
-    # NPS
-    song_details += f'__Peak NPS__: **{normalize_float(data["max_nps"])}** notes/s. \n'
-    song_details += f'__Median NPS__: **{normalize_float(data["median_nps"])}** notes/s.\n'
-    # Total Stream/Break
-    total_measures = data["total_stream"] + data["total_break"]
-    if total_measures != 0:
-        stream_percent = normalize_float(
-            (data["total_stream"] / total_measures) * 100)
-        break_percent = normalize_float(
-            (data["total_break"] / total_measures) * 100)
-        song_details += f'__Total Stream__: **{str(data["total_stream"])}** measures '
-        song_details += f'({stream_percent}%)\n'
-        song_details += f'__Total Break__: **{str(data["total_break"])}** measures '
-        song_details += f'({break_percent}%)'
-
-    embed.add_field(name="__Song Details__", value=song_details)
-
-    # - - - CHART INFO - - -
-    chart_info = ""
-    chart_info += f'__Notes__: {str(data["notes"])}\n'
-    chart_info += f'__Jumps__: {str(data["jumps"])}\n'
-    chart_info += f'__Holds__: {str(data["holds"])}\n'
-    chart_info += f'__Mines__: {str(data["mines"])}\n'
-    chart_info += f'__Hands__: {str(data["hands"])}\n'
-    chart_info += f'__Rolls__: {str(data["rolls"])}'
-
-    embed.add_field(name="__Chart Info__", value=chart_info, inline=True)
-
-    # - - - PATTERN ANALYSIS - - -
-    pattern_analysis = f'*Analysis does not consider patterns in break segments, or microholds in runs.*\n'
-
-    # Candles
-    pattern_analysis += f'__Candles__: **{str(data["total_candles"])}** '
-    pattern_analysis += f'({str(data["left_foot_candles"])} left, '
-    pattern_analysis += f'{str(data["right_foot_candles"])} right)\n'
-    candle_density = data["total_candles"] / (data["total_stream"]) if data["total_stream"] != 0 else 0
-    pattern_analysis += f'__Candle density__: {str(normalize_float(candle_density))} candles/measure\n'
-
-    # Mono
-    pattern_analysis += f'__Mono__: {str(normalize_float(data["mono_percent"]))}% '
-    pattern_analysis += f'({get_mono_desc(data["mono_percent"])})\n'
-
-    # Anchors
-    total_anchors = data["anchor_left"] + data["anchor_down"] + \
-        data["anchor_up"] + data["anchor_right"]
-    pattern_analysis += f'__Anchors__: **{str(total_anchors)}** '
-    pattern_analysis += f'({str(data["anchor_left"])} left, '
-    pattern_analysis += f'{str(data["anchor_down"])} down, '
-    pattern_analysis += f'{str(data["anchor_up"])} up, '
-    pattern_analysis += f'{str(data["anchor_right"])} right)\n'
-
-    # (Potential) Errors
-    if "-xtras" in ctx.message.content.split(" "):
-        pattern_analysis = __append_pattern_info("Boxs", "box", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Doublesteps", "doublesteps", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Mid Stream Jumps", "jumps", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Monos", "mono", data, pattern_analysis)
-
-    embed.add_field(name="__Pattern Analysis__", value=pattern_analysis,
-                    inline=False)
-
-    # - - - BREAKDOWNS - - -
-
-    if data["breakdown"]:
-        # Discord API only lets us post 1024 characters per field. Some marathon breakdowns are
-        # larger than this restriction.
-        # TODO: revisit this and perhaps just sent a .txt file if it's too large, instead of splitting up in sections
-        if len(data["breakdown"]) > 1024:
-            embed.add_field(name="__Detailed Breakdown__",
-                            value="***Too large to display***", inline=False)
-        else:
-            embed.add_field(name="__Detailed Breakdown__",
-                            value=data["breakdown"], inline=False)
-        if data["partial_breakdown"] != data["simple_breakdown"]:
-            if len(data["partial_breakdown"]) > 1024:
-                embed.add_field(name="__Partially Simplified__",
-                                value="***Too large to display***", inline=False)
-            else:
-                embed.add_field(name="__Partially Simplified__",
-                                value=data["partial_breakdown"], inline=False)
-        if len(data["simple_breakdown"]) > 1024:
-            simple_breakdown = ""
-            simple_breakdown_array = data["simple_breakdown"].split(" ")
-            num_breaks = 1
-            for i in simple_breakdown_array:
-                if (len(simple_breakdown) + len(i)) > 1024:
-                    embed.add_field(name="__Simplified Breakdown *(Part " +
-                                    str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-                    num_breaks += 1
-                    simple_breakdown = ""
-                simple_breakdown += i + " "
-            embed.add_field(name="__Simplified Breakdown *(Part " +
-                            str(num_breaks) + ")*__", value=simple_breakdown, inline=False)
-        else:
-            embed.add_field(name="__Simplified Breakdown__",
-                            value=data["simple_breakdown"], inline=False)
-    if data["normalized_breakdown"]:
-        text = "*This is in beta and may be inaccurate. Variable BPM songs may report incorrect BPM.*\n"
-        embed.add_field(name="__Normalized Breakdown__",
-                        value=text + data["normalized_breakdown"], inline=False)
-
-    # - - - FOOTER - - -
-    file = discord.File(data["graph_location"], filename="density.png")
-
-    embed.set_image(url="attachment://density.png")
-
-    return embed, file
 
 
 @bot.command(name="search", rest_is_raw=True)
@@ -986,13 +606,13 @@ async def prefix(ctx, input: str):
         ServerDB = Query()
         results = server_db.search(ServerDB.prefix.search(old_prefix))
         if not result:
-            prefixes.remove(old_prefix)
+            PREFIXES.remove(old_prefix)
 
-    if new_prefix not in prefixes:
+    if new_prefix not in PREFIXES:
         # If new prefix isn't in the array of prefixes to listen for, we need to add it.
-        prefixes.append(new_prefix)
+        PREFIXES.append(new_prefix)
 
-    bot.command_prefix = prefixes
+    bot.command_prefix = PREFIXES
 
     await ctx.send("Prefix is now: " + new_prefix)
 
@@ -1028,7 +648,7 @@ async def on_message(message):
     if message.guild:
         server_id = message.guild.id  # ID for the Discord server the user is in
 
-    if is_prefix_for_server(server_id, prefix):
+    if is_prefix_for_server(server_db, server_id, prefix):
         await bot.process_commands(message)
 
 bot.run(TOKEN)

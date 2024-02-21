@@ -10,8 +10,8 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
-from common.GeneralHelper import generate_md5
-from common.objects import NotesInfo, PatternInfo
+from helpers.GeneralHelper import generate_md5
+from objects import NotesInfo, PatternInfo
 from typing import List
 import weakref
 

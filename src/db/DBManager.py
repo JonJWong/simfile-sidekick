@@ -1,5 +1,4 @@
 from tinydb import Query, TinyDB, where
-from tinydb.operations import delete
 from typing import List, Union
 import json
 import re
@@ -7,30 +6,33 @@ from .parser.generateQueryObject import generateQueryObject
 
 # TODO: handle db.close on bad results (i.e. db.close() isn't called if we return 0/-1)
 
+
 def buildDBQuery(queryObject: dict):
     DBQuery = None
     # supported tags: 'title', 'subtitle', 'artist', 'stepartist', 'rating', 'bpm'
     # bpm logic: 'min_bpm' == 'max_bpm'
 
     for key, value in queryObject.items():
-        if value:              
+        if value:
             currentQuery = None
 
             # Generate query
             if key == 'bpm':
-                currentQuery = (where('min_bpm') == float(value)) & (where('max_bpm') == float(value))
+                currentQuery = (where('min_bpm') == float(value)) & (
+                    where('max_bpm') == float(value))
             elif key == 'rating':
                 # this one is a string in our db and it needs to be exact
                 currentQuery = where('rating') == value
             else:
-                currentQuery = where(key).search(value, flags=re.IGNORECASE) 
-            
+                currentQuery = where(key).search(value, flags=re.IGNORECASE)
+
             # AND the queries
             if DBQuery:
                 DBQuery &= currentQuery
             else:
                 DBQuery = currentQuery
     return DBQuery
+
 
 def search(query: str, db: Union[str, TinyDB]) -> Union[int, List]:
     """ Search the database for a song.
@@ -46,10 +48,10 @@ def search(query: str, db: Union[str, TinyDB]) -> Union[int, List]:
         db_param_is_string = True
 
     queryObject = generateQueryObject(query)
-    
+
     if queryObject["error"]:
         return -1
-    
+
     dbQuery = buildDBQuery(queryObject["queryObject"])
     results = db.search(dbQuery)
 
@@ -96,6 +98,7 @@ def delete_pack_search_results(pack_name: str, db: Union[str, TinyDB]):
     else:
         return -1
 
+
 def delete_by_ids(ids, db):
     db_param_is_string = False
 
@@ -109,6 +112,7 @@ def delete_by_ids(ids, db):
         db.close()
 
     return True
+
 
 def remove_pack_from_songs_by_id(pack, ids, db):
     db_param_is_string = False
@@ -134,6 +138,7 @@ def remove_pack_from_songs_by_id(pack, ids, db):
         db.close()
 
     return True
+
 
 def pack_exists(pack_name, db):
     db_param_is_string = False

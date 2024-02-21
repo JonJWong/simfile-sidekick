@@ -18,21 +18,20 @@ Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
 
 
-from common import BreakdownHelper as bh
-from common import GeneralHelper as gh
-from common import Normalize as normalizer
-from common import ImageHelper as ih
-from common.objects import NotesInfo as ni, ChartInfo as ci, FileInfo as fi, PatternInfo as pi
-from common import Test as test
-from common import VerboseHelper as vh
-from common.enums.RunDensity import RunDensity
+from helpers import BreakdownHelper as bh
+from helpers import GeneralHelper as gh
+from helpers import Normalize as normalizer
+from helpers import ImageHelper as ih
+from objects import NotesInfo as ni, ChartInfo as ci, FileInfo as fi, PatternInfo as pi
+from helpers import Test as test
+from helpers import VerboseHelper as vh
+from enums.RunDensity import RunDensity
 from pathlib import Path
-from tinydb import Query, TinyDB, where
+from tinydb import TinyDB
 from tinydb.storages import JSONStorage, MemoryStorage
 from tinydb.middlewares import CachingMiddleware
 import getopt
 import glob
-import json
 import logging
 import math
 import os
@@ -41,170 +40,10 @@ import statistics
 import string
 import sys
 
-# Flag constants. These are the available command line arguments you can use when running this application.
-SHORT_OPTIONS = "rvd:ml:uc"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=",
-                "mediaremove", "log=", "unittest", "csv"]
-
-# Positions in args array.
-REBUILD = 0
-VERBOSE = 1
-DIRECTORY = 2
-MEDIA_REMOVE = 3
-LOG = 4
-UNIT_TEST = 5
-CSV = 6
-
-# Regex constants. Used mainly in the pattern recognition section.
-NL_REG = "[\s]+"                        # New line
-OR_REG = "|"                            # Regex for "or"
-# Matches a line containing no notes (0000)
-NO_NOTES_REG = "[03M][03M][03M][03M]"
-# Matches a line containing at least 1 note
-ANY_NOTES_REG = "(.*)[124]+(.*)"
-
-# Other constants.
-LOG_TIMESTAMP = "%Y-%m-%d %H:%M:%S"
-LOG_FORMAT = "%(asctime)s %(levelname)s - %(message)s"
-
-# File name and folder constants. Change these if you want to use a different name or folder.
-# The folder the unit test songs are located
-UNITTEST_FOLDER = "tests"
-# Name of the TinyDB database file that contains parsed song information
-DATABASE_NAME = "db.json"
-# Name of the log file that will be created if enabled
-LOGFILE_NAME = "scan.log"
-# Name of the .csv that will be created if enabled
-CSV_FILENAME = "charts.csv"
-
-
-def findall_with_regex_dotall(data, regex):
-    """Returns array of results from the given regex. Search will span over newline characters."""
-    try:
-        return re.findall(regex, data, re.DOTALL)
-    except AttributeError:
-        return -1
-
-
-def findall_with_regex(data, regex):
-    """Returns array of results from the given regex."""
-    try:
-        return re.findall(regex, data)
-    except AttributeError:
-        return -1
-
-
-def find_with_regex_dotall(data, regex):
-    """Returns the first match from a given regex. Search will span over newline characters."""
-    try:
-        return re.search(regex, data, re.DOTALL).group(1)
-    except AttributeError:
-        return -1
-
-
-def find_with_regex(data, regex):
-    """Returns the first match from a given regex."""
-    try:
-        return re.search(regex, data).group(1)
-    except AttributeError:
-        return "N/A"
-
-
-def load_md5s_into_cache(db, cache):
-    charts = db.all()
-    for chart in charts:
-        cache.insert({"md5": chart["md5"]})
-    return cache
-
-
-def database_to_csv(db):
-    """Gets every row of the database and saves relevant info to a .csv"""
-    charts = db.all()
-    with open(CSV_FILENAME, 'w') as f:
-        f.write("title,subtitle,artist,pack\n")
-        for chart in charts:
-            f.write(
-                chart["title"] + "," +
-                chart["subtitle"] + "," +
-                chart["artist"] + "," +
-                chart["pack"] + "\n"
-            )
-    return
-
-
-def add_to_database(fileinfo, db, cache):
-    """Adds the chart information and pattern analysis to the TinyDB database."""
-
-    result = None
-
-    # Search if the chart already exists in our database.
-    if cache is not None:
-        # We are using the MD5 MemoryStorage. Check if the MD5 exists there
-        result = cache.search(where("md5") == fileinfo.chartinfo.md5)
-        cache.insert({"md5": fileinfo.chartinfo.md5})
-    else:
-        # We weren't provided a MD5 MemoryStorage, so we have to query the database.
-        result = db.search(where("md5") == fileinfo.chartinfo.md5)
-
-    if not result:
-        # If the chart doesn't exist, add a new entry.
-        db.insert({
-            "title": fileinfo.title,
-            "subtitle": fileinfo.subtitle,
-            "artist": fileinfo.artist,
-            "pack": fileinfo.pack,
-            "length": fileinfo.chartinfo.length,
-            "notes": fileinfo.chartinfo.notesinfo.notes,
-            "jumps": fileinfo.chartinfo.notesinfo.jumps,
-            "holds": fileinfo.chartinfo.notesinfo.holds,
-            "mines": fileinfo.chartinfo.notesinfo.mines,
-            "hands": fileinfo.chartinfo.notesinfo.hands,
-            "rolls": fileinfo.chartinfo.notesinfo.rolls,
-            "total_stream": fileinfo.chartinfo.total_stream,
-            "total_break": fileinfo.chartinfo.total_break,
-            "stepartist": fileinfo.chartinfo.stepartist,
-            "difficulty": fileinfo.chartinfo.difficulty,
-            "rating": fileinfo.chartinfo.rating,
-            "breakdown": fileinfo.chartinfo.breakdown,
-            "partial_breakdown": fileinfo.chartinfo.partial_breakdown,
-            "simple_breakdown": fileinfo.chartinfo.simple_breakdown,
-            "normalized_breakdown": fileinfo.chartinfo.normalized_breakdown,
-            "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
-            "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
-            "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
-            "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
-            "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
-            "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
-            "anchor_up": fileinfo.chartinfo.patterninfo.anchor_up,
-            "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
-            "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
-            "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
-            "doublesteps_count": fileinfo.chartinfo.patterninfo.doublesteps_count,
-            "doublesteps_array": fileinfo.chartinfo.patterninfo.doublesteps_array,
-            "jumps_count": fileinfo.chartinfo.patterninfo.jumps_count,
-            "jumps_array": fileinfo.chartinfo.patterninfo.jumps_array,
-            "mono_count": fileinfo.chartinfo.patterninfo.mono_count,
-            "mono_array": fileinfo.chartinfo.patterninfo.mono_array,
-            "box_count": fileinfo.chartinfo.patterninfo.box_count,
-            "box_array": fileinfo.chartinfo.patterninfo.box_array,
-            "display_bpm": fileinfo.displaybpm,
-            "max_bpm": fileinfo.max_bpm,
-            "min_bpm": fileinfo.min_bpm,
-            "max_nps": fileinfo.chartinfo.max_nps,
-            "median_nps": fileinfo.chartinfo.median_nps,
-            "graph_location": fileinfo.chartinfo.graph_location,
-            "md5": fileinfo.chartinfo.md5
-        })
-    else:
-        # If the chart already exists (i.e. we have a matching MD5), we want to update the entry and append the pack to
-        # it. This usually happens with ECS or SRPG songs taken from other packs.
-        if cache:
-            # result is currently set to MemoryStorage, so grab the db entry
-            result = db.search(where("md5") == fileinfo.chartinfo.md5)
-        data = json.loads(json.dumps(result[0]))
-        pack = data["pack"] + ", " + fileinfo.pack
-        Chart = Query()
-        db.update({"pack": pack}, Chart.md5 == fileinfo.chartinfo.md5)
+from .scanconstants import SHORT_OPTIONS, LONG_OPTIONS, REBUILD, VERBOSE, DIRECTORY, MEDIA_REMOVE, UNIT_TEST, CSV, NL_REG, NO_NOTES_REG, ANY_NOTES_REG, LOG_TIMESTAMP, LOG_FORMAT, UNITTEST_FOLDER, DATABASE_NAME, LOGFILE_NAME, CSV_FILENAME
+from .regexfinds import findall_with_regex_dotall, findall_with_regex, find_with_regex_dotall, find_with_regex
+from .dbhelpers import load_md5s_into_cache, database_to_csv, add_to_database
+from .scanutils import last_left_right, find_starting_foot, ensure_only_step, process_mistake_data, fill_mistake_data, process_mono
 
 
 def adjust_total_break(total_break, measures):
@@ -389,105 +228,6 @@ def new_pattern_analysis(measure_obj):
     prev_measure = None
     most_recent_starting_measure = None
 
-    def __first_left_right(pattern):
-        """
-            Takes in a string as a pattern/, and returns the index of the
-            first instance of "L" or "R". Returns -1 if no L/R
-        """
-        first_L = pattern.find("L")
-        first_R = pattern.find("R")
-
-        if first_L == -1 and first_R == -1:
-            return -1
-        elif first_L == -1:
-            return first_R
-        elif first_R == -1:
-            return first_L
-
-        return first_L if first_L < first_R else first_R
-    
-    def __last_left_right(pattern):
-        """
-            Takes in a string as a pattern/, and returns the index of the
-            first instance of "L" or "R". Assumes input includes at least 1
-        """
-        last_l = pattern.rfind("L")
-        last_r = pattern.rfind("R")
-
-        return last_l if last_l > last_r else last_r
-
-    def __find_starting_foot(pattern):
-        """
-            Takes in a string as a pattern/, and returns "L", "R" according
-            to which foot starts the run. Returns -1 if there are no L/R
-            in the input.
-        """
-        first_lr = __first_left_right(pattern)
-        if first_lr == -1:
-            return -1
-
-        starting_foot = pattern[first_lr]
-
-        for i in reversed(range(1, first_lr)):
-            if pattern[i] != pattern[i-1]:
-                starting_foot = "L" if starting_foot == "R" else "R"
-        
-        return starting_foot
-
-    def __ensure_only_step(note):
-        """
-            Filters a row in chart to ensure that it only contains arrows. This is to
-            catch edge cases where hold ends and arrows might be on the same row, or
-            even mines and arrows.
-            Necessary because the main pattern analysis function only checks for notes
-            without mines, hold ends, or holds/rolls in the rows.
-        """
-        # If not a note, return no note
-        if len(note) != 4:
-            return "0000"
-
-        # If there is no notes in input, return no note
-        for i, char in enumerate(["0", "1", "2", "3", "4", "M"]):
-            if i == len(note) and char not in note:
-                return "0000"
-            elif char in note:
-                break
-
-        # put chars of note in a list
-        chars = [step for step in note]
-
-        # if there is a hold end, or a mine, remove it
-        for i, step in enumerate(chars):
-            if step == "3" or step == "M":
-                chars[i] = "0"
-
-        return "".join(chars)
-    
-    def __process_mistake_data(data, category_counts, category_key, array_key):
-        for measure, datum in data.items():
-            for data in datum:
-                category_counts[category_key] += 1
-                category_counts[array_key].append([data, measure])
-    
-    def __fill_mistake_data(data_obj, measure, pattern):
-        if data_obj.get(measure):
-            data_obj[measure].append(pattern)
-        else:
-            data_obj[measure] = [pattern]
-
-    def __process_mono(data_obj, count_obj, pattern, curr_measure):
-        if len(pattern) >= 8:
-            sliced = pattern[:-2]
-            if sliced.endswith("U") or sliced.endswith("D"):
-                sliced += pattern[-2]
-
-            if sliced.endswith("LR") or sliced.endswith("RL"):
-                sliced = sliced.rstrip("LR")
-                sliced += pattern[len(sliced)]
-            
-            count_obj["Mono Notes"] += len(sliced)
-            __fill_mistake_data(data_obj, curr_measure, len(sliced))
-
     def __analyze(run):
         """
         Method to find Anchors and Candles via regex, double stairs and double
@@ -572,12 +312,12 @@ def new_pattern_analysis(measure_obj):
         no_lr = False
         amt_to_subtract = 0
 
-        starting_foot = __find_starting_foot(run)
+        starting_foot = find_starting_foot(run)
         # If the starting foot can't be found, the entire run is U/D
         # so we mark the entire run as mono.
         if starting_foot == -1:
             category_counts["Mono Notes"] += len(run)
-            total_notes_in_runs += len(run) 
+            total_notes_in_runs += len(run)
             no_lr = True
 
         current_foot = starting_foot
@@ -597,7 +337,7 @@ def new_pattern_analysis(measure_obj):
                 amt_to_subtract += jump_end_idx - i
                 current_foot, curr_direction, mono_pattern, dbl_stair_pattern = (
                     None, None, "", None)
-                __fill_mistake_data(jumps_data, curr_measure, jump_str)
+                fill_mistake_data(jumps_data, curr_measure, jump_str)
             elif curr_step == "]":
                 if jumping:
                     jumping = False
@@ -626,14 +366,14 @@ def new_pattern_analysis(measure_obj):
                     else:
                         dblstep_measure = most_recent_starting_measure + amt_to_add
 
-                    __fill_mistake_data(
+                    fill_mistake_data(
                         doublesteps_data, dblstep_measure, pattern)
-                    
+
             # - - - - - BOX FINDER - - - - -
             # Uses same logic as doublesteps, but with boxes.
             for pattern in BOXES:
                 if run.startswith(pattern, i):
-                    __fill_mistake_data(
+                    fill_mistake_data(
                         box_data, curr_measure, pattern)
 
             # Since there can't be double stairs or mono if there are no l/R
@@ -648,8 +388,9 @@ def new_pattern_analysis(measure_obj):
                 if prev_step != curr_step:
                     current_foot = "L" if current_foot == "R" else "R"
                 else:
-                    current_foot = __find_starting_foot(run[i+1:])
-                    __process_mono(mono_data, category_counts, mono_pattern, curr_measure)
+                    current_foot = find_starting_foot(run[i+1:])
+                    process_mono(mono_data, category_counts,
+                                 mono_pattern, curr_measure)
 
             # Add step to pattern
             mono_pattern += curr_step
@@ -672,8 +413,9 @@ def new_pattern_analysis(measure_obj):
             # mono_pattern string is longer than 6 notes, we add it to the mono
             # count.
             if prev_direction != curr_direction:
-                __process_mono(mono_data, category_counts,mono_pattern, curr_measure)
-                last_lr = __last_left_right(mono_pattern)
+                process_mono(mono_data, category_counts,
+                             mono_pattern, curr_measure)
+                last_lr = last_left_right(mono_pattern)
                 mono_pattern = mono_pattern[last_lr:]
 
             # - - - - - DOUBLE STAIR FINDER - - - - -
@@ -697,37 +439,37 @@ def new_pattern_analysis(measure_obj):
                 calcd_idx = i - 7 if i - 7 > 0 else 0
                 dbl_stair_pattern = ds_pattern[:4]
 
-                __fill_mistake_data(double_stair_data,
-                                    curr_measure, dbl_stair_pattern)
+                fill_mistake_data(double_stair_data,
+                                  curr_measure, dbl_stair_pattern)
 
                 ds_pattern = ""
 
         # - - - - - ITERATION END - - - - -
 
         # Process box_data
-        __process_mistake_data(box_data, category_counts,
-                               "Box Count", "Box Array")
-        
+        process_mistake_data(box_data, category_counts,
+                             "Box Count", "Box Array")
+
         # Process double_stair_data
-        __process_mistake_data(double_stair_data, category_counts,
-                               "Double Stairs Count", "Double Stairs Array")
+        process_mistake_data(double_stair_data, category_counts,
+                             "Double Stairs Count", "Double Stairs Array")
 
         # Process doublesteps_data
-        __process_mistake_data(doublesteps_data, category_counts,
-                               "Doublesteps Count", "Doublesteps Array")
+        process_mistake_data(doublesteps_data, category_counts,
+                             "Doublesteps Count", "Doublesteps Array")
 
         # Process jump_data
-        __process_mistake_data(jumps_data, category_counts,
-                               "Jumps Count", "Jumps Array")
-        
+        process_mistake_data(jumps_data, category_counts,
+                             "Jumps Count", "Jumps Array")
+
         # Process mono_data
-        __process_mistake_data(mono_data, category_counts,
-                               "Mono Count", "Mono Array")
+        process_mistake_data(mono_data, category_counts,
+                             "Mono Count", "Mono Array")
 
     def __populate(notes_in_measure):
         nonlocal curr_run, STEP_TO_DIR
         for note in notes_in_measure:
-            curr_run += STEP_TO_DIR[__ensure_only_step(note)]
+            curr_run += STEP_TO_DIR[ensure_only_step(note)]
 
     def __reset(measure):
         nonlocal curr_run, prev_measure, most_recent_starting_measure
@@ -754,6 +496,9 @@ def new_pattern_analysis(measure_obj):
             __analyze(curr_run)
 
         prev_measure = measure_num
+
+    if total_notes_in_runs == 0:
+        total_notes_in_runs = 1
 
     category_counts["Mono Percent"] = (
         (category_counts["Mono Notes"] / total_notes_in_runs) * 100

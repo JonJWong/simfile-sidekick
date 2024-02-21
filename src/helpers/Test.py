@@ -1,6 +1,6 @@
-from common.enums.RunDensity import RunDensity
-from common import DBManager as dbm
-from common import Normalize as normalizer
+from enums.RunDensity import RunDensity
+from db import DBManager as dbm
+from helpers import Normalize as normalizer
 import sys
 
 DATABASE_FILE = "./tests/db.json"
