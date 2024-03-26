@@ -22,13 +22,14 @@ def normalize_float(num):
     return "{:.2f}".format(float(num))
 
 
-def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
-    pattern_analysis += f'__{pattern_name}__: {data[pattern_type + "_count"]} \n'
-    if data[pattern_type + '_count'] > 0:
-        pattern_analysis += f'__{pattern_name[:-1]} locations__:\n'
+def __create_pattern_info(pattern_name, pattern_type, step_data):
+    pattern_str = f'__{pattern_name}__: {step_data[pattern_type + "_count"]} \n'
+
+    if step_data[pattern_type + '_count'] > 0:
+        pattern_str += f'__{pattern_name[:-1]} locations__:\n'
 
         data_obj = {}
-        for entry in data[pattern_type + "_array"]:
+        for entry in step_data[pattern_type + "_array"]:
             measure, datum = entry
             if data_obj.get(measure):
                 data_obj[measure].append(datum)
@@ -37,34 +38,17 @@ def __append_pattern_info(pattern_name, pattern_type, data, pattern_analysis):
         
         for measure in sorted(data_obj.keys()):
             datum = data_obj[measure]
-            pattern_analysis += f'**{measure}**: '
+            pattern_str += f'**{measure}**: '
 
             for i, entry in enumerate(datum):
                 if i != len(datum) - 1:
-                    pattern_analysis += f"{entry}, "
+                    pattern_str += f"{entry}, "
                 else:
-                    pattern_analysis += f"{entry}\n"
+                    pattern_str += f"{entry}\n"
+    else:
+        return ""
 
-        # # Replace L, D, U, R with emojis
-        # commented because the embed becomes too long
-        # for entry in data[pattern_type + "_array"]:
-        #     new_entry = entry.split(":")
-        #     first_chars = [char for char in new_entry[0]]
-        #     for i, char in enumerate(first_chars):
-        #         if len(first_chars) > 2 and len(first_chars) % 2 == 0:
-        #             if i % 2 == 0:
-        #                 color = "red"
-        #             else:
-        #                 color = "blue"
-        #         else:
-        #             color = "red"
-
-        #         first_chars[i] = STR_TO_EMOJI[f"{color}_{char}"]
-        #     new_entry[0] = "".join(first_chars)
-        #     new_entry = ":".join(new_entry)
-        #     pattern_analysis += f'{new_entry}\n'
-
-    return pattern_analysis
+    return pattern_str
 
 
 def get_footer_image(level):
@@ -73,9 +57,55 @@ def get_footer_image(level):
         return STR_TO_EMOJI[level]
     else:
         return STR_TO_EMOJI["wun"]
+    
+def splice_until_last_space(string, max_length=1024):
+    if len(string) <= max_length:
+        return string
+    
+    last_space_index = string.rfind(" ", 0, max_length)
+
+    if last_space_index == -1:
+        return string[:max_length]
+    
+    return string[:last_space_index], string[last_space_index:]
+
+def __append_appropriate_info(params, step_data, pattern_embed):
+    param_to_pattern = {
+        "box": [("Boxes", "box")],
+        "dstep": [("Doublesteps", "doublesteps")],
+        "dstair": [("Double stairs", "double_stairs")],
+        "ju": [("Mid Stream Jumps", "jumps")],
+        "mono": [("Monos", "mono")]
+    }
+
+    formatted_params = [param.lower() for param in params]
+    if "all" in formatted_params:
+        formatted_params = ["box", "dstep", "dstair", "ju", "mono"]
+
+    for param, patterns in param_to_pattern.items():
+        if param in formatted_params:
+            for pattern, param_str in patterns:
+                param_pattern_str = __create_pattern_info(pattern, param_str, step_data)
+
+                if (len(param_pattern_str)) == 0:
+                    continue
+
+                if len(param_pattern_str) > 1024:
+                    sections = []
+                    string_to_slice = param_pattern_str
+
+                    while len(string_to_slice) > 1024:
+                        first_half, last_half = splice_until_last_space(string_to_slice)
+                        sections.append(first_half)
+                        string_to_slice = last_half
+
+                    for pattern_section in sections:
+                        pattern_embed.add_field(name=f'__{pattern}__', value=pattern_section, inline=False)
+                else:
+                    pattern_embed.add_field(name=f'__{pattern}__', value=param_pattern_str, inline=False)
 
 
-def create_embed(data, ctx):
+def create_embed(data, ctx, params = None):
     embed = discord.Embed(
         description="Requested by {}".format(ctx.author.mention))
 
@@ -170,16 +200,15 @@ def create_embed(data, ctx):
     pattern_analysis += f'{str(data["anchor_up"])} up, '
     pattern_analysis += f'{str(data["anchor_right"])} right)\n'
 
-    # (Potential) Errors
-    if "-xtras" in ctx.message.content.split(" "):
-        pattern_analysis = __append_pattern_info("Boxs", "box", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Doublesteps", "doublesteps", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Double stairs", "double_stairs", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Mid Stream Jumps", "jumps", data, pattern_analysis)
-        pattern_analysis = __append_pattern_info("Monos", "mono", data, pattern_analysis)
-
     embed.add_field(name="__Pattern Analysis__", value=pattern_analysis,
-                    inline=False)
+                        inline=False)
+
+    pattern_embed = discord.Embed(
+        description="Pattern analysis for: {}".format(data["title"]))
+
+    if params is not None:
+        # (Potential) Errors
+        __append_appropriate_info(params, data, pattern_embed)
 
     # - - - BREAKDOWNS - - -
 
@@ -226,4 +255,4 @@ def create_embed(data, ctx):
 
     embed.set_image(url="attachment://density.png")
 
-    return embed, file
+    return embed, pattern_embed, file

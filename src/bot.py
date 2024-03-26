@@ -28,6 +28,7 @@ import re
 import shutil
 import sys
 import urllib.request
+import logging
 
 # Internal Imports
 from db import DBManager as dbm
@@ -94,7 +95,7 @@ async def search_song(ctx, *, song_name: str):
         if len(results) == 1:
             data = results[0]
 
-            embed, file = create_embed(data, ctx)
+            embed, _, file = create_embed(data, ctx)
             await ctx.send(file=file, embed=embed)
 
         elif len(results) > 1:
@@ -152,7 +153,7 @@ async def search_song(ctx, *, song_name: str):
                     if index < 0 or index >= len(data):
                         raise IndexError
 
-                    embed, file = create_embed(data[index], ctx)
+                    embed, _, file = create_embed(data[index], ctx)
                 except ValueError:
                     # Users may be continuing a conversation, or using another command. This would prevent the bot from
                     # saying "invalid input" if the user searches for another song/uses another command.
@@ -306,116 +307,127 @@ async def fix(ctx):
 
 
 @bot.command(name="parse")
-async def parse(ctx):
-    """
-    Parses a user's attached .sm file, and outputs the information into the chat channel.
+async def parse(ctx, *params: str):
+    try:
+        """
+        Parses a user's attached .sm file, and outputs the information into the chat channel.
 
-    :param ctx: Discord API's context
-                https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#context
-    :return: Nothing
-    """
+        :param ctx: Discord API's context
+                    https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#context
+        :return: Nothing
+        """
 
-    if len(ctx.message.attachments) < 1:
-        message = "{}, you need to attach a .sm file.".format(
-            ctx.author.mention)
-        await ctx.send(message)
-        return
-    elif len(ctx.message.attachments) > 1:
-        message = "{}, it looks like you attached multiple files. ".format(
-            ctx.author.mention)
-        message += "I can currently only parse one file at a time."
-        await ctx.send(message)
-        return
+        if len(ctx.message.attachments) < 1:
+            message = "{}, you need to attach a .sm file.".format(
+                ctx.author.mention)
+            await ctx.send(message)
+            return
+        elif len(ctx.message.attachments) > 1:
+            message = "{}, it looks like you attached multiple files. ".format(
+                ctx.author.mention)
+            message += "I can currently only parse one file at a time."
+            await ctx.send(message)
+            return
 
-    attachment = ctx.message.attachments[0]
+        attachment = ctx.message.attachments[0]
 
-    """
-        Discord implemented changes to their CDN where attachments now have tokens to make files
-        expire after inactivity, presumably to save space and disallow people from using their
-        databases as cloud storage.
+        """
+            Discord implemented changes to their CDN where attachments now have tokens to make files
+            expire after inactivity, presumably to save space and disallow people from using their
+            databases as cloud storage.
 
-        Because of this change, the URL now has to be split on it's query separator ("?"),
-        where the first half of the URL is formatted like it was before, and the latter half
-        is the authentication token.
-    """
+            Because of this change, the URL now has to be split on it's query separator ("?"),
+            where the first half of the URL is formatted like it was before, and the latter half
+            is the authentication token.
+        """
 
-    url_token_split = attachment.url.split("?")
-    new_url_because_discord_sucks = url_token_split[0]
-    if not new_url_because_discord_sucks.endswith(".sm"):
-        message = "Sorry {}, I can only parse .sm files.".format(
-            ctx.author.mention)
-        await ctx.send(message)
-        return
+        url_token_split = attachment.url.split("?")
+        new_url_because_discord_sucks = url_token_split[0]
+        if not new_url_because_discord_sucks.endswith(".sm"):
+            message = "Sorry {}, I can only parse .sm files.".format(
+                ctx.author.mention)
+            await ctx.send(message)
+            return
 
-    # We will later want to create a temporary folder based on user's unique ID to store the .sm file
-    usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
-    usr_tmp_file = usr_tmp_dir + attachment.filename
-    usr_tmp_db = usr_tmp_file + ".json"
+        # We will later want to create a temporary folder based on user's unique ID to store the .sm file
+        usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
+        usr_tmp_file = usr_tmp_dir + attachment.filename
+        usr_tmp_db = usr_tmp_file + ".json"
 
-    # This bot only supports parsing one file at a time per user. If a user quickly submits multiple .sm files
-    # in succession, it will most likely corrupt their results. We can prevent this by seeing if the temporary
-    # directories have been created yet.
-    # TODO: Revisit this section, as it looks like this function is thread-safe and these checks may not be needed (?)
-    # I had the bot parse XS Project Collection, then tried uploading another .sm file immediately after. The message
-    # below didn't appear until after XS Project Collection was complete.
-    if os.path.exists(usr_tmp_dir):
-        message = "It looks like I'm already parsing a file for you {}.".format(
-            ctx.author.mention)
-        await ctx.send(message)
-        return
-    else:
-        # Create temporary directory if it doesn't exist
-        os.makedirs(usr_tmp_dir)
+        # This bot only supports parsing one file at a time per user. If a user quickly submits multiple .sm files
+        # in succession, it will most likely corrupt their results. We can prevent this by seeing if the temporary
+        # directories have been created yet.
+        # TODO: Revisit this section, as it looks like this function is thread-safe and these checks may not be needed (?)
+        # I had the bot parse XS Project Collection, then tried uploading another .sm file immediately after. The message
+        # below didn't appear until after XS Project Collection was complete.
+        if os.path.exists(usr_tmp_dir):
+            message = "It looks like I'm already parsing a file for you {}.".format(
+                ctx.author.mention)
+            await ctx.send(message)
+            return
+        else:
+            # Create temporary directory if it doesn't exist
+            os.makedirs(usr_tmp_dir)
 
-    # If we don't have a User-Agent in our header, we won't be able to retrieve the file
-    opener = urllib.request.build_opener()
-    opener.addheaders = [("User-Agent", USER_AGENT)]
-    urllib.request.install_opener(opener)
+        # If we don't have a User-Agent in our header, we won't be able to retrieve the file
+        opener = urllib.request.build_opener()
+        opener.addheaders = [("User-Agent", USER_AGENT)]
+        urllib.request.install_opener(opener)
 
-    # Initializes the database that will contain info for only the attached .sm file
-    db = TinyDB(usr_tmp_db)
+        # Initializes the database that will contain info for only the attached .sm file
+        db = TinyDB(usr_tmp_db)
 
-    # Retrieve the .sm file, and place it in temporary directory
-    urllib.request.urlretrieve(attachment.url, usr_tmp_file)
+        # Retrieve the .sm file, and place it in temporary directory
+        urllib.request.urlretrieve(attachment.url, usr_tmp_file)
 
-    message = "{}, ".format(ctx.author.mention)
-    message += "I received your file `" + attachment.filename + "`. "
-    message += "Currently processing... :hourglass:"
-    process_msg = await ctx.send(message)
+        message = "{}, ".format(ctx.author.mention)
+        message += "I received your file `" + attachment.filename + "`. "
+        message += "Currently processing... :hourglass:"
+        process_msg = await ctx.send(message)
 
-    hide_artist_info = False
+        hide_artist_info = False
 
-    autodelete = udbm.get_autodelete_with_default(
-        ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
-    if autodelete:
-        hide_artist_info = True
-        await ctx.message.delete()
+        autodelete = udbm.get_autodelete_with_default(
+            ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
+        if autodelete:
+            hide_artist_info = True
+            await ctx.message.delete()
 
-    # Call scan.py's parser function and put results in temporary database
-    # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
-    parse_file(db, usr_tmp_file, usr_tmp_dir,
-               "*<Uploaded>*", hide_artist_info, None)
+        # Call scan.py's parser function and put results in temporary database
+        # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
+        parse_file(db, usr_tmp_file, usr_tmp_dir,
+                "*<Uploaded>*", hide_artist_info, None)
 
-    # Get results from temporary database
-    results = [result for result in db]
+        # Get results from temporary database
+        results = [result for result in db]
 
-    # There may be multiple results, whether or not the .sm file had multiple difficulties
-    for result in results:
-        embed, file = create_embed(result, ctx)
-        await ctx.send(file=file, embed=embed)
-        # Removes density graph image for this difficulty
-        if os.path.exists(result["graph_location"]):
-            os.remove(result["graph_location"])
+        # There may be multiple results, whether or not the .sm file had multiple difficulties
+        for result in results:
+            embed, pattern_embed, file = create_embed(result, ctx, params)
+            await ctx.send(file=file, embed=embed)
+            await ctx.send(file=None, embed=pattern_embed)
+            # Removes density graph image for this difficulty
+            if os.path.exists(result["graph_location"]):
+                os.remove(result["graph_location"])
 
-    # Deletes the previous "currently processing" message
-    await process_msg.delete()
+        # Deletes the previous "currently processing" message
+        await process_msg.delete()
 
-    # Cleanup and delete files/folders in temporary directory
-    os.remove(usr_tmp_file)
-    db.close()
-    os.remove(usr_tmp_db)
-    os.rmdir(usr_tmp_dir)
-
+        # Cleanup and delete files/folders in temporary directory
+        os.remove(usr_tmp_file)
+        db.close()
+        os.remove(usr_tmp_db)
+        os.rmdir(usr_tmp_dir)
+    except Exception as e:
+        logging.exception("what the fuck is going on here")
+        print(e)
+        await ctx.send("Something went wrong, fixing.")
+        usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
+        if os.path.exists(usr_tmp_dir):
+            shutil.rmtree(usr_tmp_dir)
+            await ctx.send("I did some cleanup {}, I should be able to parse files again for you!".format(ctx.author.mention))
+        else:
+            await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
 
 @bot.command(name="delpack")
 @has_permissions(administrator=True)
