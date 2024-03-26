@@ -14,8 +14,7 @@ Created with love by Artimst, this version is maintained/updated by JWong.
 
 # Module Imports
 from tinydb import Query, TinyDB, where
-from discord.ext import commands
-from discord.ext.commands import has_permissions
+from discord.ext.commands import has_permissions, Bot
 from dotenv import load_dotenv
 
 # External Imports
@@ -62,13 +61,13 @@ intents = discord.Intents.all()
 intents.members = True
 
 # Loads the bot's prefixes using the get_prefixes function above
-bot = commands.Bot(command_prefix=get_prefixes(server_db), intents=intents)
+simfileSidekick = Bot(command_prefix=get_prefixes(server_db), intents=intents)
 
 # Needed in order to replace existing help command with our own
-bot.remove_command("help")
+simfileSidekick.remove_command("help")
 
 
-@bot.command(name="search", rest_is_raw=True)
+@simfileSidekick.command(name="search", rest_is_raw=True)
 async def search_song(ctx, *, song_name: str):
     # async def search_song(ctx, song_name: str):
     if not song_name:
@@ -140,7 +139,7 @@ async def search_song(ctx, *, song_name: str):
                 await ctx.send(embed=embed)
 
             try:
-                msg = await bot.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
+                msg = await simfileSidekick.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
             except asyncio.TimeoutError:
                 # User didn't respond in 30s, just exit
                 return
@@ -166,7 +165,7 @@ async def search_song(ctx, *, song_name: str):
                         await ctx.send(file=file, embed=embed)
 
 
-@bot.command(name="sv")
+@simfileSidekick.command(name="sv")
 async def stream_visualiser(ctx, input: str):
     regex = r"\[[LDUR]*\]|[LDUR]"
     input = input.upper()
@@ -241,7 +240,7 @@ async def stream_visualiser(ctx, input: str):
         await ctx.send(message)
 
 
-@bot.command(name="settings")
+@simfileSidekick.command(name="settings")
 async def settings(ctx, *input: str):
     user_id = ctx.message.author.id
 
@@ -293,7 +292,7 @@ async def settings(ctx, *input: str):
         return
 
 
-@bot.command(name="fix")
+@simfileSidekick.command(name="fix")
 async def fix(ctx):
     """ Cleans up the user's temp directory for parsing files. If the scanner runs into an error when parsing a file,
     the bot will think he is still trying to parse something.
@@ -306,7 +305,7 @@ async def fix(ctx):
         await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
 
 
-@bot.command(name="parse")
+@simfileSidekick.command(name="parse")
 async def parse(ctx, *params: str):
     try:
         """
@@ -316,6 +315,14 @@ async def parse(ctx, *params: str):
                     https://discordpy.readthedocs.io/en/latest/ext/commands/api.html#context
         :return: Nothing
         """
+
+        if "bot" not in ctx.message.channel.name:
+            message = "{}, I can only parse breakdowns in bot channels. Please post in the appropriate channel.".format(
+                ctx.author.mention
+            )
+            await ctx.message.delete()
+            await ctx.send(message)
+            return
 
         if len(ctx.message.attachments) < 1:
             message = "{}, you need to attach a .sm file.".format(
@@ -364,6 +371,7 @@ async def parse(ctx, *params: str):
             message = "It looks like I'm already parsing a file for you {}.".format(
                 ctx.author.mention)
             await ctx.send(message)
+            fix(ctx)
             return
         else:
             # Create temporary directory if it doesn't exist
@@ -429,7 +437,7 @@ async def parse(ctx, *params: str):
         else:
             await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
 
-@bot.command(name="delpack")
+@simfileSidekick.command(name="delpack")
 @has_permissions(administrator=True)
 async def delpack(ctx, input: str):
     server_id = ctx.message.guild.id
@@ -475,7 +483,7 @@ async def delpack(ctx, input: str):
     await ctx.send(embed=embed)
 
     try:
-        msg = await bot.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
+        msg = await simfileSidekick.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
     except asyncio.TimeoutError:
         # User didn't respond in 30s, just exit
         return
@@ -487,7 +495,7 @@ async def delpack(ctx, input: str):
         await ctx.send("Songs deleted.")
 
 
-@bot.command(name="dlpack")
+@simfileSidekick.command(name="dlpack")
 @has_permissions(administrator=True)
 async def dlpack(ctx, input: str):
 
@@ -584,7 +592,7 @@ async def dlpack(ctx, input: str):
     shutil.rmtree(temp_pack_dir)
 
 
-@bot.command(name="prefix")
+@simfileSidekick.command(name="prefix")
 @has_permissions(administrator=True)
 # TODO: handle this better, and allow roles to be added as a bot manager
 # See https://stackoverflow.com/a/51246799
@@ -624,12 +632,12 @@ async def prefix(ctx, input: str):
         # If new prefix isn't in the array of prefixes to listen for, we need to add it.
         PREFIXES.append(new_prefix)
 
-    bot.command_prefix = PREFIXES
+    simfileSidekick.command_prefix = PREFIXES
 
     await ctx.send("Prefix is now: " + new_prefix)
 
 
-@bot.command(name="help")
+@simfileSidekick.command(name="help")
 async def help(ctx):
     """
     Outputs the bot's help message.
@@ -641,7 +649,7 @@ async def help(ctx):
     await ctx.send(HELP_MESSAGE)
 
 
-@bot.event
+@simfileSidekick.event
 async def on_message(message):
     """Called when a message is created and sent.
 
@@ -661,6 +669,6 @@ async def on_message(message):
         server_id = message.guild.id  # ID for the Discord server the user is in
 
     if is_prefix_for_server(server_db, server_id, prefix):
-        await bot.process_commands(message)
+        await simfileSidekick.process_commands(message)
 
-bot.run(TOKEN)
+simfileSidekick.run(TOKEN)
