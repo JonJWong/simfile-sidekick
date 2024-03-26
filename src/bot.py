@@ -413,7 +413,8 @@ async def parse(ctx, *params: str):
         for result in results:
             embed, pattern_embed, file = create_embed(result, ctx, params)
             await ctx.send(file=file, embed=embed)
-            await ctx.send(file=None, embed=pattern_embed)
+            if pattern_embed:
+                await ctx.send(file=None, embed=pattern_embed)
             # Removes density graph image for this difficulty
             if os.path.exists(result["graph_location"]):
                 os.remove(result["graph_location"])
