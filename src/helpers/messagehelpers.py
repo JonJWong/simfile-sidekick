@@ -35,8 +35,16 @@ def __create_pattern_info(pattern_name, pattern_type, step_data):
                 data_obj[measure].append(datum)
             else:
                 data_obj[measure] = [datum]
-        
-        for measure in sorted(data_obj.keys()):
+
+        data_obj_keys = data_obj.keys()
+        if "Sweep" in data_obj.keys():
+            non_sweep_keys = sorted([key for key in data_obj_keys if key != "Sweep"])
+            non_sweep_keys.insert(0, "Sweep")
+            data_obj_keys = non_sweep_keys
+        else:
+            data_obj_keys = sorted(data_obj_keys)
+
+        for measure in data_obj_keys:
             datum = data_obj[measure]
             pattern_str += f'**{measure}**: '
 

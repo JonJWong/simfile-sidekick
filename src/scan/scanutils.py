@@ -83,7 +83,15 @@ def process_mistake_data(data, category_counts, category_key, array_key):
             category_counts[array_key].append([data, measure])
 
 
-def fill_mistake_data(data_obj, measure, pattern):
+def is_sweep(pattern):
+    sweep_permutations = {'LDURUDL', 'LUDRDUL', 'RDULUDR', 'RUDLDUR'}
+    return pattern in sweep_permutations
+
+
+def fill_mistake_data(data_obj, measure, pattern, pattern_str=None):
+    if is_sweep(pattern_str):
+        pattern = "Sweep"
+        
     if data_obj.get(measure):
         data_obj[measure].append(pattern)
     else:
@@ -101,4 +109,4 @@ def process_mono(data_obj, count_obj, pattern, curr_measure):
             sliced += pattern[len(sliced)]
 
         count_obj["Mono Notes"] += len(sliced)
-        fill_mistake_data(data_obj, curr_measure, len(sliced))
+        fill_mistake_data(data_obj, curr_measure, len(sliced), sliced)
