@@ -380,7 +380,6 @@ def new_pattern_analysis(measure_obj):
             # double stair, so we reset ds_pattern after printing the
             # metadata.
             if len(ds_pattern) == 8:
-                calcd_idx = i - 7 if i - 7 > 0 else 0
                 dbl_stair_pattern = ds_pattern[:4]
 
                 fill_mistake_data(double_stair_data,

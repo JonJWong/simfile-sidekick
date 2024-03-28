@@ -1,5 +1,5 @@
 import discord
-from globals import STR_TO_EMOJI, MAX_DISCORD_FIELD_CHARS
+from globals import STR_TO_EMOJI, MAX_DISCORD_FIELD_CHARS, VALID_PARAMS
 
 
 def get_mono_desc(mono):
@@ -22,38 +22,28 @@ def normalize_float(num):
 
 
 def __create_pattern_info(pattern_name, pattern_type, step_data):
-    pattern_str = f'__{pattern_name}__: {step_data[pattern_type + "_count"]} \n'
-
-    if step_data[pattern_type + '_count'] > 0:
-        pattern_str += f'__{pattern_name[:-1]} locations__:\n'
-
-        data_obj = {}
-        for entry in step_data[pattern_type + "_array"]:
-            measure, datum = entry
-            if data_obj.get(measure):
-                data_obj[measure].append(datum)
-            else:
-                data_obj[measure] = [datum]
-
-        data_obj_keys = data_obj.keys()
-        if "Sweep" in data_obj.keys():
-            non_sweep_keys = sorted([key for key in data_obj_keys if key != "Sweep"])
-            non_sweep_keys.insert(0, "Sweep")
-            data_obj_keys = non_sweep_keys
-        else:
-            data_obj_keys = sorted(data_obj_keys)
-
-        for measure in data_obj_keys:
-            datum = data_obj[measure]
-            pattern_str += f'**{measure}**: '
-
-            for i, entry in enumerate(datum):
-                if i != len(datum) - 1:
-                    pattern_str += f"{entry}, "
-                else:
-                    pattern_str += f"{entry}\n"
-    else:
+    pattern_count = step_data[pattern_type + "_count"]
+    
+    # If there's no data, return an empty string
+    if pattern_count <= 0:
         return ""
+    
+    pattern_str = f'**{pattern_name}**: {pattern_count}, found in measure:\n'
+    
+    data_obj = {}
+
+    # Group data by measure
+    for entry in step_data[pattern_type + "_array"]:
+        measure, datum = entry
+        data_obj.setdefault(measure, []).append(datum)
+
+    # Sort measures numerically if possible, placing "Sweep" before 7 but after 6
+    data_obj_keys = sorted(data_obj.keys(), key=lambda x: (isinstance(x, int), x if isinstance(x, int) else float('inf'), x))
+
+    # Build the pattern string
+    for pattern_name in data_obj_keys:
+        datum = data_obj[pattern_name]
+        pattern_str += f'**{pattern_name}**: {", ".join(map(str, datum))}\n'
 
     return pattern_str
 
@@ -106,6 +96,7 @@ def __append_appropriate_info(params, step_data, pattern_embed):
     }
 
     formatted_params = set(param.lower() for param in params)
+
     if "all" in formatted_params:
         formatted_params = param_to_pattern.keys()
 
@@ -208,7 +199,9 @@ def create_embed(data, ctx, params=None):
 
     pattern_embed = None
 
-    if params:
+    valid_params_passed_in = [param for param in params if param in VALID_PARAMS]
+
+    if len(valid_params_passed_in) > 0:
         pattern_embed = discord.Embed(description=f"Pattern analysis for: {data['title']}")
         __append_appropriate_info(params, data, pattern_embed)
 

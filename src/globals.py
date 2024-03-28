@@ -36,6 +36,8 @@ APPROVED_SERVERS = [
 
 MAX_DISCORD_FIELD_CHARS = 1024
 
+VALID_PARAMS = {"all", "box", "dstair", "dstep", "mono", "ju"}
+
 HELP_MESSAGE = """ \
 Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
 Breakdown Buddy.
