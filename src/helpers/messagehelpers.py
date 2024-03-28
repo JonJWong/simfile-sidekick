@@ -55,16 +55,6 @@ def __create_pattern_info(pattern_name, pattern_type, step_data):
     else:
         return ""
 
-    pattern_str = f'__{pattern_name}__: {pattern_count}\n'
-    pattern_str += f'__{pattern_name[:-1]} locations__:\n'
-
-    data_obj = {}
-    for measure, datum in step_data.get(pattern_type + "_array", []):
-        data_obj.setdefault(measure, []).append(str(datum))  # Convert datum to string
-
-    for measure in sorted(data_obj):
-        pattern_str += f'**{measure}**: {", ".join(data_obj[measure])}\n'
-
     return pattern_str
 
 

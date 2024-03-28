@@ -44,7 +44,7 @@ def ensure_only_step(note):
     Filters a row in chart to ensure that it only contains arrows. 
     This is to catch edge cases where hold ends and arrows might be on the same row, or even mines and arrows.
     """
-    valid_chars = {"0", "1", "2", "3", "4", "M"}
+    valid_chars = {"0", "1", "2", "4"}
     chars = [char if char in valid_chars else "0" for char in note]
     return "".join(chars)
 
