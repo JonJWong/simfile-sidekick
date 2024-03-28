@@ -22,8 +22,37 @@ def normalize_float(num):
 
 
 def __create_pattern_info(pattern_name, pattern_type, step_data):
-    pattern_count = step_data.get(pattern_type + "_count", 0)
-    if pattern_count <= 0:
+    pattern_str = f'__{pattern_name}__: {step_data[pattern_type + "_count"]} \n'
+
+    if step_data[pattern_type + '_count'] > 0:
+        pattern_str += f'__{pattern_name[:-1]} locations__:\n'
+
+        data_obj = {}
+        for entry in step_data[pattern_type + "_array"]:
+            measure, datum = entry
+            if data_obj.get(measure):
+                data_obj[measure].append(datum)
+            else:
+                data_obj[measure] = [datum]
+
+        data_obj_keys = data_obj.keys()
+        if "Sweep" in data_obj.keys():
+            non_sweep_keys = sorted([key for key in data_obj_keys if key != "Sweep"])
+            non_sweep_keys.insert(0, "Sweep")
+            data_obj_keys = non_sweep_keys
+        else:
+            data_obj_keys = sorted(data_obj_keys)
+
+        for measure in data_obj_keys:
+            datum = data_obj[measure]
+            pattern_str += f'**{measure}**: '
+
+            for i, entry in enumerate(datum):
+                if i != len(datum) - 1:
+                    pattern_str += f"{entry}, "
+                else:
+                    pattern_str += f"{entry}\n"
+    else:
         return ""
 
     pattern_str = f'__{pattern_name}__: {pattern_count}\n'
