@@ -154,9 +154,12 @@ def create_embed(data, ctx, params=None):
         song_details += f'{float_to_string(display_bpm_range[0])}-{float_to_string(display_bpm_range[1])}\n' if ":" in data[
             "display_bpm"] else f'{float_to_string(data["display_bpm"])}\n'
 
-    song_details += f"__BPM__: {float_to_string(data['min_bpm'])}-{float_to_string(data['max_bpm'])}\n"
-    song_details += f'__Peak NPS__: **{normalize_float(data["max_nps"])}** notes/s.\n'
-    song_details += f'__Median NPS__: **{normalize_float(data["median_nps"])}** notes/s.\n'
+    song_details += f"__BPM__: {float_to_string(data['min_bpm'])}-{
+        float_to_string(data['max_bpm'])}\n"
+    song_details += f'__Peak NPS__: **{
+        normalize_float(data["max_nps"])}** notes/s.\n'
+    song_details += f'__Median NPS__: **{
+        normalize_float(data["median_nps"])}** notes/s.\n'
 
     total_measures = data["total_stream"] + data["total_break"]
     if total_measures != 0:
