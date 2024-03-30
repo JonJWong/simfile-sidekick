@@ -42,35 +42,39 @@ HELP_MESSAGE = """ \
 Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
 Breakdown Buddy.
 
-If you want to search for a song stored locally in the owner's database, use
-`-search` followed by the song name. Once the results appear, enter the number
-of the result that matches your desired search result.
+If you want to search for a song stored use `-search` followed by the song name.
+Once the results appear, enter the number of the result that matches your desired
+search result.
 
-If you want me to parse an .sm file, attach the .sm file to your message and
-type `-parse`. If I get stuck parsing a file, try `-fix` and
-I'll do my best to clean up so I can parse files again.
-If you want to show double staircases, doublesteps and their locations,
-use `-parse -xtras` when sending your file.
+If you want me to parse a file, attach the .sm file to your message and
+type `-parse`. If I get stuck parsing a file, try `-fix` and I'll do my best to
+clean up so I can parse files again. If you want to show specific patterns and
+their locations, use `-parse PATTERN` when sending your file.
+Currently supported patterns are:
+`all`, `box`, `dstair`, `dstep`, `mono`, `ju`.
+example: `-parse mono box` will parse mono and boxes.
+`-parse all` will parse boxes, double stairs, doublesteps, mono, and jumps
+regardless of what other patterns are passed in.
 
-To adjust your user settings, type `-settings help`. I can automatically
-delete uploaded .sm files.
+To adjust your settings, type `-settings help`.
 
-I can also search by tags. The syntax is `-[tag]:[value]`
-Currently supported tags are: `title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
-Song title must come before the tags.
+I can also search by tags with `-[tag]:[value]`.
+Currently supported tags are:
+`title`, `subtitle`, `artist`, `stepartist`, `rating`, and `bpm.`
 
 Example: `-search -bpm:160`
 `-search sigatrev -rating:20`
+(Song title must come before tags)
 
 Admins can:
-Change the prefix using `-prefix` followed by the prefix they
-want to use, e.g. `-prefix !`.
+Change the prefix using `-prefix` followed by the prefix they want to use
+e.g. `-prefix !`.
 Add packs to the database by using `-dlpack URL`.
 Delete packs from the database by using `-delpack packName`.
 
-I also have built in stream visualizer functionality. Use `-sv` followed
-by the characters `L`, `D`, `U`, or `R` to represent arrows. You can put
-brackets around arrows to denote jumps, e.g. `[LR]`
+For stream visualizer functionality, use `-sv` followed by the characters
+`L`, `D`, `U`, or `R`.
+You can put brackets around arrows to denote jumps, e.g. `[LR]`
 """
 
 STR_TO_EMOJI = {
