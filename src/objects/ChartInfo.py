@@ -39,7 +39,8 @@ class ChartInfo(object):
     patterninfo: PatternInfo = None
 
     def __init__(self, parent, stepartist: str, difficulty: str, rating: str, measures: List[str]):
-        self.parent = weakref.ref(parent)  # Allows ChartInfo to access FileInfo
+        # Allows ChartInfo to access FileInfo
+        self.parent = weakref.ref(parent)
 
         self.stepartist = stepartist
         self.difficulty = difficulty

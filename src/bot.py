@@ -324,12 +324,13 @@ async def parse(ctx, *params: str):
             await ctx.message.delete()
             await ctx.send(message)
             return
-        
-        invalid_inputted_params = [param for param in params if param not in VALID_PARAMS]
+
+        invalid_inputted_params = [
+            param for param in params if param not in VALID_PARAMS]
         if invalid_inputted_params:
             message = "{}, please ensure you are passing in valid parameters. Valid parameters are: {}".format(
                 ctx.author.mention,
-                ', '.join([f'`{param}`' for param in  VALID_PARAMS])
+                ', '.join([f'`{param}`' for param in VALID_PARAMS])
             )
             await ctx.message.delete()
             await ctx.send(message)
@@ -415,7 +416,7 @@ async def parse(ctx, *params: str):
         # Call scan.py's parser function and put results in temporary database
         # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
         parse_file(db, usr_tmp_file, usr_tmp_dir,
-                "*<Uploaded>*", hide_artist_info, None)
+                   "*<Uploaded>*", hide_artist_info, None)
 
         # Get results from temporary database
         results = [result for result in db]
@@ -440,7 +441,8 @@ async def parse(ctx, *params: str):
         os.remove(usr_tmp_db)
         os.rmdir(usr_tmp_dir)
     except Exception as e:
-        logging.exception(f'PARSING ERROR OCCURRED AT {datetime.datetime.now()}')
+        logging.exception(
+            f'PARSING ERROR OCCURRED AT {datetime.datetime.now()}')
         print(e)
         await ctx.send("Something went wrong, fixing.")
         usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
@@ -449,6 +451,7 @@ async def parse(ctx, *params: str):
             await ctx.send("I did some cleanup {}, I should be able to parse files again for you!".format(ctx.author.mention))
         else:
             await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
+
 
 @simfileSidekick.command(name="delpack")
 @has_permissions(administrator=True)

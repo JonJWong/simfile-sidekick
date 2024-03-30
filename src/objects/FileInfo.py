@@ -21,7 +21,8 @@ class FileInfo(object):
     subtitle: str = ""
     artist: str = ""
     pack: str = ""
-    bpms: List[List[str]] = []  # List that contains a list of measure/BPM pairs. [0] is measure # that BPM [1] is set.
+    # List that contains a list of measure/BPM pairs. [0] is measure # that BPM [1] is set.
+    bpms: List[List[str]] = []
     displaybpm: str = ""
     folder: str = ""
 

@@ -4,9 +4,9 @@ from antlr4 import *
 from io import StringIO
 import sys
 if sys.version_info[1] > 5:
-	from typing import TextIO
+    from typing import TextIO
 else:
-	from typing.io import TextIO
+    from typing.io import TextIO
 
 
 def serializedATN():
@@ -36,22 +36,22 @@ def serializedATN():
         return buf.getvalue()
 
 
-class searchParser ( Parser ):
+class searchParser (Parser):
 
     grammarFileName = "search.g4"
 
     atn = ATNDeserializer().deserialize(serializedATN())
 
-    decisionsToDFA = [ DFA(ds, i) for i, ds in enumerate(atn.decisionToState) ]
+    decisionsToDFA = [DFA(ds, i) for i, ds in enumerate(atn.decisionToState)]
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = [ "<INVALID>", "' '", "'-'", "':'", "'title'", "'subtitle'", 
-                     "'artist'", "'stepartist'", "'rating'", "'bpm'" ]
+    literalNames = ["<INVALID>", "' '", "'-'", "':'", "'title'", "'subtitle'",
+                    "'artist'", "'stepartist'", "'rating'", "'bpm'"]
 
-    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "CHAR" ]
+    symbolicNames = ["<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                     "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                     "<INVALID>", "<INVALID>", "CHAR"]
 
     RULE_search_statement = 0
     RULE_song_title = 1
@@ -59,70 +59,64 @@ class searchParser ( Parser ):
     RULE_tag = 3
     RULE_value = 4
 
-    ruleNames =  [ "search_statement", "song_title", "tag_statement", "tag", 
-                   "value" ]
+    ruleNames = ["search_statement", "song_title", "tag_statement", "tag",
+                 "value"]
 
     EOF = Token.EOF
-    T__0=1
-    T__1=2
-    T__2=3
-    T__3=4
-    T__4=5
-    T__5=6
-    T__6=7
-    T__7=8
-    T__8=9
-    CHAR=10
+    T__0 = 1
+    T__1 = 2
+    T__2 = 3
+    T__3 = 4
+    T__4 = 5
+    T__5 = 6
+    T__6 = 7
+    T__7 = 8
+    T__8 = 9
+    CHAR = 10
 
-    def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
+    def __init__(self, input: TokenStream, output: TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.8")
-        self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
+        self._interp = ParserATNSimulator(
+            self, self.atn, self.decisionsToDFA, self.sharedContextCache)
         self._predicates = None
-
-
-
 
     class Search_statementContext(ParserRuleContext):
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
         def song_title(self):
-            return self.getTypedRuleContext(searchParser.Song_titleContext,0)
+            return self.getTypedRuleContext(searchParser.Song_titleContext, 0)
 
-
-        def tag_statement(self, i:int=None):
+        def tag_statement(self, i: int = None):
             if i is None:
                 return self.getTypedRuleContexts(searchParser.Tag_statementContext)
             else:
-                return self.getTypedRuleContext(searchParser.Tag_statementContext,i)
-
+                return self.getTypedRuleContext(searchParser.Tag_statementContext, i)
 
         def getRuleIndex(self):
             return searchParser.RULE_search_statement
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterSearch_statement" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterSearch_statement"):
                 listener.enterSearch_statement(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitSearch_statement" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitSearch_statement"):
                 listener.exitSearch_statement(self)
-
-
-
 
     def search_statement(self):
 
-        localctx = searchParser.Search_statementContext(self, self._ctx, self.state)
+        localctx = searchParser.Search_statementContext(
+            self, self._ctx, self.state)
         self.enterRule(localctx, 0, self.RULE_search_statement)
-        self._la = 0 # Token type
+        self._la = 0  # Token type
         try:
             self.state = 26
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,2,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input, 2, self._ctx)
             if la_ == 1:
                 self.enterOuterAlt(localctx, 1)
                 self.state = 10
@@ -133,7 +127,7 @@ class searchParser ( Parser ):
                 self.enterOuterAlt(localctx, 2)
                 self.state = 11
                 self.song_title()
-                self.state = 14 
+                self.state = 14
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while True:
@@ -141,10 +135,10 @@ class searchParser ( Parser ):
                     self.match(searchParser.T__0)
                     self.state = 13
                     self.tag_statement()
-                    self.state = 16 
+                    self.state = 16
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
-                    if not (_la==searchParser.T__0):
+                    if not (_la == searchParser.T__0):
                         break
 
                 pass
@@ -156,7 +150,7 @@ class searchParser ( Parser ):
                 self.state = 23
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                while _la==searchParser.T__0:
+                while _la == searchParser.T__0:
                     self.state = 19
                     self.match(searchParser.T__0)
                     self.state = 20
@@ -167,7 +161,6 @@ class searchParser ( Parser ):
 
                 pass
 
-
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)
@@ -176,30 +169,25 @@ class searchParser ( Parser ):
             self.exitRule()
         return localctx
 
-
     class Song_titleContext(ParserRuleContext):
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
         def value(self):
-            return self.getTypedRuleContext(searchParser.ValueContext,0)
-
+            return self.getTypedRuleContext(searchParser.ValueContext, 0)
 
         def getRuleIndex(self):
             return searchParser.RULE_song_title
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterSong_title" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterSong_title"):
                 listener.enterSong_title(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitSong_title" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitSong_title"):
                 listener.exitSong_title(self)
-
-
-
 
     def song_title(self):
 
@@ -217,38 +205,33 @@ class searchParser ( Parser ):
             self.exitRule()
         return localctx
 
-
     class Tag_statementContext(ParserRuleContext):
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
         def tag(self):
-            return self.getTypedRuleContext(searchParser.TagContext,0)
-
+            return self.getTypedRuleContext(searchParser.TagContext, 0)
 
         def value(self):
-            return self.getTypedRuleContext(searchParser.ValueContext,0)
-
+            return self.getTypedRuleContext(searchParser.ValueContext, 0)
 
         def getRuleIndex(self):
             return searchParser.RULE_tag_statement
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTag_statement" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterTag_statement"):
                 listener.enterTag_statement(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTag_statement" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitTag_statement"):
                 listener.exitTag_statement(self)
-
-
-
 
     def tag_statement(self):
 
-        localctx = searchParser.Tag_statementContext(self, self._ctx, self.state)
+        localctx = searchParser.Tag_statementContext(
+            self, self._ctx, self.state)
         self.enterRule(localctx, 4, self.RULE_tag_statement)
         try:
             self.enterOuterAlt(localctx, 1)
@@ -268,38 +251,33 @@ class searchParser ( Parser ):
             self.exitRule()
         return localctx
 
-
     class TagContext(ParserRuleContext):
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
-
 
         def getRuleIndex(self):
             return searchParser.RULE_tag
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterTag" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterTag"):
                 listener.enterTag(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitTag" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitTag"):
                 listener.exitTag(self)
-
-
-
 
     def tag(self):
 
         localctx = searchParser.TagContext(self, self._ctx, self.state)
         self.enterRule(localctx, 6, self.RULE_tag)
-        self._la = 0 # Token type
+        self._la = 0  # Token type
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 35
             _la = self._input.LA(1)
-            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << searchParser.T__3) | (1 << searchParser.T__4) | (1 << searchParser.T__5) | (1 << searchParser.T__6) | (1 << searchParser.T__7) | (1 << searchParser.T__8))) != 0)):
+            if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << searchParser.T__3) | (1 << searchParser.T__4) | (1 << searchParser.T__5) | (1 << searchParser.T__6) | (1 << searchParser.T__7) | (1 << searchParser.T__8))) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -312,14 +290,13 @@ class searchParser ( Parser ):
             self.exitRule()
         return localctx
 
-
     class ValueContext(ParserRuleContext):
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
-        def CHAR(self, i:int=None):
+        def CHAR(self, i: int = None):
             if i is None:
                 return self.getTokens(searchParser.CHAR)
             else:
@@ -328,70 +305,68 @@ class searchParser ( Parser ):
         def getRuleIndex(self):
             return searchParser.RULE_value
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterValue" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterValue"):
                 listener.enterValue(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitValue" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitValue"):
                 listener.exitValue(self)
-
-
-
 
     def value(self):
 
         localctx = searchParser.ValueContext(self, self._ctx, self.state)
         self.enterRule(localctx, 8, self.RULE_value)
-        self._la = 0 # Token type
+        self._la = 0  # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 38 
+            self.state = 38
             self._errHandler.sync(self)
             _alt = 1
-            while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+            while _alt != 2 and _alt != ATN.INVALID_ALT_NUMBER:
                 if _alt == 1:
                     self.state = 37
                     self.match(searchParser.CHAR)
 
                 else:
                     raise NoViableAltException(self)
-                self.state = 40 
+                self.state = 40
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,3,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input, 3, self._ctx)
 
             self.state = 55
             self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,6,self._ctx)
-            while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
-                if _alt==1:
+            _alt = self._interp.adaptivePredict(self._input, 6, self._ctx)
+            while _alt != 2 and _alt != ATN.INVALID_ALT_NUMBER:
+                if _alt == 1:
                     self.state = 45
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
-                    while _la==searchParser.T__0:
+                    while _la == searchParser.T__0:
                         self.state = 42
                         self.match(searchParser.T__0)
                         self.state = 47
                         self._errHandler.sync(self)
                         _la = self._input.LA(1)
 
-                    self.state = 49 
+                    self.state = 49
                     self._errHandler.sync(self)
                     _alt = 1
-                    while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                    while _alt != 2 and _alt != ATN.INVALID_ALT_NUMBER:
                         if _alt == 1:
                             self.state = 48
                             self.match(searchParser.CHAR)
 
                         else:
                             raise NoViableAltException(self)
-                        self.state = 51 
+                        self.state = 51
                         self._errHandler.sync(self)
-                        _alt = self._interp.adaptivePredict(self._input,5,self._ctx)
-             
+                        _alt = self._interp.adaptivePredict(
+                            self._input, 5, self._ctx)
+
                 self.state = 57
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,6,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input, 6, self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re
@@ -400,8 +375,3 @@ class searchParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
-
-
-
-
-
