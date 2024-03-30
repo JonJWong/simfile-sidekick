@@ -66,5 +66,6 @@ def generate_md5(bpms: List[List[str]], measures: List[str]) -> str:
         bpm_string += str(int(float(bpm[0]))) + str(int(float(bpm[1])))
     data = "".join(measures) + bpm_string
     return hashlib.md5(
-        "".join(data).strip().replace(" ", "").replace("\n", "").replace("\r", "").encode("UTF-8")
+        "".join(data).strip().replace(" ", "").replace(
+            "\n", "").replace("\r", "").encode("UTF-8")
     ).hexdigest()
