@@ -28,6 +28,7 @@ import shutil
 import sys
 import urllib.request
 import logging
+import datetime
 
 # Internal Imports
 from db import DBManager as dbm
@@ -35,7 +36,7 @@ from db import UserDBManager as udbm
 from scan.scan import parse_file, scan_folder
 from zipfile import BadZipFile, ZipFile
 
-from globals import DLPACK_ON_SELECTED_SERVERS_ONLY, DLPACK_DESTINATION_URL, TMP_DIR, USER_AGENT, DEFAULT_PREFIX, PREFIXES, DEFAULT_AUTODELETE_BEHAVIOR, SERVER_SETTINGS, USER_SETTINGS, DATABASE_NAME, APPROVED_SERVERS, HELP_MESSAGE, STR_TO_EMOJI
+from globals import DLPACK_ON_SELECTED_SERVERS_ONLY, DLPACK_DESTINATION_URL, TMP_DIR, USER_AGENT, DEFAULT_PREFIX, PREFIXES, DEFAULT_AUTODELETE_BEHAVIOR, SERVER_SETTINGS, USER_SETTINGS, DATABASE_NAME, APPROVED_SERVERS, HELP_MESSAGE, STR_TO_EMOJI, VALID_PARAMS
 from helpers.bothelpers import get_prefixes, is_prefix_for_server
 from helpers.messagehelpers import get_footer_image, create_embed
 
@@ -323,6 +324,16 @@ async def parse(ctx, *params: str):
             await ctx.message.delete()
             await ctx.send(message)
             return
+        
+        invalid_inputted_params = [param for param in params if param not in VALID_PARAMS]
+        if invalid_inputted_params:
+            message = "{}, please ensure you are passing in valid parameters. Valid parameters are: {}".format(
+                ctx.author.mention,
+                ', '.join([f'`{param}`' for param in  VALID_PARAMS])
+            )
+            await ctx.message.delete()
+            await ctx.send(message)
+            return
 
         if len(ctx.message.attachments) < 1:
             message = "{}, you need to attach a .sm file.".format(
@@ -413,7 +424,7 @@ async def parse(ctx, *params: str):
         for result in results:
             embed, pattern_embed, file = create_embed(result, ctx, params)
             await ctx.send(file=file, embed=embed)
-            if len(pattern_embed.fields) > 0:
+            if pattern_embed and len(pattern_embed.fields):
                 await ctx.send(file=None, embed=pattern_embed)
             # Removes density graph image for this difficulty
             if os.path.exists(result["graph_location"]):
@@ -428,7 +439,7 @@ async def parse(ctx, *params: str):
         os.remove(usr_tmp_db)
         os.rmdir(usr_tmp_dir)
     except Exception as e:
-        logging.exception("what the fuck is going on here")
+        logging.exception(f'PARSING ERROR OCCURRED AT {datetime.datetime.now()}')
         print(e)
         await ctx.send("Something went wrong, fixing.")
         usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
