@@ -57,8 +57,12 @@ def process_mistake_data(data, category_counts, category_key, array_key):
 
 
 def is_sweep(pattern):
-    sweep_permutations = {'LDURUDL', 'LUDRDUL', 'RDULUDR', 'RUDLDUR'}
-    return pattern in sweep_permutations
+    sweep = {'LDURUDL', 'LUDRDUL', 'RDULUDR', 'RUDLDUR'}
+    return pattern in sweep
+
+
+def is_pattern(pattern, check_arr):
+    return len([check for check in check_arr if pattern.startswith(check)])
 
 
 def fill_mistake_data(data_obj, measure, pattern, pattern_str=None):
@@ -71,9 +75,22 @@ def fill_mistake_data(data_obj, measure, pattern, pattern_str=None):
         data_obj[measure] = [pattern]
 
 
+DORITO_DOUBLE_SIDE = ['LDUDLRL', 'LUDULRL', 'RDUDRLR', 'RUDURLR']
+STAIR_DOUBLE_SIDE = ['LDURLRD', 'LUDRLRU', 'RDULRLD', 'RUDLRLU']
+DORITO = ['LDUDLRD', 'LUDULRU', 'RDUDRLD', 'RUDURLU']
+NOT_MONO = DORITO_DOUBLE_SIDE + STAIR_DOUBLE_SIDE + DORITO
+
+SIX_MONO = ['LDLRUR', 'LULRDR', 'RDRLUL', 'RURLDL']
+
 def process_mono(data_obj, count_obj, pattern, curr_measure):
-    if len(pattern) >= 8:
+    pattern_is_six_mono = is_pattern(pattern, SIX_MONO)
+
+    if pattern_is_six_mono or len(pattern) >= 7:
+        if is_pattern(pattern, NOT_MONO):
+            return
+
         sliced = pattern[:-2]
+        
         if sliced.endswith("U") or sliced.endswith("D"):
             sliced += pattern[-2]
 
