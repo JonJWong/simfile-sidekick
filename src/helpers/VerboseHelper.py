@@ -22,14 +22,17 @@ def normalize_num(a, b):
 
     return str_a, str_b
 
+
 def add_padding(string, num):
     while len(string) < num:
         string = " " + string
     return string
 
+
 def get_percent(a, b):
-    percent = round((a / b) * 100, 1) # 1 decimal place
-    return add_padding(str(percent) + "%", 6) # 6 chars in "100.0%"
+    percent = round((a / b) * 100, 1)  # 1 decimal place
+    return add_padding(str(percent) + "%", 6)  # 6 chars in "100.0%"
+
 
 def normalize_string(string, length):
     if len(string) > length:
@@ -37,6 +40,6 @@ def normalize_string(string, length):
         string = string + "..."
 
     while len(string) < length:
-        string += " " # need to add spaces since carriage return won't overlay last input
+        string += " "  # need to add spaces since carriage return won't overlay last input
 
     return string
