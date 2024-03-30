@@ -13,16 +13,19 @@ program, to allow users to search for information from within Discord.
 This is free and unencumbered software released into the public domain. For more
 information, please refer to the LICENSE file or visit <https://unlicense.org>.
 
-Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
+Created with love by Artimst for the Dickson City Heroes and Stamina Nation. This version maintained by JonJWong.
 """
 
-from helpers import BreakdownHelper as bh
-from helpers import GeneralHelper as gh
-from helpers import Normalize as normalizer
-from helpers import ImageHelper as ih
-from objects import NotesInfo as ni, ChartInfo as ci, FileInfo as fi, PatternInfo as pi
-from helpers import Test as test
-from helpers import VerboseHelper as vh
+from helpers.BreakdownHelper import get_separator, remove_all_breakdown_chars
+from helpers.GeneralHelper import remove_comments
+from helpers.ImageHelper import create_and_save_density_graph
+from helpers.Normalize import get_best_bpm_to_use, if_should_normalize, normalize
+from helpers.VerboseHelper import get_percent, normalize_num, normalize_string
+from helpers.Test import run_tests
+from objects.NotesInfo import NotesInfo 
+from objects.ChartInfo import ChartInfo
+from objects.FileInfo import FileInfo
+from objects.PatternInfo import PatternInfo
 from enums.RunDensity import RunDensity
 from pathlib import Path
 from tinydb import TinyDB
@@ -38,10 +41,10 @@ import statistics
 import string
 import sys
 
-from .scanconstants import SHORT_OPTIONS, LONG_OPTIONS, REBUILD, VERBOSE, DIRECTORY, MEDIA_REMOVE,\
-    UNIT_TEST, CSV, NL_REG, NO_NOTES_REG, ANY_NOTES_REG, LOG_TIMESTAMP, LOG_FORMAT, UNITTEST_FOLDER,\
-    DATABASE_NAME, LOGFILE_NAME, STEP_TO_DIR, LEFT_CANDLES, RIGHT_CANDLES, COMBINED_PATTERN,\
-    LEFT_ANCHOR_PATTERN, DOWN_ANCHOR_PATTERN, UP_ANCHOR_PATTERN, RIGHT_ANCHOR_PATTERN, DBL_STAIRS,\
+from .scanconstants import SHORT_OPTIONS, LONG_OPTIONS, REBUILD, VERBOSE, DIRECTORY, MEDIA_REMOVE, \
+    UNIT_TEST, CSV, NL_REG, NO_NOTES_REG, ANY_NOTES_REG, LOG_TIMESTAMP, LOG_FORMAT, UNITTEST_FOLDER, \
+    DATABASE_NAME, LOGFILE_NAME, STEP_TO_DIR, LEFT_CANDLES, RIGHT_CANDLES, COMBINED_PATTERN, \
+    LEFT_ANCHOR_PATTERN, DOWN_ANCHOR_PATTERN, UP_ANCHOR_PATTERN, RIGHT_ANCHOR_PATTERN, DBL_STAIRS, \
     DBL_STEPS, BOXES
 from .regexfinds import findall_with_regex_dotall, findall_with_regex, find_with_regex_dotall, find_with_regex
 from .dbhelpers import load_md5s_into_cache, database_to_csv, add_to_database
@@ -383,7 +386,7 @@ def new_pattern_analysis(measure_obj):
     category_counts["Total Candles"] = (category_counts["Left Candles"] +
                                         category_counts["Right Candles"])
 
-    analysis = pi.PatternInfo(
+    analysis = PatternInfo(
         category_counts["Left Candles"], category_counts["Right Candles"],
         category_counts["Total Candles"], category_counts["Mono Percent"],
         category_counts["Left Anchors"], category_counts["Down Anchors"],
@@ -434,22 +437,22 @@ def get_simplified(breakdown, partially):
         elif re.search(r"[()]", b):
             if partially:
                 current_measure = RunDensity.Break
-                b = bh.get_separator(
-                    int(bh.remove_all_breakdown_chars(simplified[i])))
+                b = get_separator(
+                    int(remove_all_breakdown_chars(simplified[i])))
             else:
-                if int(bh.remove_all_breakdown_chars(b)) <= 4:
-                    b = bh.remove_all_breakdown_chars(b)
+                if int(remove_all_breakdown_chars(b)) <= 4:
+                    b = remove_all_breakdown_chars(b)
                     small_break = True
                 else:
-                    b = bh.get_separator(
-                        int(bh.remove_all_breakdown_chars(simplified[i])))
+                    b = get_separator(
+                        int(remove_all_breakdown_chars(simplified[i])))
                     current_measure = RunDensity.Break
         else:
             current_measure = RunDensity.Run_16
 
         if current_measure == previous_measure and i > 0:
-            previous_value = bh.remove_all_breakdown_chars(simplified[i - 1])
-            b = bh.remove_all_breakdown_chars(b)
+            previous_value = remove_all_breakdown_chars(simplified[i - 1])
+            b = remove_all_breakdown_chars(b)
             simplified[i - 1] = ""
             if small_break and simplified:
                 if current_measure == RunDensity.Run_32:
@@ -662,7 +665,7 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
 
     total_break = adjust_total_break(total_break, measures)
 
-    notesinfo = ni.NotesInfo(note_count, jumps, holds, mines, hands, rolls)
+    notesinfo = NotesInfo(note_count, jumps, holds, mines, hands, rolls)
     chartinfo.notesinfo = notesinfo
     chartinfo.length = length
     chartinfo.total_stream = total_stream
@@ -685,7 +688,7 @@ def parse_chart(chart, fileinfo, db, cache=None):
     stepartist = metadata[1].strip().replace(":", "")
     difficulty = metadata[2].strip().replace(":", "")
     rating = metadata[3].strip().replace(":", "")
-    chart = gh.remove_comments(metadata[5])
+    chart = remove_comments(metadata[5])
 
     del metadata
 
@@ -704,8 +707,7 @@ def parse_chart(chart, fileinfo, db, cache=None):
 
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
 
-    chartinfo = ci.ChartInfo(fileinfo, stepartist, difficulty, rating,
-                             measures)
+    chartinfo = ChartInfo(fileinfo, stepartist, difficulty, rating, measures)
 
     if measures == -1:
         logging.warning(
@@ -719,14 +721,15 @@ def parse_chart(chart, fileinfo, db, cache=None):
     simplified = get_simplified(breakdown, False)
 
     if chartinfo.total_stream:
-        should_normalize = normalizer.if_should_normalize(
-            breakdown, chartinfo.total_stream)
+        should_normalize = if_should_normalize(breakdown,
+                                               chartinfo.total_stream)
         if should_normalize != RunDensity.Run_16:
-            bpm_to_use = normalizer.get_best_bpm_to_use(
-                fileinfo.min_bpm, fileinfo.max_bpm, chartinfo.median_nps,
-                fileinfo.displaybpm)
-            normalized_breakdown = normalizer.normalize(
-                breakdown, bpm_to_use, should_normalize)
+            bpm_to_use = get_best_bpm_to_use(fileinfo.min_bpm,
+                                             fileinfo.max_bpm,
+                                             chartinfo.median_nps,
+                                             fileinfo.displaybpm)
+            normalized_breakdown = normalize(breakdown, bpm_to_use,
+                                             should_normalize)
             if normalized_breakdown != breakdown:
                 chartinfo.normalized_breakdown = normalized_breakdown
 
@@ -739,8 +742,8 @@ def parse_chart(chart, fileinfo, db, cache=None):
 
     fileinfo.chartinfo = chartinfo
 
-    ih.create_and_save_density_graph(list(range(0, len(measures))), density,
-                                     fileinfo.chartinfo.graph_location)
+    create_and_save_density_graph(list(range(0, len(measures))), density,
+                                  fileinfo.chartinfo.graph_location)
     add_to_database(fileinfo, db, cache)
 
 
@@ -831,8 +834,8 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
                             filename))
                     return
 
-            fileinfo = fi.FileInfo(title, subtitle, artist, pack, bpms,
-                                   displaybpm, folder)
+            fileinfo = FileInfo(title, subtitle, artist, pack, bpms,
+                                displaybpm, folder)
             parse_chart(chart + ";", fileinfo, db, cache)
 
 
@@ -877,12 +880,12 @@ def scan_folder(args, db, cache=None):
                 folder = root + "/"
                 pack = os.path.basename(Path(folder).parent)
                 if args[VERBOSE]:
-                    output_i, output_total = vh.normalize_num(i, total)
+                    output_i, output_total = normalize_num(i, total)
                     output = "[" + output_i + "/" + output_total + "] "
-                    output_percent = "[" + vh.get_percent(i, total) + "]"
+                    output_percent = "[" + get_percent(i, total) + "]"
                     output += output_percent + " Pack: "
-                    output += vh.normalize_string(pack, 30) + " File: "
-                    output += vh.normalize_string(file, 30)
+                    output += normalize_string(pack, 30) + " File: "
+                    output += normalize_string(file, 30)
                     print(output, end="\r")
                 logging.info("Preparing to parse \"{}\".".format(filename))
                 parse_file(db, filename, folder, pack, False, cache)
@@ -898,11 +901,11 @@ def scan_folder(args, db, cache=None):
                         filename, root))
 
     if args[VERBOSE]:
-        output_i, output_total = vh.normalize_num(i, total)
+        output_i, output_total = normalize_num(i, total)
         output = "[" + output_i + "/" + output_total + "] "
-        output_percent = "[" + vh.get_percent(i, total) + "] "
+        output_percent = "[" + get_percent(i, total) + "] "
         output += output_percent
-        output += vh.normalize_string("Complete!", 75)
+        output += normalize_string("Complete!", 75)
         print(output)
 
     logging.info("Scanning complete.")
@@ -984,7 +987,7 @@ def main(argv: list):
                             format=LOG_FORMAT)
         with TinyDB(database) as db:
             scan_folder(args, db)
-            test.run_tests()
+            run_tests()
     else:
 
         with TinyDB(DATABASE_NAME, storage=CachingMiddleware(JSONStorage)) as db, \
