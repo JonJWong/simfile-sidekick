@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """A object that contains info about the notes in a simfile.
 
 This object contains the number of notes in a chart, as well as what type of notes they are (holds, hands, mines, etc.)
@@ -19,11 +18,11 @@ class NotesInfo(object):
     hands: int = 0
     rolls: int = 0
 
-    def __init__(self, notes: int, jumps: int, holds: int, mines: int, hands: int, rolls: int):
+    def __init__(self, notes: int, jumps: int, holds: int, mines: int,
+                 hands: int, rolls: int):
         self.notes = notes
         self.jumps = jumps
         self.holds = holds
         self.mines = mines
         self.hands = hands
         self.rolls = rolls
-

@@ -9,21 +9,26 @@ GREEN = "\033[92m"
 RED = "\033[91m"
 RESET = "\033[0m"
 
+
 def good(desc):
     output = GREEN + "PASSED" + RESET + ": "
     output += desc
     print(output)
 
+
 def fail_val(desc, cval, val):
     output = RED + "FAILED" + RESET + ": "
     output += desc
-    output += " Value should be \"" + str(cval) + "\" but got \"" + str(val) + "\"."
+    output += " Value should be \"" + str(cval) + "\" but got \"" + str(
+        val) + "\"."
     print(output)
+
 
 def fail(desc):
     output = RED + "FAILED" + RESET + ": "
     output += desc
     print(output)
+
 
 def run_tests():
 
@@ -49,12 +54,16 @@ def run_tests():
         good("scan.py correctly handled missing semicolon in BPM section.")
         passed += 1
     else:
-        fail("scan.py did not identify or recover from missing semicolon in BPM section.")
+        fail(
+            "scan.py did not identify or recover from missing semicolon in BPM section."
+        )
         failed += 1
 
     # I'm A Maid has a colon (:) where a semicolon (;) should be
 
-    result = log_contents.find("Completed parsing \"tests/songs/I'm A Maid (C-Type Remix)/Im a maid.sm\".")
+    result = log_contents.find(
+        "Completed parsing \"tests/songs/I'm A Maid (C-Type Remix)/Im a maid.sm\"."
+    )
 
     if result != -1:
         good("scan.py correctly handled misplaced colon in metadata section.")
@@ -65,10 +74,14 @@ def run_tests():
 
     # OceanLab Megamix has strange non-printable characters in the BPM section
 
-    result = log_contents.find("oceanlab.sm\" contains non-printable characters. Handled and continuing.")
+    result = log_contents.find(
+        "oceanlab.sm\" contains non-printable characters. Handled and continuing."
+    )
 
     if result != -1:
-        good("scan.py correctly handled non-printable characters in BPM section.")
+        good(
+            "scan.py correctly handled non-printable characters in BPM section."
+        )
         passed += 1
     else:
         fail("scan.py did not handle non-printable characters in BPM section.")
@@ -77,7 +90,8 @@ def run_tests():
     # DEATHMATCH has charts initialised to 0's, that is, a chart exists but is simply a placeholder
     # and no arrows have yet been added. This resolved a division by zero error when calculating statistics.
 
-    result = log_contents.find("The Hard 1 chart for DEATHMATCH is empty. Skipping")
+    result = log_contents.find(
+        "The Hard 1 chart for DEATHMATCH is empty. Skipping")
 
     if result != -1:
         good("scan.py correctly handled an empty chart.")
@@ -90,13 +104,16 @@ def run_tests():
     # line, instead of splitting it by colon (:).
 
     data = dbm.search("Fairytale", DATABASE_FILE)
-    result = data[1]  # [1] so we grab the hard chart, since it's the chart with the extra return
+    result = data[
+        1]  # [1] so we grab the hard chart, since it's the chart with the extra return
 
     if result["difficulty"] == "Hard":
         good("scan.py correctly handled extra return characters in metadata.")
         passed += 1
     else:
-        fail("scan.py did not properly handle extra return characters in metadata.")
+        fail(
+            "scan.py did not properly handle extra return characters in metadata."
+        )
         failed += 1
 
     # Chelsea is a song that immediately stops on the last measure of the song, there is no padding. Due to the way I
@@ -112,7 +129,9 @@ def run_tests():
         good("scan.py correctly handled songs that end on the last measure.")
         passed += 1
     else:
-        fail_val("scan.py did not properly handle songs that end on the last measure.", correct_breakdown, result["breakdown"])
+        fail_val(
+            "scan.py did not properly handle songs that end on the last measure.",
+            correct_breakdown, result["breakdown"])
         failed += 1
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -122,13 +141,15 @@ def run_tests():
     # the one and only run.
 
     data = dbm.search("Encoder", DATABASE_FILE)
-    result = data[4] # [4] so we grab the challenge chart, and not the easy or medium, etc.
+    result = data[
+        4]  # [4] so we grab the challenge chart, and not the easy or medium, etc.
 
     if result["breakdown"] == "32":
         good("Encoder's breakdown is correct.")
         passed += 1
     else:
-        fail_val("Encoder's breakdown is incorrect.", "32", result["breakdown"])
+        fail_val("Encoder's breakdown is incorrect.", "32",
+                 result["breakdown"])
         failed += 1
 
     # Encoder's "total stream" should be 32, and "total break" should be 0. We don't include breaks before the first
@@ -138,14 +159,16 @@ def run_tests():
         good("Encoder's total stream is correct.")
         passed += 1
     else:
-        fail_val("Encoder's total stream is incorrect.", 32, result["total_stream"])
+        fail_val("Encoder's total stream is incorrect.", 32,
+                 result["total_stream"])
         failed += 1
 
     if result["total_break"] == 0:
         good("Encoder's total break is correct.")
         passed += 1
     else:
-        fail_val("Encoder's total break is incorrect.", 0, result["total_break"])
+        fail_val("Encoder's total break is incorrect.", 0,
+                 result["total_break"])
         failed += 1
 
     # Generic breakdown test for Ganbatte
@@ -159,7 +182,8 @@ def run_tests():
         good("Ganbatte's breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        fail_val("Ganbatte's breakdown is incorrect.", correct_breakdown,
+                 result["breakdown"])
         failed += 1
 
     correct_breakdown = "160* - 128* / 48*"
@@ -168,7 +192,8 @@ def run_tests():
         good("Ganbatte's partially simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte's partially simplified breakdown is incorrect.", correct_breakdown, result["partial_breakdown"])
+        fail_val("Ganbatte's partially simplified breakdown is incorrect.",
+                 correct_breakdown, result["partial_breakdown"])
         failed += 1
 
     correct_breakdown = "292* / 48*"
@@ -177,21 +202,24 @@ def run_tests():
         good("Ganbatte's simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        fail_val("Ganbatte's simplified breakdown is incorrect.",
+                 correct_breakdown, result["simple_breakdown"])
         failed += 1
 
     if result["total_stream"] == 323:
         good("Ganbatte's total stream is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte's total stream is incorrect.", 323, result["total_stream"])
+        fail_val("Ganbatte's total stream is incorrect.", 323,
+                 result["total_stream"])
         failed += 1
 
     if result["total_break"] == 25:
         good("Ganbatte's total break is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte's total break is incorrect.", 25, result["total_break"])
+        fail_val("Ganbatte's total break is incorrect.", 25,
+                 result["total_break"])
         failed += 1
 
     data = dbm.search("Ganbatte", DATABASE_FILE)
@@ -203,7 +231,8 @@ def run_tests():
         good("Ganbatte (18)'s breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte (18)'s breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        fail_val("Ganbatte (18)'s breakdown is incorrect.", correct_breakdown,
+                 result["breakdown"])
         failed += 1
 
     correct_breakdown = "96* ~4~ 4 ~4~ 52* - 96* ~4~ 12 ~4~ 12 / 36* ~4~ 8"
@@ -212,8 +241,9 @@ def run_tests():
         good("Ganbatte (18)'s partially simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte (18)'s partially simplified breakdown is incorrect.", correct_breakdown,
-                 result["partial_breakdown"])
+        fail_val(
+            "Ganbatte (18)'s partially simplified breakdown is incorrect.",
+            correct_breakdown, result["partial_breakdown"])
         failed += 1
 
     correct_breakdown = "96* ~4~ 4 ~4~ 152* ~4~ 12 ~4~ 12 / 36* ~4~ 8"
@@ -222,13 +252,17 @@ def run_tests():
         good("Ganbatte (18)'s simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Ganbatte (18)'s simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        fail_val("Ganbatte (18)'s simplified breakdown is incorrect.",
+                 correct_breakdown, result["simple_breakdown"])
         failed += 1
 
-    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
+    should_normalize = normalizer.if_should_normalize(result["breakdown"],
+                                                      result["total_stream"])
 
     if should_normalize == RunDensity.Run_16:
-        good("Ganbatte (18) is correctly NOT normalizing and keeping 16th note breakdown.")
+        good(
+            "Ganbatte (18) is correctly NOT normalizing and keeping 16th note breakdown."
+        )
         passed += 1
     else:
         fail_val("Ganbatte (18) is being normalized.", RunDensity.Run_20,
@@ -250,7 +284,8 @@ def run_tests():
         good("PEMA's breakdown is correct.")
         passed += 1
     else:
-        fail_val("PEMA's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        fail_val("PEMA's breakdown is incorrect.", correct_breakdown,
+                 result["breakdown"])
         failed += 1
 
     correct_breakdown = "31 - 35 | 2 - 64* - 38 - 47 - 13 - 38* / 34* - 14 - 78* - 62 / 7 / 2 / 7 - 7 / 2 - 5 - 6 - 11*"
@@ -261,7 +296,8 @@ def run_tests():
         good("PEMA's partially simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("PEMA's partially simplified breakdown is incorrect.", correct_breakdown, result["partial_breakdown"])
+        fail_val("PEMA's partially simplified breakdown is incorrect.",
+                 correct_breakdown, result["partial_breakdown"])
         failed += 1
 
     correct_breakdown = "68* | 214* / 194* / 7 / 2 / 16* / 147* / 327* | 143* / 4 / 272* / 306* / 258* / 64* / 1 / 81*"
@@ -270,21 +306,24 @@ def run_tests():
         good("PEMA's simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("PEMA's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        fail_val("PEMA's simplified breakdown is incorrect.",
+                 correct_breakdown, result["simple_breakdown"])
         failed += 1
 
     if result["total_stream"] == 2000:
         good("PEMA's total stream is correct.")
         passed += 1
     else:
-        fail_val("PEMA's total stream is incorrect.", 2000, result["total_stream"])
+        fail_val("PEMA's total stream is incorrect.", 2000,
+                 result["total_stream"])
         failed += 1
 
     if result["total_break"] == 448:
         good("PEMA's total break is correct.")
         passed += 1
     else:
-        fail_val("PEMA's total break is incorrect.", 448, result["total_break"])
+        fail_val("PEMA's total break is incorrect.", 448,
+                 result["total_break"])
         failed += 1
 
     data = dbm.search("Hardware Store", DATABASE_FILE)
@@ -296,7 +335,8 @@ def run_tests():
         good("Hardware Store's breakdown is correct.")
         passed += 1
     else:
-        fail_val("Hardware Store's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        fail_val("Hardware Store's breakdown is incorrect.", correct_breakdown,
+                 result["breakdown"])
         failed += 1
 
     correct_breakdown = "=63=* / =34= \\1\\ =7="
@@ -305,7 +345,9 @@ def run_tests():
         good("Hardware Store's partially simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Hardware Store's partially simplified breakdown is incorrect.", correct_breakdown, result["partial_breakdown"])
+        fail_val(
+            "Hardware Store's partially simplified breakdown is incorrect.",
+            correct_breakdown, result["partial_breakdown"])
         failed += 1
 
     correct_breakdown = "=63=* / =34= \\1\\ =7="
@@ -314,21 +356,27 @@ def run_tests():
         good("Hardware Store's simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Hardware Store's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        fail_val("Hardware Store's simplified breakdown is incorrect.",
+                 correct_breakdown, result["simple_breakdown"])
         failed += 1
 
     correct_normalized_breakdown = "6 118 (16) 68 (2) 14 *@253BPM*"
-    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"], result["display_bpm"])
-    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use, should_normalize)
+    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"],
+                                                result["max_bpm"],
+                                                result["median_nps"],
+                                                result["display_bpm"])
+    should_normalize = normalizer.if_should_normalize(result["breakdown"],
+                                                      result["total_stream"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"],
+                                                bpm_to_use, should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Hardware Store's normalized breakdown is correct.")
         passed += 1
     else:
-        fail_val("Hardware Store's normalized breakdown is incorrect.", correct_normalized_breakdown, normalized_breakdown)
+        fail_val("Hardware Store's normalized breakdown is incorrect.",
+                 correct_normalized_breakdown, normalized_breakdown)
         failed += 1
-
 
     data = dbm.search("Noise Discipline", DATABASE_FILE)
     result = data[0]
@@ -339,7 +387,8 @@ def run_tests():
         good("Noise Discipline's breakdown is correct.")
         passed += 1
     else:
-        fail_val("Noise Discipline's breakdown is incorrect.", correct_breakdown, result["breakdown"])
+        fail_val("Noise Discipline's breakdown is incorrect.",
+                 correct_breakdown, result["breakdown"])
         failed += 1
 
     correct_breakdown = "~65~* 1 / ~1~ 1 ~64~* / 1 ~1~ 2 ~8~ - ~30~ - ~4~ - ~48~ / ~247~* - ~85~* 1 ~12~ - ~46~* - ~7~ 1 ~11~ 1 - ~64~ / ~64~ | 1 ~32~"
@@ -348,8 +397,9 @@ def run_tests():
         good("Noise Discipline's partially simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Noise Discipline's partially simplified breakdown is incorrect.", correct_breakdown,
-                 result["partial_breakdown"])
+        fail_val(
+            "Noise Discipline's partially simplified breakdown is incorrect.",
+            correct_breakdown, result["partial_breakdown"])
         failed += 1
 
     correct_breakdown = "~65~* 1 / ~1~ 1 ~64~* / 1 ~1~ 2 ~96~* / ~335~* 1 ~71~* 1 ~11~ 4* ~64~ / ~64~ | 1 ~32~"
@@ -358,29 +408,34 @@ def run_tests():
         good("Noise Discipline's simplified breakdown is correct.")
         passed += 1
     else:
-        fail_val("Noise Discipline's simplified breakdown is incorrect.", correct_breakdown, result["simple_breakdown"])
+        fail_val("Noise Discipline's simplified breakdown is incorrect.",
+                 correct_breakdown, result["simple_breakdown"])
         failed += 1
 
     correct_normalized_breakdown = "1 8 18 48 (22) 1 (1) 8 18 50 (17) 1 (2) 10 (2) 37 (2) 5 (2) 60 (10) 228 78 (3) 56 48 (1) 15 (5) 48 7 (2) 8 (1) 13 (7) 80 (40) 80 (60) 40 *@218BPM*"
-    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"], result["max_bpm"], result["median_nps"],
+    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"],
+                                                result["max_bpm"],
+                                                result["median_nps"],
                                                 result["display_bpm"])
-    should_normalize = normalizer.if_should_normalize(result["breakdown"], result["total_stream"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"], bpm_to_use, should_normalize)
+    should_normalize = normalizer.if_should_normalize(result["breakdown"],
+                                                      result["total_stream"])
+    normalized_breakdown = normalizer.normalize(result["breakdown"],
+                                                bpm_to_use, should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Noise Discipline's normalized breakdown is correct.")
         passed += 1
     else:
-        fail_val("Noise Discipline's normalized breakdown is incorrect.", correct_normalized_breakdown,
-                 normalized_breakdown)
+        fail_val("Noise Discipline's normalized breakdown is incorrect.",
+                 correct_normalized_breakdown, normalized_breakdown)
         failed += 1
 
     if should_normalize == RunDensity.Run_20:
         good("Noise Discipline is correctly normalizing to 20ths.")
         passed += 1
     else:
-        fail_val("Noise Discipline is not being normalized.", RunDensity.Run_20,
-                 should_normalize)
+        fail_val("Noise Discipline is not being normalized.",
+                 RunDensity.Run_20, should_normalize)
         failed += 1
 
     data = dbm.search("Sa MaRichi", DATABASE_FILE)
@@ -390,7 +445,8 @@ def run_tests():
         good("Sa MaRichi's candle count is correct.")
         passed += 1
     else:
-        fail_val("Sa MaRichi's candle count is incorrect.", 49, result["total_candles"])
+        fail_val("Sa MaRichi's candle count is incorrect.", 49,
+                 result["total_candles"])
         failed += 1
 
     if failed > 0:

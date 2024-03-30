@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """Contains helper methods used in the generation of breakdown notation for Simfile Sidekick.
 
 Various functions are defined here to assist with the generation and modification of the density breakdown notation.

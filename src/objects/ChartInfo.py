@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """An object that contains chart information for a simfile.
 
 This object contains information relevant to a chart, such as the step artist, difficulty, rating, etc.
@@ -38,8 +37,10 @@ class ChartInfo(object):
     notesinfo: NotesInfo = None
     patterninfo: PatternInfo = None
 
-    def __init__(self, parent, stepartist: str, difficulty: str, rating: str, measures: List[str]):
-        self.parent = weakref.ref(parent)  # Allows ChartInfo to access FileInfo
+    def __init__(self, parent, stepartist: str, difficulty: str, rating: str,
+                 measures: List[str]):
+        self.parent = weakref.ref(
+            parent)  # Allows ChartInfo to access FileInfo
 
         self.stepartist = stepartist
         self.difficulty = difficulty

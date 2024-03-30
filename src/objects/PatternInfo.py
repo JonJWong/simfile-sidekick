@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """A object that contains the pattern info for a chart.
 
 This object contains the analysis of patterns in a chart, such as mono, candles, and anchors.
@@ -35,7 +34,7 @@ class PatternInfo(object):
     box_array: []
 
     def __init__(self, left_foot_candles: int, right_foot_candles: int,
-                 total_candles: int, mono_percent: float, anchor_left: int, 
+                 total_candles: int, mono_percent: float, anchor_left: int,
                  anchor_down: int, anchor_up: int, anchor_right: int,
                  double_stairs_count: int, double_stairs_array: [],
                  doublesteps_count: int, doublesteps_array: [],

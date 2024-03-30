@@ -129,7 +129,7 @@ def remove_pack_from_songs_by_id(pack, ids, db):
             if re.search(pack, p, re.IGNORECASE):
                 if i < len(packs):
                     # remove prepending space in next element if it exists
-                    packs[i+1] = packs[i+1].strip()
+                    packs[i + 1] = packs[i + 1].strip()
                 # delete from packs array
                 del packs[i]
         db.update({"pack": ", ".join(packs)}, doc_ids=[id])

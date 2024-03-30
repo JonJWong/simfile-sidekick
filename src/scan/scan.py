@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 Searches for .sm files and creates a database of information based on their contents.
 
@@ -16,7 +15,6 @@ information, please refer to the LICENSE file or visit <https://unlicense.org>.
 
 Created with love by Artimst for the Dickson City Heroes and Stamina Nation.
 """
-
 
 from helpers import BreakdownHelper as bh
 from helpers import GeneralHelper as gh
@@ -60,11 +58,11 @@ def adjust_total_break(total_break, measures):
         for i, measure in enumerate(reversed(measures)):
             # Since we're navigating backwards in the chart, we want to break at the first full run we see
             lines = measure.strip().split("\n")
-            if len(lines) < 16:             # measure only contains 4th or 8th notes
+            if len(lines) < 16:  # measure only contains 4th or 8th notes
                 total_break -= 1
                 continue
             notes_in_measure = len(findall_with_regex(measure, ANY_NOTES_REG))
-            if notes_in_measure < 16:       # measure is not a full run
+            if notes_in_measure < 16:  # measure is not a full run
                 total_break -= 1
                 continue
             break
@@ -174,10 +172,10 @@ def new_pattern_analysis(measure_obj):
         # - - - - - CANDLE FINDER - - - - -
         # Candles are relatively straightforward, if any of those 4 candle
         # variants exist, then it is a candle.
-        category_counts["Left Candles"] += sum(run.count(pattern)
-                                               for pattern in LEFT_CANDLES)
-        category_counts["Right Candles"] += sum(run.count(pattern)
-                                                for pattern in RIGHT_CANDLES)
+        category_counts["Left Candles"] += sum(
+            run.count(pattern) for pattern in LEFT_CANDLES)
+        category_counts["Right Candles"] += sum(
+            run.count(pattern) for pattern in RIGHT_CANDLES)
 
         current_foot = None
         prev_direction = None
@@ -208,7 +206,7 @@ def new_pattern_analysis(measure_obj):
             # on the next step, since it is most likely ambiguous.
             if curr_step == "[" and not jumping:
                 jump_end_idx = run.find("]", i)
-                jump_str = run[i+1:jump_end_idx]
+                jump_str = run[i + 1:jump_end_idx]
                 jumping = True
                 amt_to_subtract += jump_end_idx - i
                 current_foot, curr_direction, mono_pattern, dbl_stair_pattern = (
@@ -236,21 +234,21 @@ def new_pattern_analysis(measure_obj):
             # detection?
             for pattern in DBL_STEPS:
                 if run.startswith(pattern, i):
-                    amt_to_add = math.floor((i+len(pattern)-1) / quantization)
-                    if i+len(pattern)-1 >= len(run):
+                    amt_to_add = math.floor(
+                        (i + len(pattern) - 1) / quantization)
+                    if i + len(pattern) - 1 >= len(run):
                         dblstep_measure = most_recent_starting_measure + 1
                     else:
                         dblstep_measure = most_recent_starting_measure + amt_to_add
 
-                    fill_mistake_data(
-                        doublesteps_data, dblstep_measure, pattern)
+                    fill_mistake_data(doublesteps_data, dblstep_measure,
+                                      pattern)
 
             # - - - - - BOX FINDER - - - - -
             # Uses same logic as doublesteps, but with boxes.
             for pattern in BOXES:
                 if run.startswith(pattern, i):
-                    fill_mistake_data(
-                        box_data, curr_measure, pattern)
+                    fill_mistake_data(box_data, curr_measure, pattern)
 
             # Since there can't be double stairs or mono if there are no l/R
             #  notes, we can go ahead and skip the rest of the logic
@@ -260,13 +258,13 @@ def new_pattern_analysis(measure_obj):
             # - - - - - MONO ANALYSIS - - - - -
             # switch feet every step unless it's a doublestep
             if i != 0:
-                prev_step = run[i-1]
+                prev_step = run[i - 1]
                 if prev_step != curr_step:
                     current_foot = "L" if current_foot == "R" else "R"
                 else:
-                    current_foot = find_starting_foot(run[i+1:])
-                    process_mono(mono_data, category_counts,
-                                 mono_pattern, curr_measure)
+                    current_foot = find_starting_foot(run[i + 1:])
+                    process_mono(mono_data, category_counts, mono_pattern,
+                                 curr_measure)
 
             # Add step to pattern
             mono_pattern += curr_step
@@ -289,8 +287,8 @@ def new_pattern_analysis(measure_obj):
             # mono_pattern string is longer than 6 notes, we add it to the mono
             # count.
             if prev_direction != curr_direction:
-                process_mono(mono_data, category_counts,
-                             mono_pattern, curr_measure)
+                process_mono(mono_data, category_counts, mono_pattern,
+                             curr_measure)
                 last_lr = last_left_right(mono_pattern)
                 mono_pattern = mono_pattern[last_lr:]
 
@@ -301,10 +299,13 @@ def new_pattern_analysis(measure_obj):
             # counted stairs/beginnings of stairs.
             # This only finds the first instance of double stairs, and quad
             # stairs will count as 2 entries.
-            if not any(dbl_stair.startswith(ds_pattern) for dbl_stair in DBL_STAIRS):
+            if not any(
+                    dbl_stair.startswith(ds_pattern)
+                    for dbl_stair in DBL_STAIRS):
                 # Slices the current pattern at the next left or right.
                 for j in range(1, len(ds_pattern)):
-                    if j < len(ds_pattern) and (ds_pattern[j] == "L" or ds_pattern[j] == "R"):
+                    if j < len(ds_pattern) and (ds_pattern[j] == "L"
+                                                or ds_pattern[j] == "R"):
                         ds_pattern = ds_pattern[j:]
                 continue
 
@@ -314,16 +315,16 @@ def new_pattern_analysis(measure_obj):
             if len(ds_pattern) == 8:
                 dbl_stair_pattern = ds_pattern[:4]
 
-                fill_mistake_data(double_stair_data,
-                                  curr_measure, dbl_stair_pattern)
+                fill_mistake_data(double_stair_data, curr_measure,
+                                  dbl_stair_pattern)
 
                 ds_pattern = ""
 
         # - - - - - ITERATION END - - - - -
 
         # Process box_data
-        process_mistake_data(box_data, category_counts,
-                             "Box Count", "Box Array")
+        process_mistake_data(box_data, category_counts, "Box Count",
+                             "Box Array")
 
         # Process double_stair_data
         process_mistake_data(double_stair_data, category_counts,
@@ -334,12 +335,12 @@ def new_pattern_analysis(measure_obj):
                              "Doublesteps Count", "Doublesteps Array")
 
         # Process jump_data
-        process_mistake_data(jumps_data, category_counts,
-                             "Jumps Count", "Jumps Array")
+        process_mistake_data(jumps_data, category_counts, "Jumps Count",
+                             "Jumps Array")
 
         # Process mono_data
-        process_mistake_data(mono_data, category_counts,
-                             "Mono Count", "Mono Array")
+        process_mistake_data(mono_data, category_counts, "Mono Count",
+                             "Mono Array")
 
     def __populate(notes_in_measure):
         nonlocal curr_run
@@ -377,32 +378,23 @@ def new_pattern_analysis(measure_obj):
         total_notes_in_runs = 1
 
     category_counts["Mono Percent"] = (
-        (category_counts["Mono Notes"] / total_notes_in_runs) * 100
-    )
+        (category_counts["Mono Notes"] / total_notes_in_runs) * 100)
 
-    category_counts["Total Candles"] = (
-        category_counts["Left Candles"] +
-        category_counts["Right Candles"]
-    )
+    category_counts["Total Candles"] = (category_counts["Left Candles"] +
+                                        category_counts["Right Candles"])
 
-    analysis = pi.PatternInfo(category_counts["Left Candles"],
-                              category_counts["Right Candles"],
-                              category_counts["Total Candles"],
-                              category_counts["Mono Percent"],
-                              category_counts["Left Anchors"],
-                              category_counts["Down Anchors"],
-                              category_counts["Up Anchors"],
-                              category_counts["Right Anchors"],
-                              category_counts["Double Stairs Count"],
-                              category_counts["Double Stairs Array"],
-                              category_counts["Doublesteps Count"],
-                              category_counts["Doublesteps Array"],
-                              category_counts["Jumps Count"],
-                              category_counts["Jumps Array"],
-                              category_counts["Mono Count"],
-                              category_counts["Mono Array"],
-                              category_counts["Box Count"],
-                              category_counts["Box Array"])
+    analysis = pi.PatternInfo(
+        category_counts["Left Candles"], category_counts["Right Candles"],
+        category_counts["Total Candles"], category_counts["Mono Percent"],
+        category_counts["Left Anchors"], category_counts["Down Anchors"],
+        category_counts["Up Anchors"], category_counts["Right Anchors"],
+        category_counts["Double Stairs Count"],
+        category_counts["Double Stairs Array"],
+        category_counts["Doublesteps Count"],
+        category_counts["Doublesteps Array"], category_counts["Jumps Count"],
+        category_counts["Jumps Array"], category_counts["Mono Count"],
+        category_counts["Mono Array"], category_counts["Box Count"],
+        category_counts["Box Array"])
 
     return analysis
 
@@ -566,7 +558,8 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
                 hands += 1
             # Holding computation is done last, as it doesn't affect the current line
             # since current line, if jump or roll, would be 2 or 4 respectively.
-            for j, char in enumerate(line):  # For each of the 4 possible arrows
+            for j, char in enumerate(
+                    line):  # For each of the 4 possible arrows
                 if char == "2" or char == "4":  # If arrow is hold or roll
                     # We are currently holding an arrows
                     holding += 1
@@ -589,7 +582,8 @@ def get_density_and_breakdown(chartinfo, measures, bpms):
         # This creates a chart of only the run sections, that will be used to run pattern analysis against
         if measure_density >= 16:
             m = measure
-            if len(re.findall(re.compile(NO_NOTES_REG), measure)) >= measure_density:
+            if len(re.findall(re.compile(NO_NOTES_REG),
+                              measure)) >= measure_density:
                 # We will hop into here if there are just as many or more "blank lines" (0000) than actual notes.
                 # This tends to happen if a chart was auto-gen'ed or other manual manipulations of the file occured,
                 # as Stepmania (AFAIK) usually optimizes this.
@@ -696,26 +690,27 @@ def parse_chart(chart, fileinfo, db, cache=None):
     del metadata
 
     if charttype != "dance-single":
-        return                          # we only want single charts
+        return  # we only want single charts
 
     if chart.strip() == ";":
         logging.info("The {} {} chart for {} is empty. Skipping.".format(
             difficulty, rating, fileinfo.title))
-        return                          # empty chart
+        return  # empty chart
 
     if not findall_with_regex(chart, ANY_NOTES_REG):
         logging.info("The {} {} chart for {} is empty. Skipping.".format(
             difficulty, rating, fileinfo.title))
-        return                          # chart only contains 0's
+        return  # chart only contains 0's
 
     measures = findall_with_regex(chart, r"[01234MF\s]+(?=[,|;])")
 
-    chartinfo = ci.ChartInfo(fileinfo, stepartist,
-                             difficulty, rating, measures)
+    chartinfo = ci.ChartInfo(fileinfo, stepartist, difficulty, rating,
+                             measures)
 
     if measures == -1:
-        logging.warning("Unable to parse the {} {} chart for {}. Skipping.".format(
-            difficulty, rating, fileinfo.title))
+        logging.warning(
+            "Unable to parse the {} {} chart for {}. Skipping.".format(
+                difficulty, rating, fileinfo.title))
         return
 
     density, breakdown, chartinfo = get_density_and_breakdown(
@@ -727,8 +722,9 @@ def parse_chart(chart, fileinfo, db, cache=None):
         should_normalize = normalizer.if_should_normalize(
             breakdown, chartinfo.total_stream)
         if should_normalize != RunDensity.Run_16:
-            bpm_to_use = normalizer.get_best_bpm_to_use(fileinfo.min_bpm, fileinfo.max_bpm, chartinfo.median_nps,
-                                                        fileinfo.displaybpm)
+            bpm_to_use = normalizer.get_best_bpm_to_use(
+                fileinfo.min_bpm, fileinfo.max_bpm, chartinfo.median_nps,
+                fileinfo.displaybpm)
             normalized_breakdown = normalizer.normalize(
                 breakdown, bpm_to_use, should_normalize)
             if normalized_breakdown != breakdown:
@@ -743,8 +739,8 @@ def parse_chart(chart, fileinfo, db, cache=None):
 
     fileinfo.chartinfo = chartinfo
 
-    ih.create_and_save_density_graph(
-        list(range(0, len(measures))), density, fileinfo.chartinfo.graph_location)
+    ih.create_and_save_density_graph(list(range(0, len(measures))), density,
+                                     fileinfo.chartinfo.graph_location)
     add_to_database(fileinfo, db, cache)
 
 
@@ -775,14 +771,16 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
                 # Some BPMs are missing a trailing ; (30MIN HARDER in Cirque du Beast)
                 bpm = bpm.split("#", 1)[0]
                 logging.warning(
-                    "BPM for file \"{}\" is missing semicolon. Handled and continuing.".format(filename))
+                    "BPM for file \"{}\" is missing semicolon. Handled and continuing."
+                    .format(filename))
             # Quick way to remove non-printable characters that, for whatever reason,
             # exist in a few .sm files (Oceanlab Megamix)
             old_bpm = bpm
             bpm = "".join(filter(lambda c: c in string.printable, bpm))
             if old_bpm != bpm:
                 logging.warning(
-                    "BPM for file \"{}\" contains non-printable characters. Handled and continuing.".format(filename))
+                    "BPM for file \"{}\" contains non-printable characters. Handled and continuing."
+                    .format(filename))
             bpm = bpm.strip().split("=")
             temp.insert(0, bpm)
         bpms = temp
@@ -791,14 +789,16 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
 
     if charts == -1:
         logging.warning(
-            "Unable to parse chart(s) data for \"{}\". Skipping.".format(filename))
+            "Unable to parse chart(s) data for \"{}\". Skipping.".format(
+                filename))
         return
     else:
         for i, chart in enumerate(charts):
             sanity_check = chart.split("\n", 6)
             if len(sanity_check) != 7:
                 logging.warning(
-                    "Unable to parse chart(s) data for \"{}\". Attempting to handle...".format(filename))
+                    "Unable to parse chart(s) data for \"{}\". Attempting to handle..."
+                    .format(filename))
                 # There's something in this file that is causing the regex to not parse properly.
                 # Usually a misplaced ; instead of a :
                 # This is a quick and dirty attempt to salvage it.
@@ -827,11 +827,12 @@ def parse_file(db, filename, folder, pack, hide_artist_info, cache=None):
                 else:
                     # Our guess was incorrect
                     logging.warning(
-                        "Unable to parse \"{}\" correctly. Skipping.".format(filename))
+                        "Unable to parse \"{}\" correctly. Skipping.".format(
+                            filename))
                     return
 
-            fileinfo = fi.FileInfo(
-                title, subtitle, artist, pack, bpms, displaybpm, folder)
+            fileinfo = fi.FileInfo(title, subtitle, artist, pack, bpms,
+                                   displaybpm, folder)
             parse_chart(chart + ";", fileinfo, db, cache)
 
 
@@ -847,8 +848,9 @@ def scan_folder(args, db, cache=None):
     logging.debug("{} .sm file(s) detected in initial count.".format(total))
 
     if total <= 0:
-        logging.debug("Exiting scan_folder function; no .sm files found in directory \"{}\".".format(
-            args[DIRECTORY]))
+        logging.debug(
+            "Exiting scan_folder function; no .sm files found in directory \"{}\"."
+            .format(args[DIRECTORY]))
         return
 
     i = 0  # Current file
@@ -858,11 +860,13 @@ def scan_folder(args, db, cache=None):
 
         if sm_counter <= 0:
             logging.info(
-                "There are no .sm file(s) in folder \"{}\". Skipping folder/scanning children.".format(root))
+                "There are no .sm file(s) in folder \"{}\". Skipping folder/scanning children."
+                .format(root))
             continue
         elif sm_counter >= 2:
             logging.warning(
-                "Found more than 1 .sm files in folder \"{}\". Skipping folder.".format(root))
+                "Found more than 1 .sm files in folder \"{}\". Skipping folder."
+                .format(root))
             i += sm_counter
             continue
 
@@ -885,12 +889,13 @@ def scan_folder(args, db, cache=None):
                 logging.info("Completed parsing \"{}\".".format(filename))
             if args[MEDIA_REMOVE]:
                 # remove everything that isn't .sm or .ssc
-                if file.lower().endswith(".sm") or file.lower().endswith(".ssc"):
+                if file.lower().endswith(".sm") or file.lower().endswith(
+                        ".ssc"):
                     continue
                 else:
                     os.remove(root + "/" + file)
-                    logging.info(
-                        "Removed \"{}\" from \"{}\".".format(filename, root))
+                    logging.info("Removed \"{}\" from \"{}\".".format(
+                        filename, root))
 
     if args[VERBOSE]:
         output_i, output_total = vh.normalize_num(i, total)
@@ -907,8 +912,8 @@ def scan_folder(args, db, cache=None):
 # PyCharm assumes args will remain a strict type boolean array, so we disable PyTypeChecker to ignore these warnings.
 def main(argv: list):
     try:
-        arguments, values = getopt.getopt(
-            argv[1:], SHORT_OPTIONS, LONG_OPTIONS)
+        arguments, values = getopt.getopt(argv[1:], SHORT_OPTIONS,
+                                          LONG_OPTIONS)
     except getopt.error as err:
         print("An unexpected error occurred with getopt. Error message:\n" +
               str(err) + "\nExiting.")
@@ -933,14 +938,21 @@ def main(argv: list):
         elif arg in ("-l", "--log"):
             try:
                 numeric_level = getattr(logging, val.upper())
-                logging.basicConfig(
-                    filename=LOGFILE_NAME, level=numeric_level, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                logging.basicConfig(filename=LOGFILE_NAME,
+                                    level=numeric_level,
+                                    datefmt=LOG_TIMESTAMP,
+                                    format=LOG_FORMAT)
             except AttributeError:
-                logging.basicConfig(
-                    filename=LOGFILE_NAME, level=logging.ERROR, datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                logging.basicConfig(filename=LOGFILE_NAME,
+                                    level=logging.ERROR,
+                                    datefmt=LOG_TIMESTAMP,
+                                    format=LOG_FORMAT)
                 print(
-                    "Log level \"{}\" is not a valid log level. Defaulting to ERROR.".format(val))
-                print("Valid log levels are: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+                    "Log level \"{}\" is not a valid log level. Defaulting to ERROR."
+                    .format(val))
+                print(
+                    "Valid log levels are: DEBUG, INFO, WARNING, ERROR, CRITICAL"
+                )
             logging.info("Logfile initialized.")
         elif arg in ("-c", "--csv"):
             args[CSV] = True
@@ -948,7 +960,8 @@ def main(argv: list):
     if not logging.getLogger().hasHandlers():
         # Logging argument wasn't passed in. Default to logging level ERROR and output to stdout.
         logging.basicConfig(level=logging.ERROR,
-                            datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+                            datefmt=LOG_TIMESTAMP,
+                            format=LOG_FORMAT)
 
     if not args[DIRECTORY] and not args[UNIT_TEST]:
         message = "The directory is a required parameter. Exiting."
@@ -965,8 +978,10 @@ def main(argv: list):
         if os.path.isfile(database):
             os.remove(database)
         logging.getLogger().handlers = []
-        logging.basicConfig(filename=log_location, level=logging.INFO,
-                            datefmt=LOG_TIMESTAMP, format=LOG_FORMAT)
+        logging.basicConfig(filename=log_location,
+                            level=logging.INFO,
+                            datefmt=LOG_TIMESTAMP,
+                            format=LOG_FORMAT)
         with TinyDB(database) as db:
             scan_folder(args, db)
             test.run_tests()

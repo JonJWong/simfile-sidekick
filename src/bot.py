@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """Searches a TinyDB database created by scan.py and reports information back to a Discord user.
 
 This program is to be used in conjunction with scan.py. It will scan the database created by scan.py and allow users
@@ -51,8 +50,12 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:  # if the DISCORD_TOKEN is blank in the .env file, or if the .env file doesn't exist
-    print("It looks like you don't have an \".env\" file, or it's not set up correctly.")
-    print("Please make sure you have a \".env\" file in the same directory as this file.")
+    print(
+        "It looks like you don't have an \".env\" file, or it's not set up correctly."
+    )
+    print(
+        "Please make sure you have a \".env\" file in the same directory as this file."
+    )
     print("The \".env\" file should contain one line:")
     print("DISCORD_TOKEN=YourBotsDiscordTokenHere")
     sys.exit(1)
@@ -73,7 +76,8 @@ async def search_song(ctx, *, song_name: str):
     # async def search_song(ctx, song_name: str):
     if not song_name:
         embed = discord.Embed(
-            description=f"Sorry {ctx.author.mention}, but please supply a title.")
+            description=
+            f"Sorry {ctx.author.mention}, but please supply a title.")
         await ctx.send(embed=embed)
         return
 
@@ -85,7 +89,8 @@ async def search_song(ctx, *, song_name: str):
     if isinstance(results, int):
         if results == 0:
             embed = discord.Embed(
-                description="Sorry {}, but I could not find any songs.".format(ctx.author.mention))
+                description="Sorry {}, but I could not find any songs.".format(
+                    ctx.author.mention))
             await ctx.send(embed=embed)
         elif results == -1:
             embed = discord.Embed(
@@ -110,11 +115,13 @@ async def search_song(ctx, *, song_name: str):
                 search_description += user + \
                     ", enter a number from `1` to `" + str(max_results) + "` "
                 search_description += "to select the search result."
-                embed = discord.Embed(
-                    title="Search Results", description=search_description)
+                embed = discord.Embed(title="Search Results",
+                                      description=search_description)
             else:
-                embed = discord.Embed(title="Search Results", description=user +
-                                      ", enter a number from `1` to `" + str(len(data)) + "` to select the search result.")
+                embed = discord.Embed(
+                    title="Search Results",
+                    description=user + ", enter a number from `1` to `" +
+                    str(len(data)) + "` to select the search result.")
 
             for i, d in enumerate(data):
                 if i >= 25:
@@ -133,14 +140,19 @@ async def search_song(ctx, *, song_name: str):
 
             if len(embed) > 6000:
                 embed = discord.Embed(
-                    description="Sorry {}, but there are too many results for me to display.".format(ctx.author.mention))
+                    description=
+                    "Sorry {}, but there are too many results for me to display."
+                    .format(ctx.author.mention))
                 await ctx.send(embed=embed)
                 return
             else:
                 await ctx.send(embed=embed)
 
             try:
-                msg = await simfileSidekick.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
+                msg = await simfileSidekick.wait_for(
+                    "message",
+                    check=lambda message: message.author == ctx.author,
+                    timeout=30)
             except asyncio.TimeoutError:
                 # User didn't respond in 30s, just exit
                 return
@@ -160,7 +172,9 @@ async def search_song(ctx, *, song_name: str):
                     pass
                 except IndexError:
                     embed = discord.Embed(
-                        description=f"Sorry {ctx.author.mention}, that's out of range. Try searching again.")
+                        description=
+                        f"Sorry {ctx.author.mention}, that's out of range. Try searching again."
+                    )
                 finally:
                     if embed:
                         await ctx.send(file=file, embed=embed)
@@ -251,7 +265,8 @@ async def settings(ctx, *input: str):
 
         title = "**Auto-delete** is "
 
-        if udbm.get_autodelete_with_default(user_id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR):
+        if udbm.get_autodelete_with_default(user_id, USER_SETTINGS,
+                                            DEFAULT_AUTODELETE_BEHAVIOR):
             title += "`enabled`"
         else:
             title += "`disabled`"
@@ -278,18 +293,28 @@ async def settings(ctx, *input: str):
                     message += "I will not automatically delete .sm files."
                 await ctx.send(message)
             elif result:
-                await ctx.send("{}, I'm automatically deleting .sm files you upload.".format(ctx.author.mention))
+                await ctx.send(
+                    "{}, I'm automatically deleting .sm files you upload.".
+                    format(ctx.author.mention))
             elif not result:
-                await ctx.send("{}. I'm not automatically deleting .sm files you upload.".format(ctx.author.mention))
+                await ctx.send(
+                    "{}. I'm not automatically deleting .sm files you upload.".
+                    format(ctx.author.mention))
             return
         if input[1].upper() == "Y" or input[1].upper() == "T":
             udbm.set_autodelete(user_id, True, USER_SETTINGS)
-            await ctx.send("{}, I will now auto-delete your uploaded .sm files.".format(ctx.author.mention))
+            await ctx.send(
+                "{}, I will now auto-delete your uploaded .sm files.".format(
+                    ctx.author.mention))
         elif input[1].upper() == "N" or input[1].upper() == "F":
             udbm.set_autodelete(user_id, False, USER_SETTINGS)
-            await ctx.send("{}, I will no longer auto-delete your uploaded .sm files.".format(ctx.author.mention))
+            await ctx.send(
+                "{}, I will no longer auto-delete your uploaded .sm files.".
+                format(ctx.author.mention))
         else:
-            await ctx.send("{}, this is an invalid option. Use \"Y\" or \"N\".".format(ctx.author.mention))
+            await ctx.send(
+                "{}, this is an invalid option. Use \"Y\" or \"N\".".format(
+                    ctx.author.mention))
         return
 
 
@@ -301,9 +326,13 @@ async def fix(ctx):
     usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
     if os.path.exists(usr_tmp_dir):
         shutil.rmtree(usr_tmp_dir)
-        await ctx.send("I did some cleanup {}, I should be able to parse files again for you!".format(ctx.author.mention))
+        await ctx.send(
+            "I did some cleanup {}, I should be able to parse files again for you!"
+            .format(ctx.author.mention))
     else:
-        await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
+        await ctx.send(
+            "{}, it looks like there's nothing for me to cleanup.".format(
+                ctx.author.mention))
 
 
 @simfileSidekick.command(name="parse")
@@ -319,18 +348,18 @@ async def parse(ctx, *params: str):
 
         if "bot" not in ctx.message.channel.name:
             message = "{}, I can only parse breakdowns in bot channels. Please post in the appropriate channel.".format(
-                ctx.author.mention
-            )
+                ctx.author.mention)
             await ctx.message.delete()
             await ctx.send(message)
             return
-        
-        invalid_inputted_params = [param for param in params if param not in VALID_PARAMS]
+
+        invalid_inputted_params = [
+            param for param in params if param not in VALID_PARAMS
+        ]
         if invalid_inputted_params:
             message = "{}, please ensure you are passing in valid parameters. Valid parameters are: {}".format(
                 ctx.author.mention,
-                ', '.join([f'`{param}`' for param in  VALID_PARAMS])
-            )
+                ', '.join([f'`{param}`' for param in VALID_PARAMS]))
             await ctx.message.delete()
             await ctx.send(message)
             return
@@ -348,7 +377,6 @@ async def parse(ctx, *params: str):
             return
 
         attachment = ctx.message.attachments[0]
-
         """
             Discord implemented changes to their CDN where attachments now have tokens to make files
             expire after inactivity, presumably to save space and disallow people from using their
@@ -414,8 +442,8 @@ async def parse(ctx, *params: str):
 
         # Call scan.py's parser function and put results in temporary database
         # parse_file(usr_tmp_file, usr_tmp_dir, "*<Uploaded>*", db, None, hide_artist_info, None)
-        parse_file(db, usr_tmp_file, usr_tmp_dir,
-                "*<Uploaded>*", hide_artist_info, None)
+        parse_file(db, usr_tmp_file, usr_tmp_dir, "*<Uploaded>*",
+                   hide_artist_info, None)
 
         # Get results from temporary database
         results = [result for result in db]
@@ -440,15 +468,21 @@ async def parse(ctx, *params: str):
         os.remove(usr_tmp_db)
         os.rmdir(usr_tmp_dir)
     except Exception as e:
-        logging.exception(f'PARSING ERROR OCCURRED AT {datetime.datetime.now()}')
+        logging.exception(
+            f'PARSING ERROR OCCURRED AT {datetime.datetime.now()}')
         print(e)
         await ctx.send("Something went wrong, fixing.")
         usr_tmp_dir = TMP_DIR + str(ctx.message.author.id) + "/"
         if os.path.exists(usr_tmp_dir):
             shutil.rmtree(usr_tmp_dir)
-            await ctx.send("I did some cleanup {}, I should be able to parse files again for you!".format(ctx.author.mention))
+            await ctx.send(
+                "I did some cleanup {}, I should be able to parse files again for you!"
+                .format(ctx.author.mention))
         else:
-            await ctx.send("{}, it looks like there's nothing for me to cleanup.".format(ctx.author.mention))
+            await ctx.send(
+                "{}, it looks like there's nothing for me to cleanup.".format(
+                    ctx.author.mention))
+
 
 @simfileSidekick.command(name="delpack")
 @has_permissions(administrator=True)
@@ -479,7 +513,9 @@ async def delpack(ctx, input: str):
 
     if body:
         embed.add_field(
-            name="Songs will be updated (they exist in other packs):", value=body, inline=False)
+            name="Songs will be updated (they exist in other packs):",
+            value=body,
+            inline=False)
 
     body = ""
 
@@ -488,23 +524,28 @@ async def delpack(ctx, input: str):
 
     if body:
         embed.add_field(name="Songs will be deleted:",
-                        value=body, inline=False)
+                        value=body,
+                        inline=False)
 
     embed.add_field(name="Are you sure you want to do this?",
-                    value="Type Y or N.", inline=False)
+                    value="Type Y or N.",
+                    inline=False)
 
     await ctx.send(embed=embed)
 
     try:
-        msg = await simfileSidekick.wait_for("message", check=lambda message: message.author == ctx.author, timeout=30)
+        msg = await simfileSidekick.wait_for(
+            "message",
+            check=lambda message: message.author == ctx.author,
+            timeout=30)
     except asyncio.TimeoutError:
         # User didn't respond in 30s, just exit
         return
 
     if msg and msg.content.upper() == "Y":
         dbm.delete_by_ids(list(d for d in deletes), DATABASE_NAME)
-        dbm.remove_pack_from_songs_by_id(
-            input, list(u for u in updates), DATABASE_NAME)
+        dbm.remove_pack_from_songs_by_id(input, list(u for u in updates),
+                                         DATABASE_NAME)
         await ctx.send("Songs deleted.")
 
 
@@ -591,8 +632,9 @@ async def dlpack(ctx, input: str):
     await process_msg.edit(content=message)
 
     # Args Ordered: Rebuild, Verbose, Directory, Media_remove, Log, Unit_test, CSV
-    scan_args = [False, False, DLPACK_DESTINATION_URL,
-                 True, False, False, False]
+    scan_args = [
+        False, False, DLPACK_DESTINATION_URL, True, False, False, False
+    ]
     scan_folder(scan_args, db)
     db.close()
 
@@ -628,10 +670,7 @@ async def prefix(ctx, input: str):
         server_db.update({"prefix": input}, ServerDB.id == server_id)
     else:
         # Server never set a prefix
-        server_db.insert({
-            "id": server_id,
-            "prefix": input
-        })
+        server_db.insert({"id": server_id, "prefix": input})
 
     if old_prefix != None and old_prefix != DEFAULT_PREFIX:
         # We should search for the old prefix and see if it's used in any of the other channels. If not, we can remove
@@ -683,5 +722,6 @@ async def on_message(message):
 
     if is_prefix_for_server(server_db, server_id, prefix):
         await simfileSidekick.process_commands(message)
+
 
 simfileSidekick.run(TOKEN)
