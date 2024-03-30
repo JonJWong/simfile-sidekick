@@ -74,62 +74,6 @@ def find_current_bpm(measure, bpms):
             return bpm[1]
 
 
-def rec_anchor_check(run, arrow_idx, next_idx, count=0):
-    """
-        Recursive function to check for anchors within a run
-        TODO: Implement this in the iterative analysis
-    """
-    # If we've reached the end of the run and there were less than 3 instances
-    # of the arrow in question, return false
-    if next_idx >= len(run) and count < 3:
-        return False
-
-    # if the two input arrows are the same, call the function again for the next
-    # step, otherwise return whether or not the count >= 3
-    if run[arrow_idx] == run[next_idx]:
-        # If the first two match, we need to count as two arrows, but only move
-        # forward by 1 count thereafter.
-        if count == 0:
-            new_count = 2
-        else:
-            new_count += 1
-        return rec_anchor_check(run, next_idx, next_idx + 2, new_count)
-    else:
-        return count >= 3
-
-
-def rec_tower_check(run, arrow_idx, next_idx, count=0):
-    """
-        Recursive function to check for boxes within a run
-        TODO: Implement this in the iterative analysis
-    """
-    # If we've reached the end of the run and there were less than 2 instances
-    # of the arrow in question, return false
-    if next_idx + 1 >= len(run) and count < 2:
-        return False, "None"
-
-    # if the two input arrows are the same, call the function again for the next
-    # step, otherwise return whether or not the count >= 2
-    if run[arrow_idx] == run[next_idx] and run[arrow_idx + 1] == run[next_idx + 1]:
-        # If the first two match, we need to count as two arrows, but only move
-        # forward by 1 count thereafter.
-        if count == 0:
-            new_count = 2
-        else:
-            new_count += 1
-
-        return rec_tower_check(run, next_idx + 1, next_idx + 2, new_count)
-    else:
-        if count == 2:
-            pattern_type = "Box"
-        elif count >= 2:
-            pattern_type = "Tower"
-        else:
-            pattern_type = "None"
-
-        return count >= 2, pattern_type
-
-
 def new_pattern_analysis(measure_obj):
     """
         Refactored pattern analysis. Considering how niche microholds are in runs,
@@ -436,7 +380,6 @@ def new_pattern_analysis(measure_obj):
             # double stair, so we reset ds_pattern after printing the
             # metadata.
             if len(ds_pattern) == 8:
-                calcd_idx = i - 7 if i - 7 > 0 else 0
                 dbl_stair_pattern = ds_pattern[:4]
 
                 fill_mistake_data(double_stair_data,

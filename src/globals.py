@@ -34,6 +34,10 @@ APPROVED_SERVERS = [
     1163200677409988668,  # BOT EMOJIS 2
 ]
 
+MAX_DISCORD_FIELD_CHARS = 1024
+
+VALID_PARAMS = {"all", "box", "dstair", "dstep", "mono", "ju"}
+
 HELP_MESSAGE = """ \
 Hello, I'm Simfile Sidekick, a Discord bot inspired by Nav's
 Breakdown Buddy.
