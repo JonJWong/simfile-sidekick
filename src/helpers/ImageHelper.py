@@ -25,26 +25,24 @@ GRAPH_HEIGHT = 400  # Height of the density graph in pixels
 
 FONT_SIZE = 32
 FONT = ImageFont.truetype("assets/font/DejaVuSansMono.ttf", FONT_SIZE)
-FONT_BOLD = ImageFont.truetype(
-    "assets/font/DejaVuSansMono-Bold.ttf", FONT_SIZE)
+FONT_BOLD = ImageFont.truetype("assets/font/DejaVuSansMono-Bold.ttf", FONT_SIZE)
 
 # Since the font is monospaced, this gives us the width and height of a single character
 CHAR_LEFT, CHAR_TOP, CHAR_RIGHT, CHAR_BOTTOM = FONT.getbbox("A")
 CHAR_WIDTH = CHAR_RIGHT - CHAR_LEFT
 CHAR_HEIGHT = CHAR_BOTTOM - CHAR_TOP
-# Add a small space between lines for readability
-FONT_LINE_SPACING = math.floor(CHAR_HEIGHT * 1.2)
+FONT_LINE_SPACING = math.floor(CHAR_HEIGHT * 1.2)  # Add a small space between lines for readability
 MAX_CHARS_PER_LINE = math.floor(IMAGE_WIDTH / CHAR_WIDTH)
 
 # Colors defined in RGB
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)  # Break segments
-GREEN = (0, 128,   0)  # 16th notes
-CYAN = (0, 206, 209)  # 20th notes
+WHITE  = (255, 255, 255)
+GRAY   = (150, 150, 150)  # Break segments
+GREEN  = (  0, 128,   0)  # 16th notes
+CYAN   = (  0, 206, 209)  # 20th notes
 PURPLE = (153,  50, 204)  # 24th notes
 YELLOW = (255, 255,   0)  # 32nd notes
 
-BG = (52,  54,  61)  # The dark gray background of Discord
+BG     = ( 52,  54,  61)  # The dark gray background of Discord
 BG_RGB = "rgb(52,54,61)"  # String representation of the above
 
 
@@ -61,12 +59,10 @@ def save_image(image: Image, path: str) -> bool:
         image.save(path)
         return True
     except AttributeError as e:
-        logging.error("The image '{}' doesn't appear to be a valid Image object.".format(
-            image), exc_info=True)
+        logging.error("The image '{}' doesn't appear to be a valid Image object.".format(image), exc_info=True)
         return False
     except OSError as e:
-        logging.error("The file '{}' could not be saved.".format(
-            path), exc_info=True)
+        logging.error("The file '{}' could not be saved.".format(path), exc_info=True)
         return False
 
 
@@ -81,8 +77,7 @@ def load_image(path: str) -> Image:
     try:
         return Image.open(path)
     except FileNotFoundError as e:
-        logging.error("Unable to locate image file '{}'.".format(
-            path), exc_info=True)
+        logging.error("Unable to locate image file '{}'.".format(path), exc_info=True)
         return None
     except UnidentifiedImageError as e:
         logging.error("Unable to load image file '{}'. Is this an image file, or is the image corrupt?".format(path),
@@ -107,8 +102,7 @@ def create_and_save_density_graph(x: List[int], y: List[float], path: str) -> bo
         x=x, y=y, fill="tozeroy", fillcolor="yellow", line_color="orange", line=dict(width=0.5)
     ))
     fig.update_layout(
-        plot_bgcolor=BG_RGB, paper_bgcolor=BG_RGB, margin=dict(
-            l=10, r=10, b=10, t=10, pad=10),
+        plot_bgcolor=BG_RGB, paper_bgcolor=BG_RGB, margin=dict(l=10, r=10, b=10, t=10, pad=10),
         autosize=False, width=IMAGE_WIDTH, height=GRAPH_HEIGHT
     )
     fig.update_xaxes(visible=False)
@@ -120,6 +114,5 @@ def create_and_save_density_graph(x: List[int], y: List[float], path: str) -> bo
         fig.write_image(path)
         return True
     except Exception as e:
-        logging.error("The density graph could not be saved at '{}'.".format(
-            path), exc_info=True)
+        logging.error("The density graph could not be saved at '{}'.".format(path), exc_info=True)
         return False

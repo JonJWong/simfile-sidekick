@@ -26,7 +26,7 @@ def find_starting_foot(pattern):
     Returns -1 if there are no L/R in the input.
     """
     first_lr = first_left_right(pattern)
-
+    
     if first_lr == -1:
         return -1
 
@@ -68,7 +68,7 @@ def is_pattern(pattern, check_arr):
 def fill_mistake_data(data_obj, measure, pattern, pattern_str=None):
     if is_sweep(pattern_str):
         pattern = "Sweep"
-
+        
     if data_obj.get(measure):
         data_obj[measure].append(pattern)
     else:
@@ -82,7 +82,6 @@ NOT_MONO = DORITO_DOUBLE_SIDE + STAIR_DOUBLE_SIDE + DORITO
 
 SIX_MONO = ['LDLRUR', 'LULRDR', 'RDRLUL', 'RURLDL']
 
-
 def process_mono(data_obj, count_obj, pattern, curr_measure):
     pattern_is_six_mono = is_pattern(pattern, SIX_MONO)
 
@@ -91,7 +90,7 @@ def process_mono(data_obj, count_obj, pattern, curr_measure):
             return
 
         sliced = pattern[:-2]
-
+        
         if sliced.endswith("U") or sliced.endswith("D"):
             sliced += pattern[-2]
 

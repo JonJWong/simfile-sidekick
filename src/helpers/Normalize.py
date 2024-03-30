@@ -32,13 +32,11 @@ def if_should_normalize(breakdown: str, total_stream: int):
         if b.find("=") != -1:
             measures_of_run[RunDensity.Run_32.value] += int(b.replace("=", ""))
         elif b.find("\\") != -1:
-            measures_of_run[RunDensity.Run_24.value] += int(
-                b.replace("\\", ""))
+            measures_of_run[RunDensity.Run_24.value] += int(b.replace("\\", ""))
         elif b.find("~") != -1:
             measures_of_run[RunDensity.Run_20.value] += int(b.replace("~", ""))
         elif b.find("(") != -1:
-            measures_of_run[RunDensity.Break.value] += int(
-                b.replace("(", "").replace(")", ""))
+            measures_of_run[RunDensity.Break.value] += int(b.replace("(", "").replace(")", ""))
         else:
             measures_of_run[RunDensity.Run_16.value] += int(b)
 
@@ -120,8 +118,7 @@ def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
 
         if normalized_breakdown[i-1].find("(") != -1 and b.find("(") != -1:
             # Previous measure and this measure are both breaks, so combine them
-            prev_break = int(remove_all_breakdown_chars(
-                normalized_breakdown[i-1]))
+            prev_break = int(remove_all_breakdown_chars(normalized_breakdown[i-1]))
             this_break = int(remove_all_breakdown_chars(b))
             new_break = str(prev_break + this_break + 1)
 

@@ -26,3 +26,4 @@ class NotesInfo(object):
         self.mines = mines
         self.hands = hands
         self.rolls = rolls
+
