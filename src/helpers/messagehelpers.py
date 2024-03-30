@@ -23,10 +23,26 @@ def normalize_float(num):
 
 def __create_pattern_info(pattern_name, pattern_type, step_data):
     pattern_count = step_data[pattern_type + "_count"]
-
     # If there's no data, return an empty string
     if pattern_count <= 0:
         return ""
+    
+    pattern_str = f'**{pattern_name}**: {pattern_count}, found in measure:\n'
+    
+    data_obj = {}
+
+    # Group data by measure
+    for entry in step_data[pattern_type + "_array"]:
+        measure, datum = entry
+        data_obj.setdefault(measure, []).append(datum)
+
+    # Sort measures numerically if possible, placing "Sweep" before 7 but after 6
+    data_obj_keys = sorted(data_obj.keys(), key=lambda x: (isinstance(x, int), x if isinstance(x, int) else float('inf'), x))
+
+    # Build the pattern string
+    for pattern_name in data_obj_keys:
+        datum = data_obj[pattern_name]
+        pattern_str += f'**{pattern_name}**: {", ".join(map(str, datum))}\n'
 
     pattern_str = f'**{pattern_name}**: {pattern_count}, found in measure:\n'
 
@@ -88,6 +104,13 @@ def __break_string_into_sections(string, max_length=MAX_DISCORD_FIELD_CHARS):
 def float_to_string(input):
     return str(int(float(input)))
 
+def add_field_with_split(embed, name, value):
+    if len(value) > MAX_DISCORD_FIELD_CHARS:
+        parts = [value[i:i + MAX_DISCORD_FIELD_CHARS] for i in range(0, len(value), MAX_DISCORD_FIELD_CHARS)]
+        for num, part in enumerate(parts, start=1):
+            embed.add_field(name=f"{name} *(Part {num})*", value=part, inline=False)
+    else:
+        embed.add_field(name=name, value=value, inline=False)
 
 def __append_appropriate_info(params, step_data, pattern_embed):
     param_to_pattern = {
@@ -227,6 +250,7 @@ def create_embed(data, ctx, params=None):
         pattern_embed = discord.Embed(
             description=f"Pattern analysis for: {data['title']}")
         __append_appropriate_info(params, data, pattern_embed)
+
 
     # - - - BREAKDOWNS - - -
 

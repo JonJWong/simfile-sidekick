@@ -10,7 +10,8 @@ Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
 from helpers.GeneralHelper import generate_md5
-from objects import NotesInfo, PatternInfo
+from objects.NotesInfo import NotesInfo
+from objects.PatternInfo import PatternInfo
 from typing import List
 import weakref
 

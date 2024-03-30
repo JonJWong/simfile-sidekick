@@ -10,7 +10,7 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
-from objects import ChartInfo
+from objects.ChartInfo import ChartInfo
 from helpers.GeneralHelper import find_max_bpm, find_min_bpm
 from typing import List
 

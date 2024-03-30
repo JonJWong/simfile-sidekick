@@ -1,3 +1,5 @@
+from .scanconstants import NOT_MONO, SIX_MONO
+
 def first_left_right(pattern):
     """
     Takes in a string pattern and returns the index of the first instance of "L" or "R". 
@@ -27,7 +29,6 @@ def find_starting_foot(pattern):
     Returns -1 if there are no L/R in the input.
     """
     first_lr = first_left_right(pattern)
-
     if first_lr == -1:
         return -1
 
@@ -76,14 +77,6 @@ def fill_mistake_data(data_obj, measure, pattern, pattern_str=None):
         data_obj[measure] = [pattern]
 
 
-DORITO_DOUBLE_SIDE = ['LDUDLRL', 'LUDULRL', 'RDUDRLR', 'RUDURLR']
-STAIR_DOUBLE_SIDE = ['LDURLRD', 'LUDRLRU', 'RDULRLD', 'RUDLRLU']
-DORITO = ['LDUDLRD', 'LUDULRU', 'RDUDRLD', 'RUDURLU']
-NOT_MONO = DORITO_DOUBLE_SIDE + STAIR_DOUBLE_SIDE + DORITO
-
-SIX_MONO = ['LDLRUR', 'LULRDR', 'RDRLUL', 'RURLDL']
-
-
 def process_mono(data_obj, count_obj, pattern, curr_measure):
     pattern_is_six_mono = is_pattern(pattern, SIX_MONO)
 
@@ -92,7 +85,6 @@ def process_mono(data_obj, count_obj, pattern, curr_measure):
             return
 
         sliced = pattern[:-2]
-
         if sliced.endswith("U") or sliced.endswith("D"):
             sliced += pattern[-2]
 

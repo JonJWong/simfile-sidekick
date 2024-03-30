@@ -12,8 +12,7 @@ LICENSE file or visit <https://unlicense.org>.
 Created with love by Artimst, this version is maintained/updated by JWong.
 """
 
-from helpers import BreakdownHelper as bh
-from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
+from PIL import Image, ImageFont, UnidentifiedImageError
 from typing import List
 import logging
 import math

@@ -30,12 +30,15 @@ import logging
 import datetime
 
 # Internal Imports
-from db import DBManager as dbm
-from db import UserDBManager as udbm
+from db.DBManager import delete_by_ids, delete_pack_search_results, pack_exists, remove_pack_from_songs_by_id, search 
+from db.UserDBManager import get_autodelete, get_autodelete_with_default, set_autodelete
 from scan.scan import parse_file, scan_folder
 from zipfile import BadZipFile, ZipFile
 
-from globals import DLPACK_ON_SELECTED_SERVERS_ONLY, DLPACK_DESTINATION_URL, TMP_DIR, USER_AGENT, DEFAULT_PREFIX, PREFIXES, DEFAULT_AUTODELETE_BEHAVIOR, SERVER_SETTINGS, USER_SETTINGS, DATABASE_NAME, APPROVED_SERVERS, HELP_MESSAGE, STR_TO_EMOJI, VALID_PARAMS
+from globals import DLPACK_ON_SELECTED_SERVERS_ONLY, DLPACK_DESTINATION_URL, \
+    TMP_DIR, USER_AGENT, DEFAULT_PREFIX, PREFIXES, DEFAULT_AUTODELETE_BEHAVIOR, \
+    SERVER_SETTINGS, USER_SETTINGS, DATABASE_NAME, APPROVED_SERVERS, \
+    HELP_MESSAGE, STR_TO_EMOJI, VALID_PARAMS
 from helpers.bothelpers import get_prefixes, is_prefix_for_server
 from helpers.messagehelpers import get_footer_image, create_embed
 
@@ -84,7 +87,7 @@ async def search_song(ctx, *, song_name: str):
     # Strip the whitespaces since query is unstripped due to rest_is_raw=True
     query = song_name.strip()
 
-    results = dbm.search(query, DATABASE_NAME)
+    results = search(query, DATABASE_NAME)
 
     if isinstance(results, int):
         if results == 0:
@@ -265,8 +268,8 @@ async def settings(ctx, *input: str):
 
         title = "**Auto-delete** is "
 
-        if udbm.get_autodelete_with_default(user_id, USER_SETTINGS,
-                                            DEFAULT_AUTODELETE_BEHAVIOR):
+        if get_autodelete_with_default(
+                user_id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR):
             title += "`enabled`"
         else:
             title += "`disabled`"
@@ -282,7 +285,7 @@ async def settings(ctx, *input: str):
 
     if input[0] == "autodelete":
         if len(input) <= 1:
-            result = udbm.get_autodelete(user_id, USER_SETTINGS)
+            result = get_autodelete(user_id, USER_SETTINGS)
             if result is None:
                 message = "{}, it looks like you don't have this preference set. ".format(
                     ctx.author.mention)
@@ -302,12 +305,12 @@ async def settings(ctx, *input: str):
                     format(ctx.author.mention))
             return
         if input[1].upper() == "Y" or input[1].upper() == "T":
-            udbm.set_autodelete(user_id, True, USER_SETTINGS)
+            set_autodelete(user_id, True, USER_SETTINGS)
             await ctx.send(
                 "{}, I will now auto-delete your uploaded .sm files.".format(
                     ctx.author.mention))
         elif input[1].upper() == "N" or input[1].upper() == "F":
-            udbm.set_autodelete(user_id, False, USER_SETTINGS)
+            set_autodelete(user_id, False, USER_SETTINGS)
             await ctx.send(
                 "{}, I will no longer auto-delete your uploaded .sm files.".
                 format(ctx.author.mention))
@@ -434,7 +437,7 @@ async def parse(ctx, *params: str):
 
         hide_artist_info = False
 
-        autodelete = udbm.get_autodelete_with_default(
+        autodelete = get_autodelete_with_default(
             ctx.message.author.id, USER_SETTINGS, DEFAULT_AUTODELETE_BEHAVIOR)
         if autodelete:
             hide_artist_info = True
@@ -452,8 +455,7 @@ async def parse(ctx, *params: str):
         for result in results:
             embed, pattern_embed, file = create_embed(result, ctx, params)
             await ctx.send(file=file, embed=embed)
-
-            if pattern_embed and len(pattern_embed.fields):
+            if len(pattern_embed.fields) > 0:
                 await ctx.send(file=None, embed=pattern_embed)
             # Removes density graph image for this difficulty
             if os.path.exists(result["graph_location"]):
@@ -493,7 +495,8 @@ async def delpack(ctx, input: str):
         return
 
     try:
-        updates, deletes = dbm.delete_pack_search_results(input, DATABASE_NAME)
+        updates, deletes = delete_pack_search_results(
+            input, DATABASE_NAME)
     except TypeError:
         # Returned 0 or -1
         # TODO: clean this up
@@ -543,9 +546,9 @@ async def delpack(ctx, input: str):
         return
 
     if msg and msg.content.upper() == "Y":
-        dbm.delete_by_ids(list(d for d in deletes), DATABASE_NAME)
-        dbm.remove_pack_from_songs_by_id(input, list(u for u in updates),
-                                         DATABASE_NAME)
+        delete_by_ids(list(d for d in deletes), DATABASE_NAME)
+        remove_pack_from_songs_by_id(input, list(u for u in updates),
+                                               DATABASE_NAME)
         await ctx.send("Songs deleted.")
 
 
@@ -619,7 +622,7 @@ async def dlpack(ctx, input: str):
 
     db = TinyDB(DATABASE_NAME)
 
-    if dbm.pack_exists(pack, db):
+    if pack_exists(pack, db):
         message = "{}, ".format(ctx.author.mention)
         message += "it looks like this pack is already added. :x:"
         await process_msg.edit(content=message)

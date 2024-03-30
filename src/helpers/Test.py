@@ -1,6 +1,6 @@
 from enums.RunDensity import RunDensity
-from db import DBManager as dbm
-from helpers import Normalize as normalizer
+from db.DBManager import search
+from helpers.Normalize import get_best_bpm_to_use, if_should_normalize, normalize
 import sys
 
 DATABASE_FILE = "./tests/db.json"
@@ -103,7 +103,7 @@ def run_tests():
     # Fairytale is a chart that has an extra return in the stepartist section. Previously, the logic looked at this per
     # line, instead of splitting it by colon (:).
 
-    data = dbm.search("Fairytale", DATABASE_FILE)
+    data = search("Fairytale", DATABASE_FILE)
     result = data[
         1]  # [1] so we grab the hard chart, since it's the chart with the extra return
 
@@ -120,7 +120,7 @@ def run_tests():
     # previously calculated runs in 16ths, 24ths, or 32nds, I suspect that the parser did not properly switch back to
     # "Break" and add the appropriate run to the breakdown.
 
-    data = dbm.search("Chelsea", DATABASE_FILE)
+    data = search("Chelsea", DATABASE_FILE)
     result = data[2]  # [2] so we grab the challenge chart
 
     correct_breakdown = "15 7 (17) 3 11 (14) 15"
@@ -140,7 +140,7 @@ def run_tests():
     # We want to make sure Encoder's breakdown is 32. We don't want to capture any break segments before or after
     # the one and only run.
 
-    data = dbm.search("Encoder", DATABASE_FILE)
+    data = search("Encoder", DATABASE_FILE)
     result = data[
         4]  # [4] so we grab the challenge chart, and not the easy or medium, etc.
 
@@ -173,7 +173,7 @@ def run_tests():
 
     # Generic breakdown test for Ganbatte
 
-    data = dbm.search("Ganbatte", DATABASE_FILE)
+    data = search("Ganbatte", DATABASE_FILE)
     result = data[0]  # [0] so we grab the challenge chart, and not the other
 
     correct_breakdown = "7 19 3 39 39 31 16 (4) 7 7 23 7 15 64 (8) 7 16 23"
@@ -222,7 +222,7 @@ def run_tests():
                  result["total_break"])
         failed += 1
 
-    data = dbm.search("Ganbatte", DATABASE_FILE)
+    data = search("Ganbatte", DATABASE_FILE)
     result = data[1]  # [0] so we grab the chart with the 20ths
 
     correct_breakdown = "7 19 3 39 24 ~4~ 4 ~4~ 3 31 16 (4) 7 7 23 7 15 32 ~4~ 12 ~4~ 12 (8) 7 16 11 ~4~ 8"
@@ -256,8 +256,8 @@ def run_tests():
                  correct_breakdown, result["simple_breakdown"])
         failed += 1
 
-    should_normalize = normalizer.if_should_normalize(result["breakdown"],
-                                                      result["total_stream"])
+    should_normalize = if_should_normalize(result["breakdown"],
+                                           result["total_stream"])
 
     if should_normalize == RunDensity.Run_16:
         good(
@@ -271,7 +271,7 @@ def run_tests():
 
     # Generic breakdown test for Pendulum Essential Mix (Side A)
 
-    data = dbm.search("Pendulum Essential Mix", DATABASE_FILE)
+    data = search("Pendulum Essential Mix", DATABASE_FILE)
     result = data[0]
 
     correct_breakdown = "31 (2) 35 (46) 2 (2) 17 46 (2) 38 (2) 47 (2) 13 (4) 5 32 (6) 1 32 (2) 14 (2) 45 32 (2) 62 (32)"
@@ -326,7 +326,7 @@ def run_tests():
                  result["total_break"])
         failed += 1
 
-    data = dbm.search("Hardware Store", DATABASE_FILE)
+    data = search("Hardware Store", DATABASE_FILE)
     result = data[0]
 
     correct_breakdown = "=3= =59= (8) =34= \\1\\ =7="
@@ -361,14 +361,13 @@ def run_tests():
         failed += 1
 
     correct_normalized_breakdown = "6 118 (16) 68 (2) 14 *@253BPM*"
-    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"],
-                                                result["max_bpm"],
-                                                result["median_nps"],
-                                                result["display_bpm"])
-    should_normalize = normalizer.if_should_normalize(result["breakdown"],
-                                                      result["total_stream"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"],
-                                                bpm_to_use, should_normalize)
+    bpm_to_use = get_best_bpm_to_use(result["min_bpm"], result["max_bpm"],
+                                     result["median_nps"],
+                                     result["display_bpm"])
+    should_normalize = if_should_normalize(result["breakdown"],
+                                           result["total_stream"])
+    normalized_breakdown = normalize(result["breakdown"], bpm_to_use,
+                                     should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Hardware Store's normalized breakdown is correct.")
@@ -378,7 +377,7 @@ def run_tests():
                  correct_normalized_breakdown, normalized_breakdown)
         failed += 1
 
-    data = dbm.search("Noise Discipline", DATABASE_FILE)
+    data = search("Noise Discipline", DATABASE_FILE)
     result = data[0]
 
     correct_breakdown = "~1~ ~7~ ~15~ ~39~ 1 (16) ~1~ 1 ~7~ ~15~ ~40~ (12) 1 ~1~ 2 ~8~ (2) ~30~ (2) ~4~ (2) ~48~ (8) ~183~ ~63~ (3) ~45~ ~39~ 1 ~12~ (4) ~39~ ~6~ (2) ~7~ 1 ~11~ 1 (4) ~64~ (32) ~64~ (47) 1 ~32~"
@@ -413,14 +412,13 @@ def run_tests():
         failed += 1
 
     correct_normalized_breakdown = "1 8 18 48 (22) 1 (1) 8 18 50 (17) 1 (2) 10 (2) 37 (2) 5 (2) 60 (10) 228 78 (3) 56 48 (1) 15 (5) 48 7 (2) 8 (1) 13 (7) 80 (40) 80 (60) 40 *@218BPM*"
-    bpm_to_use = normalizer.get_best_bpm_to_use(result["min_bpm"],
-                                                result["max_bpm"],
-                                                result["median_nps"],
-                                                result["display_bpm"])
-    should_normalize = normalizer.if_should_normalize(result["breakdown"],
-                                                      result["total_stream"])
-    normalized_breakdown = normalizer.normalize(result["breakdown"],
-                                                bpm_to_use, should_normalize)
+    bpm_to_use = get_best_bpm_to_use(result["min_bpm"], result["max_bpm"],
+                                     result["median_nps"],
+                                     result["display_bpm"])
+    should_normalize = if_should_normalize(result["breakdown"],
+                                           result["total_stream"])
+    normalized_breakdown = normalize(result["breakdown"], bpm_to_use,
+                                     should_normalize)
 
     if normalized_breakdown == correct_normalized_breakdown:
         good("Noise Discipline's normalized breakdown is correct.")
@@ -438,7 +436,7 @@ def run_tests():
                  RunDensity.Run_20, should_normalize)
         failed += 1
 
-    data = dbm.search("Sa MaRichi", DATABASE_FILE)
+    data = search("Sa MaRichi", DATABASE_FILE)
     result = data[0]
 
     if result["total_candles"] == 49:
