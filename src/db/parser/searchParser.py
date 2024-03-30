@@ -36,7 +36,7 @@ def serializedATN():
         return buf.getvalue()
 
 
-class searchParser (Parser):
+class searchParser(Parser):
 
     grammarFileName = "search.g4"
 
@@ -46,12 +46,15 @@ class searchParser (Parser):
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = ["<INVALID>", "' '", "'-'", "':'", "'title'", "'subtitle'",
-                    "'artist'", "'stepartist'", "'rating'", "'bpm'"]
+    literalNames = [
+        "<INVALID>", "' '", "'-'", "':'", "'title'", "'subtitle'", "'artist'",
+        "'stepartist'", "'rating'", "'bpm'"
+    ]
 
-    symbolicNames = ["<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
-                     "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
-                     "<INVALID>", "<INVALID>", "CHAR"]
+    symbolicNames = [
+        "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+        "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", "CHAR"
+    ]
 
     RULE_search_statement = 0
     RULE_song_title = 1
@@ -59,8 +62,9 @@ class searchParser (Parser):
     RULE_tag = 3
     RULE_value = 4
 
-    ruleNames = ["search_statement", "song_title", "tag_statement", "tag",
-                 "value"]
+    ruleNames = [
+        "search_statement", "song_title", "tag_statement", "tag", "value"
+    ]
 
     EOF = Token.EOF
     T__0 = 1
@@ -77,13 +81,16 @@ class searchParser (Parser):
     def __init__(self, input: TokenStream, output: TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.8")
-        self._interp = ParserATNSimulator(
-            self, self.atn, self.decisionsToDFA, self.sharedContextCache)
+        self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA,
+                                          self.sharedContextCache)
         self._predicates = None
 
     class Search_statementContext(ParserRuleContext):
 
-        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
+        def __init__(self,
+                     parser,
+                     parent: ParserRuleContext = None,
+                     invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
@@ -92,9 +99,11 @@ class searchParser (Parser):
 
         def tag_statement(self, i: int = None):
             if i is None:
-                return self.getTypedRuleContexts(searchParser.Tag_statementContext)
+                return self.getTypedRuleContexts(
+                    searchParser.Tag_statementContext)
             else:
-                return self.getTypedRuleContext(searchParser.Tag_statementContext, i)
+                return self.getTypedRuleContext(
+                    searchParser.Tag_statementContext, i)
 
         def getRuleIndex(self):
             return searchParser.RULE_search_statement
@@ -171,7 +180,10 @@ class searchParser (Parser):
 
     class Song_titleContext(ParserRuleContext):
 
-        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
+        def __init__(self,
+                     parser,
+                     parent: ParserRuleContext = None,
+                     invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
@@ -207,7 +219,10 @@ class searchParser (Parser):
 
     class Tag_statementContext(ParserRuleContext):
 
-        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
+        def __init__(self,
+                     parser,
+                     parent: ParserRuleContext = None,
+                     invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
@@ -230,8 +245,8 @@ class searchParser (Parser):
 
     def tag_statement(self):
 
-        localctx = searchParser.Tag_statementContext(
-            self, self._ctx, self.state)
+        localctx = searchParser.Tag_statementContext(self, self._ctx,
+                                                     self.state)
         self.enterRule(localctx, 4, self.RULE_tag_statement)
         try:
             self.enterOuterAlt(localctx, 1)
@@ -253,7 +268,10 @@ class searchParser (Parser):
 
     class TagContext(ParserRuleContext):
 
-        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
+        def __init__(self,
+                     parser,
+                     parent: ParserRuleContext = None,
+                     invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 
@@ -277,7 +295,12 @@ class searchParser (Parser):
             self.enterOuterAlt(localctx, 1)
             self.state = 35
             _la = self._input.LA(1)
-            if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << searchParser.T__3) | (1 << searchParser.T__4) | (1 << searchParser.T__5) | (1 << searchParser.T__6) | (1 << searchParser.T__7) | (1 << searchParser.T__8))) != 0)):
+            if not ((((_la) & ~0x3f) == 0 and
+                     ((1 << _la) &
+                      ((1 << searchParser.T__3) | (1 << searchParser.T__4) |
+                       (1 << searchParser.T__5) | (1 << searchParser.T__6) |
+                       (1 << searchParser.T__7) |
+                       (1 << searchParser.T__8))) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -292,7 +315,10 @@ class searchParser (Parser):
 
     class ValueContext(ParserRuleContext):
 
-        def __init__(self, parser, parent: ParserRuleContext = None, invokingState: int = -1):
+        def __init__(self,
+                     parser,
+                     parent: ParserRuleContext = None,
+                     invokingState: int = -1):
             super().__init__(parent, invokingState)
             self.parser = parser
 

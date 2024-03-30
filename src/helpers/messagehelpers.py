@@ -38,8 +38,10 @@ def __create_pattern_info(pattern_name, pattern_type, step_data):
         data_obj.setdefault(measure, []).append(datum)
 
     # Sort measures numerically if possible, placing "Sweep" before 7 but after 6
-    data_obj_keys = sorted(data_obj.keys(), key=lambda x: (
-        isinstance(x, int), x if isinstance(x, int) else float('inf'), x))
+    data_obj_keys = sorted(data_obj.keys(),
+                           key=lambda x:
+                           (isinstance(x, int), x
+                            if isinstance(x, int) else float('inf'), x))
 
     # Build the pattern string
     for pattern_name in data_obj_keys:
@@ -103,25 +105,31 @@ def __append_appropriate_info(params, step_data, pattern_embed):
 
     for param, (pattern, param_str) in param_to_pattern.items():
         if param in formatted_params:
-            param_pattern_str = __create_pattern_info(
-                pattern, param_str, step_data)
+            param_pattern_str = __create_pattern_info(pattern, param_str,
+                                                      step_data)
 
             if param_pattern_str and len(param_pattern_str) > 1024:
-                for pattern_section in __break_string_into_sections(param_pattern_str):
-                    pattern_embed.add_field(
-                        name='', value=pattern_section, inline=False)
+                for pattern_section in __break_string_into_sections(
+                        param_pattern_str):
+                    pattern_embed.add_field(name='',
+                                            value=pattern_section,
+                                            inline=False)
             elif param_pattern_str:
-                pattern_embed.add_field(
-                    name='', value=param_pattern_str, inline=False)
+                pattern_embed.add_field(name='',
+                                        value=param_pattern_str,
+                                        inline=False)
 
 
 def add_field_with_split(embed, name, value):
     if len(value) > MAX_DISCORD_FIELD_CHARS:
-        parts = [value[i:i + MAX_DISCORD_FIELD_CHARS]
-                 for i in range(0, len(value), MAX_DISCORD_FIELD_CHARS)]
+        parts = [
+            value[i:i + MAX_DISCORD_FIELD_CHARS]
+            for i in range(0, len(value), MAX_DISCORD_FIELD_CHARS)
+        ]
         for num, part in enumerate(parts, start=1):
             embed.add_field(name=f"{name} *(Part {num})*",
-                            value=part, inline=False)
+                            value=part,
+                            inline=False)
     else:
         embed.add_field(name=name, value=value, inline=False)
 
@@ -151,15 +159,12 @@ def create_embed(data, ctx, params=None):
     if data["display_bpm"] and data["display_bpm"] != "N/A":
         song_details += "__Display BPM__: "
         display_bpm_range = data["display_bpm"].split(":")
-        song_details += f'{float_to_string(display_bpm_range[0])}-{float_to_string(
-            display_bpm_range[1])}\n' if ":" in data["display_bpm"] else f'{float_to_string(data["display_bpm"])}\n'
+        song_details += f'{float_to_string(display_bpm_range[0])}-{float_to_string(display_bpm_range[1])}\n' if ":" in data[
+            "display_bpm"] else f'{float_to_string(data["display_bpm"])}\n'
 
-    song_details += f"__BPM__: {float_to_string(data['min_bpm'])}-{
-        float_to_string(data['max_bpm'])}\n"
-    song_details += f'__Peak NPS__: **{
-        normalize_float(data["max_nps"])}** notes/s.\n'
-    song_details += f'__Median NPS__: **{
-        normalize_float(data["median_nps"])}** notes/s.\n'
+    song_details += f"__BPM__: {float_to_string(data['min_bpm'])}-{float_to_string(data['max_bpm'])}\n"
+    song_details += f'__Peak NPS__: **{normalize_float(data["max_nps"])}** notes/s.\n'
+    song_details += f'__Median NPS__: **{normalize_float(data["median_nps"])}** notes/s.\n'
 
     total_measures = data["total_stream"] + data["total_break"]
     if total_measures != 0:
@@ -167,17 +172,17 @@ def create_embed(data, ctx, params=None):
             (data["total_stream"] / total_measures) * 100)
         break_percent = normalize_float(
             (data["total_break"] / total_measures) * 100)
-        song_details += f'__Total Stream__: **{
-            data["total_stream"]}** measures ({stream_percent}%)\n'
-        song_details += f'__Total Break__: **{
-            data["total_break"]}** measures ({break_percent}%)\n'
+        song_details += f'__Total Stream__: **{data["total_stream"]}** measures ({stream_percent}%)\n'
+        song_details += f'__Total Break__: **{data["total_break"]}** measures ({break_percent}%)\n'
 
     embed.add_field(name="__Song Details__", value=song_details)
 
     # Chart Info
     chart_info_keys = ["notes", "jumps", "holds", "mines", "hands", "rolls"]
-    chart_info = "\n".join([f'__{key.capitalize()}:__ {str(
-        data[key])}' for key in chart_info_keys if key in data])
+    chart_info = "\n".join([
+        f'__{key.capitalize()}:__ {str(data[key])}' for key in chart_info_keys
+        if key in data
+    ])
     embed.add_field(name="__Chart Info__", value=chart_info, inline=True)
 
     # Pattern Analysis
@@ -186,40 +191,37 @@ def create_embed(data, ctx, params=None):
     )
 
     # Candles
-    pattern_analysis += (
-        f'__Candles__: **{data["total_candles"]}** '
-        f'({data["left_foot_candles"]} left, '
-        f'{data["right_foot_candles"]} right)\n'
-    )
-    candle_density = data["total_candles"] / \
-        data["total_stream"] if data["total_stream"] else 0
-    pattern_analysis += f'__Candle density__: {
-        normalize_float(candle_density)} candles/measure\n'
+    pattern_analysis += (f'__Candles__: **{data["total_candles"]}** '
+                         f'({data["left_foot_candles"]} left, '
+                         f'{data["right_foot_candles"]} right)\n')
+    candle_density = data["total_candles"] / data["total_stream"] if data[
+        "total_stream"] else 0
+    pattern_analysis += f'__Candle density__: {normalize_float(candle_density)} candles/measure\n'
 
     # Mono
-    pattern_analysis += (
-        f'__Mono__: {normalize_float(data["mono_percent"])}% '
-        f'({get_mono_desc(data["mono_percent"])})\n'
-    )
+    pattern_analysis += (f'__Mono__: {normalize_float(data["mono_percent"])}% '
+                         f'({get_mono_desc(data["mono_percent"])})\n')
 
     # Anchors
-    total_anchors = sum([data[key] for key in [
-                        "anchor_left", "anchor_down", "anchor_up", "anchor_right"]])
-    pattern_analysis += (
-        f'__Anchors__: **{total_anchors}** '
-        f'({data["anchor_left"]} left, '
-        f'{data["anchor_down"]} down, '
-        f'{data["anchor_up"]} up, '
-        f'{data["anchor_right"]} right)\n'
-    )
+    total_anchors = sum([
+        data[key]
+        for key in ["anchor_left", "anchor_down", "anchor_up", "anchor_right"]
+    ])
+    pattern_analysis += (f'__Anchors__: **{total_anchors}** '
+                         f'({data["anchor_left"]} left, '
+                         f'{data["anchor_down"]} down, '
+                         f'{data["anchor_up"]} up, '
+                         f'{data["anchor_right"]} right)\n')
 
     embed.add_field(name="__Pattern Analysis__",
-                    value=pattern_analysis, inline=False)
+                    value=pattern_analysis,
+                    inline=False)
 
     pattern_embed = None
 
     valid_params_passed_in = [
-        param for param in params if param in VALID_PARAMS]
+        param for param in params if param in VALID_PARAMS
+    ]
 
     if len(valid_params_passed_in) > 0:
         pattern_embed = discord.Embed(
@@ -230,17 +232,17 @@ def create_embed(data, ctx, params=None):
 
     # Detailed Breakdown
     if data["breakdown"]:
-        add_field_with_split(
-            embed, "__Detailed Breakdown__", data["breakdown"])
+        add_field_with_split(embed, "__Detailed Breakdown__",
+                             data["breakdown"])
 
     # Partially Simplified
     if data["partial_breakdown"] != data["simple_breakdown"]:
-        add_field_with_split(
-            embed, "__Partially Simplified__", data["partial_breakdown"])
+        add_field_with_split(embed, "__Partially Simplified__",
+                             data["partial_breakdown"])
 
-    # Simplified Breakdown
-        add_field_with_split(
-            embed, "__Simplified Breakdown__", data["simple_breakdown"])
+        # Simplified Breakdown
+        add_field_with_split(embed, "__Simplified Breakdown__",
+                             data["simple_breakdown"])
 
     # Normalized Breakdown
     if data["normalized_breakdown"]:

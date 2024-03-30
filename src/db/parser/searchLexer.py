@@ -55,22 +55,24 @@ class searchLexer(Lexer):
 
     modeNames = ["DEFAULT_MODE"]
 
-    literalNames = ["<INVALID>",
-                    "' '", "'-'", "':'", "'title'", "'subtitle'", "'artist'", "'stepartist'",
-                    "'rating'", "'bpm'"]
+    literalNames = [
+        "<INVALID>", "' '", "'-'", "':'", "'title'", "'subtitle'", "'artist'",
+        "'stepartist'", "'rating'", "'bpm'"
+    ]
 
-    symbolicNames = ["<INVALID>",
-                     "CHAR"]
+    symbolicNames = ["<INVALID>", "CHAR"]
 
-    ruleNames = ["T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6",
-                 "T__7", "T__8", "CHAR"]
+    ruleNames = [
+        "T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "T__8",
+        "CHAR"
+    ]
 
     grammarFileName = "search.g4"
 
     def __init__(self, input=None, output: TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.8")
-        self._interp = LexerATNSimulator(
-            self, self.atn, self.decisionsToDFA, PredictionContextCache())
+        self._interp = LexerATNSimulator(self, self.atn, self.decisionsToDFA,
+                                         PredictionContextCache())
         self._actions = None
         self._predicates = None

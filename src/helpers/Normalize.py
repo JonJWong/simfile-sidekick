@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """Helper function that is responsible for normalizing breakdowns if the song is mostly 32nds,
 24ths, 20ths, etc.
 """
@@ -32,8 +31,8 @@ def if_should_normalize(breakdown: str, total_stream: int):
         if b.find("=") != -1:
             measures_of_run[RunDensity.Run_32.value] += int(b.replace("=", ""))
         elif b.find("\\") != -1:
-            measures_of_run[RunDensity.Run_24.value] += int(
-                b.replace("\\", ""))
+            measures_of_run[RunDensity.Run_24.value] += int(b.replace(
+                "\\", ""))
         elif b.find("~") != -1:
             measures_of_run[RunDensity.Run_20.value] += int(b.replace("~", ""))
         elif b.find("(") != -1:
@@ -118,15 +117,15 @@ def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
             # Don't do anything for the first element
             continue
 
-        if normalized_breakdown[i-1].find("(") != -1 and b.find("(") != -1:
+        if normalized_breakdown[i - 1].find("(") != -1 and b.find("(") != -1:
             # Previous measure and this measure are both breaks, so combine them
-            prev_break = int(remove_all_breakdown_chars(
-                normalized_breakdown[i-1]))
+            prev_break = int(
+                remove_all_breakdown_chars(normalized_breakdown[i - 1]))
             this_break = int(remove_all_breakdown_chars(b))
             new_break = str(prev_break + this_break + 1)
 
             # Remove previous element (will be cleaned up with strip()) and add new break
-            normalized_breakdown[i-1] = ""
+            normalized_breakdown[i - 1] = ""
             normalized_breakdown[i] = "(" + new_break + ")"
 
     # Appends the normalized BPM to the end of our breakdown array, if we have it
@@ -137,7 +136,8 @@ def normalize(breakdown: str, bpm: float, normalize_to: RunDensity):
     return " ".join(list(filter(None, normalized_breakdown))).strip()
 
 
-def get_best_bpm_to_use(min_bpm: float, max_bpm: float, median_nps: float, display_bpm: str):
+def get_best_bpm_to_use(min_bpm: float, max_bpm: float, median_nps: float,
+                        display_bpm: str):
     """
     Of the 4 provided parameters, takes the best guess at what the song's actual BPM is that's used
     throughout the majority of the song.

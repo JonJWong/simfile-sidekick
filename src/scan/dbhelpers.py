@@ -16,12 +16,8 @@ def database_to_csv(db):
     with open(CSV_FILENAME, 'w') as f:
         f.write("title,subtitle,artist,pack\n")
         for chart in charts:
-            f.write(
-                chart["title"] + "," +
-                chart["subtitle"] + "," +
-                chart["artist"] + "," +
-                chart["pack"] + "\n"
-            )
+            f.write(chart["title"] + "," + chart["subtitle"] + "," +
+                    chart["artist"] + "," + chart["pack"] + "\n")
     return
 
 
@@ -62,18 +58,24 @@ def add_to_database(fileinfo, db, cache):
             "partial_breakdown": fileinfo.chartinfo.partial_breakdown,
             "simple_breakdown": fileinfo.chartinfo.simple_breakdown,
             "normalized_breakdown": fileinfo.chartinfo.normalized_breakdown,
-            "left_foot_candles": fileinfo.chartinfo.patterninfo.left_foot_candles,
-            "right_foot_candles": fileinfo.chartinfo.patterninfo.right_foot_candles,
+            "left_foot_candles":
+            fileinfo.chartinfo.patterninfo.left_foot_candles,
+            "right_foot_candles":
+            fileinfo.chartinfo.patterninfo.right_foot_candles,
             "total_candles": fileinfo.chartinfo.patterninfo.total_candles,
             "mono_percent": fileinfo.chartinfo.patterninfo.mono_percent,
             "anchor_left": fileinfo.chartinfo.patterninfo.anchor_left,
             "anchor_down": fileinfo.chartinfo.patterninfo.anchor_down,
             "anchor_up": fileinfo.chartinfo.patterninfo.anchor_up,
             "anchor_right": fileinfo.chartinfo.patterninfo.anchor_right,
-            "double_stairs_count": fileinfo.chartinfo.patterninfo.double_stairs_count,
-            "double_stairs_array": fileinfo.chartinfo.patterninfo.double_stairs_array,
-            "doublesteps_count": fileinfo.chartinfo.patterninfo.doublesteps_count,
-            "doublesteps_array": fileinfo.chartinfo.patterninfo.doublesteps_array,
+            "double_stairs_count":
+            fileinfo.chartinfo.patterninfo.double_stairs_count,
+            "double_stairs_array":
+            fileinfo.chartinfo.patterninfo.double_stairs_array,
+            "doublesteps_count":
+            fileinfo.chartinfo.patterninfo.doublesteps_count,
+            "doublesteps_array":
+            fileinfo.chartinfo.patterninfo.doublesteps_array,
             "jumps_count": fileinfo.chartinfo.patterninfo.jumps_count,
             "jumps_array": fileinfo.chartinfo.patterninfo.jumps_array,
             "mono_count": fileinfo.chartinfo.patterninfo.mono_count,

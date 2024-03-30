@@ -6,7 +6,8 @@ def first_left_right(pattern):
     first_L = pattern.find("L")
     first_R = pattern.find("R")
 
-    return min(first_L, first_R) if first_L != -1 and first_R != -1 else max(first_L, first_R, -1)
+    return min(first_L, first_R) if first_L != -1 and first_R != -1 else max(
+        first_L, first_R, -1)
 
 
 def last_left_right(pattern):

@@ -1,5 +1,6 @@
 # Helpful functions that allow the text to appear prettier in the console when using the verbose option.
 
+
 # Takes two numbers, e.g. a is 5 and b is 500
 # This function will add two spaces before a
 # output would be "  5" and "500"
@@ -36,7 +37,7 @@ def get_percent(a, b):
 
 def normalize_string(string, length):
     if len(string) > length:
-        string = string[0:length-3]
+        string = string[0:length - 3]
         string = string + "..."
 
     while len(string) < length:

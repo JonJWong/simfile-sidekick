@@ -3,6 +3,7 @@ from .searchParser import searchParser
 
 
 class parserListener(searchListener):
+
     def __init__(self):
         self._queryObject = {
             'title': None,

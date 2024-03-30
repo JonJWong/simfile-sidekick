@@ -5,9 +5,8 @@ if __name__ is not None and "." in __name__:
 else:
     from searchParser import searchParser
 
+
 # This class defines a complete listener for a parse tree produced by searchParser.
-
-
 class searchListener(ParseTreeListener):
 
     # Enter a parse tree produced by searchParser#search_statement.

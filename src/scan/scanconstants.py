@@ -1,7 +1,9 @@
 # Flag constants. These are the available command line arguments you can use when running this application.
 SHORT_OPTIONS = "rvd:ml:uc"
-LONG_OPTIONS = ["rebuild", "verbose", "directory=",
-                "mediaremove", "log=", "unittest", "csv"]
+LONG_OPTIONS = [
+    "rebuild", "verbose", "directory=", "mediaremove", "log=", "unittest",
+    "csv"
+]
 
 # Positions in args array.
 REBUILD = 0
@@ -13,8 +15,8 @@ UNIT_TEST = 5
 CSV = 6
 
 # Regex constants. Used mainly in the pattern recognition section.
-NL_REG = "[\s]+"                        # New line
-OR_REG = "|"                            # Regex for "or"
+NL_REG = "[\s]+"  # New line
+OR_REG = "|"  # Regex for "or"
 # Matches a line containing no notes (0000)
 NO_NOTES_REG = "[03M][03M][03M][03M]"
 # Matches a line containing at least 1 note
@@ -77,31 +79,30 @@ DOWN_ANCHOR_PATTERN = "D[LUR]D[LUR]D"
 UP_ANCHOR_PATTERN = "U[LDR]U[LDR]U"
 RIGHT_ANCHOR_PATTERN = "R[LDU]R[LDU]R"
 
-COMBINED_PATTERN = (
-    f"({LEFT_ANCHOR_PATTERN}|{DOWN_ANCHOR_PATTERN}|"
-    f"{UP_ANCHOR_PATTERN}|{RIGHT_ANCHOR_PATTERN})"
-)
+COMBINED_PATTERN = (f"({LEFT_ANCHOR_PATTERN}|{DOWN_ANCHOR_PATTERN}|"
+                    f"{UP_ANCHOR_PATTERN}|{RIGHT_ANCHOR_PATTERN})")
 
-DBL_STAIRS = [
-    "LDURLDUR",
-    "LUDRLUDR",
-    "RUDLRUDL",
-    "RDULRDUL"
-]
+DBL_STAIRS = ["LDURLDUR", "LUDRLUDR", "RUDLRUDL", "RDULRDUL"]
 
 DBL_STEPS = [
-    "LL", "DD", "UU", "RR",
-    "LUR", "LDR", "RUL", "RDL",
-    "LUDL", "LDUL", "RUDR", "RDUR"
+    "LL", "DD", "UU", "RR", "LUR", "LDR", "RUL", "RDL", "LUDL", "LDUL", "RUDR",
+    "RDUR"
 ]
 
 BOXES = [
     # left-foot leading
-    "LULU", "LRLR", "LDLD",
-    "DRDR", "URUR",
+    "LULU",
+    "LRLR",
+    "LDLD",
+    "DRDR",
+    "URUR",
     # right-foot leading
-    "RURU", "RLRL", "RDRD",
-    "DLDL", "ULUL",
+    "RURU",
+    "RLRL",
+    "RDRD",
+    "DLDL",
+    "ULUL",
     # ambiguous
-    "UDUD", "DUDU"
+    "UDUD",
+    "DUDU"
 ]

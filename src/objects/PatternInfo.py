@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """A object that contains the pattern info for a chart.
 
 This object contains the analysis of patterns in a chart, such as mono, candles, and anchors.
