@@ -40,7 +40,11 @@ import statistics
 import string
 import sys
 
-from .scanconstants import SHORT_OPTIONS, LONG_OPTIONS, REBUILD, VERBOSE, DIRECTORY, MEDIA_REMOVE, UNIT_TEST, CSV, NL_REG, NO_NOTES_REG, ANY_NOTES_REG, LOG_TIMESTAMP, LOG_FORMAT, UNITTEST_FOLDER, DATABASE_NAME, LOGFILE_NAME, CSV_FILENAME
+from .scanconstants import SHORT_OPTIONS, LONG_OPTIONS, REBUILD, VERBOSE, DIRECTORY, MEDIA_REMOVE,\
+    UNIT_TEST, CSV, NL_REG, NO_NOTES_REG, ANY_NOTES_REG, LOG_TIMESTAMP, LOG_FORMAT, UNITTEST_FOLDER,\
+    DATABASE_NAME, LOGFILE_NAME, STEP_TO_DIR, LEFT_CANDLES, RIGHT_CANDLES, COMBINED_PATTERN,\
+    LEFT_ANCHOR_PATTERN, DOWN_ANCHOR_PATTERN, UP_ANCHOR_PATTERN, RIGHT_ANCHOR_PATTERN, DBL_STAIRS,\
+    DBL_STEPS, BOXES
 from .regexfinds import findall_with_regex_dotall, findall_with_regex, find_with_regex_dotall, find_with_regex
 from .dbhelpers import load_md5s_into_cache, database_to_csv, add_to_database
 from .scanutils import last_left_right, find_starting_foot, ensure_only_step, process_mistake_data, fill_mistake_data, process_mono
@@ -95,38 +99,6 @@ def new_pattern_analysis(measure_obj):
 
             ex. 1: ['1000', '0100', '0010', '0001']
     """
-    STEP_TO_DIR = {
-        # Steps
-        "1000": "L",
-        "0100": "D",
-        "0010": "U",
-        "0001": "R",
-        # Holds
-        "2000": "L",
-        "0200": "D",
-        "0020": "U",
-        "0002": "R",
-        # Rolls
-        "4000": "L",
-        "0400": "D",
-        "0040": "U",
-        "0004": "R",
-        # None
-        "0000": "",
-        # Jumps
-        "1100": "[LD]",
-        "1010": "[LU]",
-        "1001": "[LR]",
-        "0101": "[DR]",
-        "0011": "[UR]",
-        "0110": "[DU]",
-        # Hands
-        "1110": "[LDU]",
-        "1101": "[LDR]",
-        "1011": "[LUR]",
-        "0111": "[DUR]",
-        "1111": "[LDUR]"
-    }
 
     # Initialize counters
     category_counts = {
@@ -151,28 +123,13 @@ def new_pattern_analysis(measure_obj):
         "Box Array": []
     }
 
-    # Candles
-    LEFT_CANDLES = ["DRU", "URD"]
-    RIGHT_CANDLES = ["DLU", "ULD"]
-
-    # Create a combined regex pattern for all substrings in each category
-    left_anchor_pattern = "L[DUR]L[DUR]L"
-    down_anchor_pattern = "D[LUR]D[LUR]D"
-    up_anchor_pattern = "U[LDR]U[LDR]U"
-    right_anchor_pattern = "R[LDU]R[LDU]R"
-
-    combined_pattern = (
-        f"({left_anchor_pattern}|{down_anchor_pattern}|"
-        f"{up_anchor_pattern}|{right_anchor_pattern})"
-    )
-
     total_notes_in_runs = 0
 
     curr_run = ""
     prev_measure = None
     most_recent_starting_measure = None
 
-    def __analyze(run):
+    def __analyze(run, quantization=16):
         """
         Method to find Anchors and Candles via regex, double stairs and double
         steps via iterative string matching, and mono through iteration paying
@@ -192,32 +149,7 @@ def new_pattern_analysis(measure_obj):
 
         Output: None
         """
-        nonlocal combined_pattern, category_counts, LEFT_CANDLES, RIGHT_CANDLES, \
-            total_notes_in_runs, curr_run, most_recent_starting_measure, STEP_TO_DIR
-
-        DBL_STAIRS = [
-            "LDURLDUR",
-            "LUDRLUDR",
-            "RUDLRUDL",
-            "RDULRDUL"
-        ]
-
-        DBL_STEPS = [
-            "LL", "DD", "UU", "RR",
-            "LUR", "LDR", "RUL", "RDL",
-            "LUDL", "LDUL", "RUDR", "RDUR"
-        ]
-
-        BOXES = [
-            # left-foot leading
-            "LULU", "LRLR", "LDLD",
-            "DRDR", "URUR",
-            # right-foot leading
-            "RURU", "RLRL", "RDRD",
-            "DLDL", "ULUL",
-            # ambiguous
-            "UDUD", "DUDU"
-        ]
+        nonlocal category_counts, total_notes_in_runs, curr_run, most_recent_starting_measure
 
         double_stair_data = {}
         doublesteps_data = {}
@@ -228,15 +160,15 @@ def new_pattern_analysis(measure_obj):
         # - - - - - ANCHOR FINDER - - - - -
         # Uses regex matching like the previous method
         # TODO: Use recursive algorithm in step iteration
-        matches = re.findall(combined_pattern, run)
+        matches = re.findall(COMBINED_PATTERN, run)
         for match in matches:
-            if re.search(left_anchor_pattern, match):
+            if re.search(LEFT_ANCHOR_PATTERN, match):
                 category_counts["Left Anchors"] += 1
-            elif re.search(down_anchor_pattern, match):
+            elif re.search(DOWN_ANCHOR_PATTERN, match):
                 category_counts["Down Anchors"] += 1
-            elif re.search(up_anchor_pattern, match):
+            elif re.search(UP_ANCHOR_PATTERN, match):
                 category_counts["Up Anchors"] += 1
-            elif re.search(right_anchor_pattern, match):
+            elif re.search(RIGHT_ANCHOR_PATTERN, match):
                 category_counts["Right Anchors"] += 1
 
         # - - - - - CANDLE FINDER - - - - -
@@ -270,7 +202,7 @@ def new_pattern_analysis(measure_obj):
         # One step at a time.
         for i, curr_step in enumerate(run):
             curr_measure = most_recent_starting_measure + \
-                math.floor((i + 1 - amt_to_subtract) / 16)
+                math.floor((i + 1 - amt_to_subtract) / quantization)
             # - - - - - JUMP DETECTION - - - - -
             # If there is a jump we need to reset the direction the player is facing
             # on the next step, since it is most likely ambiguous.
@@ -304,7 +236,7 @@ def new_pattern_analysis(measure_obj):
             # detection?
             for pattern in DBL_STEPS:
                 if run.startswith(pattern, i):
-                    amt_to_add = math.floor((i+len(pattern)-1) / 16)
+                    amt_to_add = math.floor((i+len(pattern)-1) / quantization)
                     if i+len(pattern)-1 >= len(run):
                         dblstep_measure = most_recent_starting_measure + 1
                     else:
@@ -410,7 +342,7 @@ def new_pattern_analysis(measure_obj):
                              "Mono Count", "Mono Array")
 
     def __populate(notes_in_measure):
-        nonlocal curr_run, STEP_TO_DIR
+        nonlocal curr_run
         for note in notes_in_measure:
             curr_run += STEP_TO_DIR[ensure_only_step(note)]
 
@@ -423,10 +355,11 @@ def new_pattern_analysis(measure_obj):
     # we want to get all the runs isolated so we can check each of them for
     # patterns. We also count the total notes within runs for mono calculation.
     for i, (measure_num, notes_in_measure) in enumerate(measure_obj.items()):
+        quantization = len(notes_in_measure)
         if i == 0 or measure_num - prev_measure > 1:
             # Analyze and reset if it's the first measure or a gap is detected.
             if i != 0:
-                __analyze(curr_run)
+                __analyze(curr_run, quantization)
                 __reset(measure_num)
             most_recent_starting_measure = measure_num
             curr_run = ""
@@ -436,7 +369,7 @@ def new_pattern_analysis(measure_obj):
 
         if i == len(measure_obj) - 1:
             # Analyze if it's the last measure.
-            __analyze(curr_run)
+            __analyze(curr_run, quantization)
 
         prev_measure = measure_num
 
