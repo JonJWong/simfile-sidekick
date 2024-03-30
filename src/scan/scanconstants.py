@@ -33,3 +33,75 @@ DATABASE_NAME = "db.json"
 LOGFILE_NAME = "scan.log"
 # Name of the .csv that will be created if enabled
 CSV_FILENAME = "charts.csv"
+
+STEP_TO_DIR = {
+        # Steps
+        "1000": "L",
+        "0100": "D",
+        "0010": "U",
+        "0001": "R",
+        # Holds
+        "2000": "L",
+        "0200": "D",
+        "0020": "U",
+        "0002": "R",
+        # Rolls
+        "4000": "L",
+        "0400": "D",
+        "0040": "U",
+        "0004": "R",
+        # None
+        "0000": "",
+        # Jumps
+        "1100": "[LD]",
+        "1010": "[LU]",
+        "1001": "[LR]",
+        "0101": "[DR]",
+        "0011": "[UR]",
+        "0110": "[DU]",
+        # Hands
+        "1110": "[LDU]",
+        "1101": "[LDR]",
+        "1011": "[LUR]",
+        "0111": "[DUR]",
+        "1111": "[LDUR]"
+    }
+
+# Candles
+LEFT_CANDLES = ["DRU", "URD"]
+RIGHT_CANDLES = ["DLU", "ULD"]
+
+# Create a combined regex pattern for all substrings in each category
+LEFT_ANCHOR_PATTERN = "L[DUR]L[DUR]L"
+DOWN_ANCHOR_PATTERN = "D[LUR]D[LUR]D"
+UP_ANCHOR_PATTERN = "U[LDR]U[LDR]U"
+RIGHT_ANCHOR_PATTERN = "R[LDU]R[LDU]R"
+
+COMBINED_PATTERN = (
+    f"({LEFT_ANCHOR_PATTERN}|{DOWN_ANCHOR_PATTERN}|"
+    f"{UP_ANCHOR_PATTERN}|{RIGHT_ANCHOR_PATTERN})"
+)
+
+DBL_STAIRS = [
+    "LDURLDUR",
+    "LUDRLUDR",
+    "RUDLRUDL",
+    "RDULRDUL"
+]
+
+DBL_STEPS = [
+    "LL", "DD", "UU", "RR",
+    "LUR", "LDR", "RUL", "RDL",
+    "LUDL", "LDUL", "RUDR", "RDUR"
+]
+
+BOXES = [
+    # left-foot leading
+    "LULU", "LRLR", "LDLD",
+    "DRDR", "URUR",
+    # right-foot leading
+    "RURU", "RLRL", "RDRD",
+    "DLDL", "ULUL",
+    # ambiguous
+    "UDUD", "DUDU"
+]

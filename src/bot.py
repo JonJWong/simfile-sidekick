@@ -424,6 +424,7 @@ async def parse(ctx, *params: str):
         for result in results:
             embed, pattern_embed, file = create_embed(result, ctx, params)
             await ctx.send(file=file, embed=embed)
+
             if pattern_embed and len(pattern_embed.fields):
                 await ctx.send(file=None, embed=pattern_embed)
             # Removes density graph image for this difficulty
